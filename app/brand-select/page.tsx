@@ -18,12 +18,21 @@ export default function BrandSelectPage() {
   const fetchBrands = async () => {
     try {
       const response = await fetch('/api/brands/auth')
+      const data = await response.json()
+      
       if (response.ok) {
-        const data = await response.json()
-        setBrands(data)
+        console.log('[BrandSelect] Fetched brands:', data)
+        setBrands(Array.isArray(data) ? data : [])
+      } else {
+        console.error('[BrandSelect] API error:', data)
+        // Show error message to user
+        if (data.error) {
+          alert(`Error loading brands: ${data.error}`)
+        }
       }
-    } catch (error) {
-      console.error('Error fetching brands:', error)
+    } catch (error: any) {
+      console.error('[BrandSelect] Error fetching brands:', error)
+      alert(`Failed to load brands: ${error.message || 'Unknown error'}`)
     } finally {
       setLoading(false)
     }

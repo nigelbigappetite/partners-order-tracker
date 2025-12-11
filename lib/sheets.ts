@@ -1007,23 +1007,40 @@ export async function getBrandAuth(slug: string): Promise<BrandAuthData | null> 
 
 export async function getAllBrandAuth(): Promise<BrandAuthData[]> {
   try {
+    console.log('[getAllBrandAuth] Starting fetch...');
+    console.log('[getAllBrandAuth] SPREADSHEET_ID:', SPREADSHEET_ID ? 'Set' : 'Missing');
+    console.log('[getAllBrandAuth] Service account email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Missing');
+    console.log('[getAllBrandAuth] Private key:', process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Missing');
+    
     const { headers, data } = await getSheetData('Brand_Auth');
+    console.log('[getAllBrandAuth] Headers found:', headers?.length || 0);
+    console.log('[getAllBrandAuth] Data rows:', data?.length || 0);
+    
     if (!headers || headers.length === 0) {
       throw new Error('Brand_Auth sheet is empty or has no headers');
     }
     
     const authRecords = rowsToObjects<BrandAuthData>(data, headers, 'Brand_Auth');
+    console.log('[getAllBrandAuth] Parsed records:', authRecords.length);
     
-    return authRecords
+    const filtered = authRecords
       .map((auth: any) => ({
         brandName: (auth.brandName || auth['Brand Name'] || auth.Brand || '').toString().trim(),
         slug: (auth.slug || auth.Slug || '').toString().trim().toLowerCase(),
         password: (auth.password || auth.Password || '').toString().trim(),
       }))
       .filter((auth) => auth.brandName && auth.slug); // Only include valid records
-  } catch (error) {
-    console.error('Error fetching all brand auth:', error);
-    return [];
+    
+    console.log('[getAllBrandAuth] Filtered records:', filtered.length);
+    return filtered;
+  } catch (error: any) {
+    console.error('[getAllBrandAuth] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    // Re-throw the error so the API route can handle it properly
+    throw new Error(`Failed to fetch brand auth: ${error.message}`);
   }
 }
 
