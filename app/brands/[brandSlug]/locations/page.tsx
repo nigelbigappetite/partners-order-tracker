@@ -170,7 +170,7 @@ export default function BrandLocationsPage() {
           orders={orders}
           orderLines={orderLines}
           dateRange={dateRange}
-          onDateRangeChange={setDateRange}
+          onDateRangeChange={(start: Date, end: Date) => setDateRange({ start, end })}
           selectedLocationId={selectedLocationId}
           onSelectLocation={setSelectedLocationId}
           selectedBrand={selectedBrand}

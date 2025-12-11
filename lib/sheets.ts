@@ -995,9 +995,9 @@ export async function getBrandAuth(slug: string): Promise<BrandAuthData | null> 
     }
     
     return {
-      brandName: (brandAuth.brandName || brandAuth['Brand Name'] || brandAuth.Brand || '').toString().trim(),
-      slug: (brandAuth.slug || brandAuth.Slug || '').toString().trim().toLowerCase(),
-      password: (brandAuth.password || brandAuth.Password || '').toString().trim(),
+      brandName: ((brandAuth as any).brandName || (brandAuth as any)['Brand Name'] || (brandAuth as any).Brand || '').toString().trim(),
+      slug: ((brandAuth as any).slug || (brandAuth as any).Slug || '').toString().trim().toLowerCase(),
+      password: ((brandAuth as any).password || (brandAuth as any).Password || '').toString().trim(),
     };
   } catch (error) {
     console.error('Error fetching brand auth:', error);
