@@ -10,6 +10,13 @@ export default async function BrandLayout({
   params: { brandSlug: string }
 }) {
   const { brandSlug } = params
+  const isAdmin = brandSlug.toLowerCase() === 'admin'
+  
+  // Admin bypasses authentication
+  if (isAdmin) {
+    return <>{children}</>
+  }
+  
   const isAuthenticated = await getBrandSession(brandSlug)
   const brandName = await getBrandNameFromSlug(brandSlug)
 

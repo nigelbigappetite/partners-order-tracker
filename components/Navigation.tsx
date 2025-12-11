@@ -4,10 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw } from 'lucide-react'
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders', label: 'Orders', icon: FileText },
   { href: '/create-order', label: 'Create Order', icon: ShoppingCart },
   { href: '/products', label: 'Products', icon: Package },
@@ -25,7 +25,7 @@ export default function Navigation() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/brands/admin/dashboard" className="flex items-center space-x-3 group">
               {/* Hungry Tum Logo - Place your logo file at /public/hungry-tum-logo.png or .svg */}
               {!logoError ? (
                 <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20 group-hover:ring-brand-primary/40 transition-all">
@@ -47,7 +47,7 @@ export default function Navigation() {
             <div className="flex space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href || (item.href === '/brands/admin/dashboard' && pathname === '/')
                 return (
                   <Link
                     key={item.href}
@@ -64,6 +64,15 @@ export default function Navigation() {
                 )
               })}
             </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/brand-select"
+              className="flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium text-brand-text hover:bg-brand-light hover:text-brand-primary transition-all duration-200"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Switch Brand</span>
+            </Link>
           </div>
         </div>
       </div>
