@@ -172,13 +172,13 @@ export default function BrandDashboard() {
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-6">
               <Table
-                headers={['Order ID', 'Date', 'Franchisee', 'Stage', 'Total', 'Days Open']}
+                headers={['Order ID', 'Date', 'Franchisee', 'Stage', 'Total']}
                 maxHeight="calc(100vh - 500px)"
                 stickyHeader={true}
               >
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 sm:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-400">
+                    <td colSpan={5} className="px-3 sm:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-400">
                       No orders found
                     </td>
                   </tr>
@@ -206,9 +206,6 @@ export default function BrandDashboard() {
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
                         {formatCurrencyNoDecimals(order.orderTotal)}
-                      </td>
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
-                        {order.daysOpen}
                       </td>
                     </tr>
                   ))
