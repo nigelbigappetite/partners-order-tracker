@@ -252,6 +252,7 @@ export default function BrandDashboard() {
             }}
             orderId={selectedOrderId}
             onUpdate={fetchOrders}
+            brandSlug={brandSlug}
           />
         )}
       </div>

@@ -16,9 +16,10 @@ interface OrderModalProps {
   onClose: () => void
   orderId: string
   onUpdate?: () => void
+  brandSlug?: string
 }
 
-export default function OrderModal({ isOpen, onClose, orderId, onUpdate }: OrderModalProps) {
+export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSlug }: OrderModalProps) {
   const [order, setOrder] = useState<Order | null>(null)
   const [orderLines, setOrderLines] = useState<OrderLine[]>([])
   const [loading, setLoading] = useState(false)
@@ -247,7 +248,9 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate }: Order
               <h3 className="mb-3 text-lg font-semibold text-gray-900">Order Products</h3>
               {orderLines.length > 0 ? (
                 <Table
-                  headers={['Product', 'SKU', 'Qty', 'Unit Price', 'Total', 'Supplier']}
+                  headers={brandSlug?.toLowerCase() === 'smsh-bn' || brandSlug?.toLowerCase() === 'smsh bn'
+                    ? ['Product', 'SKU', 'Qty', 'Unit Price', 'Total']
+                    : ['Product', 'SKU', 'Qty', 'Unit Price', 'Total', 'Supplier']}
                   maxHeight="300px"
                   stickyHeader={true}
                 >
@@ -268,9 +271,11 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate }: Order
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                         {line.lineTotal ? formatCurrency(line.lineTotal) : 'N/A'}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        {line.supplier || 'N/A'}
-                      </td>
+                      {(brandSlug?.toLowerCase() !== 'smsh-bn' && brandSlug?.toLowerCase() !== 'smsh bn') && (
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          {line.supplier || 'N/A'}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </Table>

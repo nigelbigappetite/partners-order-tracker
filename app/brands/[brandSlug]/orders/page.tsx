@@ -225,6 +225,7 @@ export default function BrandOrdersPage() {
               setSelectedOrderId(null)
             }}
             orderId={selectedOrderId}
+            brandSlug={brandSlug}
           />
         )}
       </div>
