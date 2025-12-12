@@ -134,19 +134,21 @@ export default function BrandDashboard() {
         </div>
 
         {/* Main Metrics */}
-        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-1 gap-2.5 xs:gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={`mb-3 xs:mb-4 sm:mb-6 grid grid-cols-1 gap-2.5 xs:gap-3 sm:gap-4 ${isSmshBn ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'}`}>
           <KPICard 
             metric={{
               label: 'Total Revenue',
               value: formatCurrencyNoDecimals(totalRevenue),
             }}
           />
-          <KPICard 
-            metric={{
-              label: 'Total COGS',
-              value: formatCurrencyNoDecimals(totalCOGS),
-            }}
-          />
+          {!isSmshBn && (
+            <KPICard 
+              metric={{
+                label: 'Total COGS',
+                value: formatCurrencyNoDecimals(totalCOGS),
+              }}
+            />
+          )}
           <KPICard 
             metric={{
               label: 'Gross Profit',
