@@ -12,7 +12,7 @@ export default async function BrandLayout({
   const { brandSlug } = params
   const isAdmin = brandSlug.toLowerCase() === 'admin'
   
-  // Admin bypasses authentication
+  // Admin bypasses authentication and brand name check
   if (isAdmin) {
     return <>{children}</>
   }

@@ -7,6 +7,13 @@ export async function GET(
 ) {
   try {
     const slug = params.slug
+    const isAdmin = slug.toLowerCase() === 'admin'
+    
+    // Admin always returns "Admin" as brand name
+    if (isAdmin) {
+      return NextResponse.json({ brandName: 'Admin' })
+    }
+    
     const brandName = await getBrandNameFromSlug(slug)
     
     if (!brandName) {
