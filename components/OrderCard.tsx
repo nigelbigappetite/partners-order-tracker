@@ -18,23 +18,23 @@ export default function OrderCard({ order, onUpdate }: OrderCardProps) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full text-left rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-200 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.06)]"
+        className="w-full text-left rounded-xl border border-gray-100 bg-white p-2 sm:p-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-200 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.06)]"
       >
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-semibold text-gray-900">{formatOrderId(order.orderId)}</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-900">{formatOrderId(order.orderId)}</h3>
             </div>
             <span className="text-xs font-medium text-gray-900">
               {formatCurrencyNoDecimals(order.orderTotal)}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-600 truncate max-w-[120px]">{order.franchisee}</p>
+            <p className="text-xs text-gray-600 truncate max-w-[100px] sm:max-w-[120px]">{order.franchisee}</p>
             <span className="text-xs text-gray-500">{order.daysOpen}d</span>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500 truncate max-w-[120px]">{order.brand}</p>
+            <p className="text-xs text-gray-500 truncate max-w-[100px] sm:max-w-[120px]">{order.brand}</p>
             <StatusPill status={order.orderStage} />
           </div>
         </div>

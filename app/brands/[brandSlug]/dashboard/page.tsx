@@ -128,13 +128,13 @@ export default function BrandDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {isAdmin ? <Navigation /> : <BrandNavigation brandSlug={brandSlug} brandName={brandName} />}
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{isAdmin ? 'Admin Dashboard' : `${brandName} Dashboard`}</h1>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{isAdmin ? 'Admin Dashboard' : `${brandName} Dashboard`}</h1>
         </div>
 
         {/* Main Metrics */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KPICard 
             metric={{
               label: 'Total Revenue',
@@ -163,12 +163,12 @@ export default function BrandDashboard() {
 
         {/* Orders Table for SMSH BN */}
         {isSmshBn && (
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Orders</h2>
-              <p className="text-sm text-gray-500">{orders.length} total orders</p>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Orders</h2>
+              <p className="text-xs sm:text-sm text-gray-500">{orders.length} total orders</p>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-6">
               <Table
                 headers={['Order ID', 'Date', 'Franchisee', 'Stage', 'Total', 'Days Open']}
                 maxHeight="calc(100vh - 500px)"
@@ -176,7 +176,7 @@ export default function BrandDashboard() {
               >
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
+                    <td colSpan={6} className="px-3 sm:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-400">
                       No orders found
                     </td>
                   </tr>
@@ -190,22 +190,22 @@ export default function BrandDashboard() {
                         setIsModalOpen(true)
                       }}
                     >
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
                         {formatOrderId(order.orderId)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
                         {order.orderDate}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
                         {order.franchisee}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
                         <StatusPill status={order.orderStage} />
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
                         {formatCurrencyNoDecimals(order.orderTotal)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
                         {order.daysOpen}
                       </td>
                     </tr>
@@ -220,21 +220,25 @@ export default function BrandDashboard() {
         {!isSmshBn && (
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Live Orders Tracker</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Live Orders Tracker</h2>
               <span className="text-xs text-gray-500">
                 {orders.filter((o) => o.orderStage !== 'Completed').length} active
               </span>
             </div>
-            <div className="grid h-[500px] grid-cols-4 gap-3">
-              {stages.map((stage) => (
-                <PipelineColumn
-                  key={stage.key}
-                  title={stage.title}
-                  orders={getOrdersByStage(stage.key)}
-                  stage={stage.key}
-                  onUpdate={fetchOrders}
-                />
-              ))}
+            {/* Mobile: Horizontal scroll, Desktop: Grid */}
+            <div className="lg:grid lg:grid-cols-4 lg:gap-3 lg:h-[500px]">
+              <div className="flex lg:contents overflow-x-auto lg:overflow-x-visible gap-3 pb-4 lg:pb-0">
+                {stages.map((stage) => (
+                  <div key={stage.key} className="flex-shrink-0 w-[280px] lg:w-auto lg:flex-1 lg:h-full">
+                    <PipelineColumn
+                      title={stage.title}
+                      orders={getOrdersByStage(stage.key)}
+                      stage={stage.key}
+                      onUpdate={fetchOrders}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

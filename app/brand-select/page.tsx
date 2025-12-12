@@ -46,7 +46,7 @@ export default function BrandSelectPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Minimal header with just logo */}
       <nav className="border-b border-brand-light bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center">
             <div className="flex items-center space-x-3">
               <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20">
@@ -62,10 +62,10 @@ export default function BrandSelectPage() {
           </div>
         </div>
       </nav>
-      <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Partners Order Tracker</h1>
-          <p className="mt-2 text-gray-600">Choose a brand to view your dashboard</p>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-12">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Partners Order Tracker</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-600">Choose a brand to view your dashboard</p>
         </div>
 
         {loading ? (
