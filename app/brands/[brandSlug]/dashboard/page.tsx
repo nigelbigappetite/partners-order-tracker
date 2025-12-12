@@ -20,6 +20,23 @@ const stages = [
   { key: 'Completed', title: 'Completed' },
 ]
 
+// Helper function to extract city/location from franchisee name
+// Examples: "CHESTERS- BOLTON" -> "BOLTON", "BOLTON" -> "BOLTON"
+function getFranchiseLocation(franchisee: string): string {
+  if (!franchisee) return ''
+  
+  // Split by dash or hyphen and take the last part (usually the city)
+  const parts = franchisee.split(/[-–—]/).map(part => part.trim())
+  
+  // If there's a dash, use the part after it (the city)
+  if (parts.length > 1) {
+    return parts[parts.length - 1]
+  }
+  
+  // If no dash, return the whole name (might just be the city)
+  return franchisee.trim()
+}
+
 export default function BrandDashboard() {
   const params = useParams()
   const brandSlug = params.brandSlug as string
@@ -172,7 +189,7 @@ export default function BrandDashboard() {
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-6">
               <Table
-                headers={['Order ID', 'Date', 'Franchisee', 'Stage', 'Total']}
+                headers={['Order ID', 'Date', 'Location', 'Stage', 'Total']}
                 maxHeight="calc(100vh - 500px)"
                 stickyHeader={true}
               >
@@ -199,7 +216,7 @@ export default function BrandDashboard() {
                         {order.orderDate}
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
-                        {order.franchisee}
+                        {getFranchiseLocation(order.franchisee)}
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         <StatusPill status={order.orderStage} />
