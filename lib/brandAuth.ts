@@ -72,6 +72,11 @@ export async function verifyBrandPassword(
  */
 export async function getBrandNameFromSlug(slug: string): Promise<string | null> {
   try {
+    // Admin always returns "Admin" as brand name
+    if (slug.toLowerCase() === 'admin') {
+      return 'Admin';
+    }
+    
     const { getBrandAuth } = await import('./sheets');
     const brandAuth = await getBrandAuth(slug);
     return brandAuth?.brandName || null;
