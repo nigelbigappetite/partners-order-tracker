@@ -44,10 +44,10 @@ export default function PipelineColumn({ title, orders, stage, onUpdate }: Pipel
   const remainingOrders = stage !== 'Completed' ? visibleOrders.slice(5) : []
 
   return (
-    <div className="flex h-[400px] lg:h-full flex-col rounded-2xl border border-gray-100 bg-gray-50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
-      <div className="border-b border-gray-200 bg-white px-2 sm:px-3 py-2 rounded-t-2xl">
+    <div className="flex h-[380px] xs:h-[400px] sm:h-[450px] lg:h-full flex-col rounded-xl xs:rounded-2xl border border-gray-100 bg-gray-50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
+      <div className="border-b border-gray-200 bg-white px-2 xs:px-3 py-1.5 xs:py-2 rounded-t-xl xs:rounded-t-2xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-xs xs:text-sm font-semibold text-gray-900 truncate pr-1">{title}</h3>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
               {visibleOrders.length}

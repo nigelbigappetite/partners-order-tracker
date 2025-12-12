@@ -7,6 +7,14 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '375px',  // iPhone SE, iPhone 8, etc.
+        // Default Tailwind breakpoints:
+        // sm: 640px
+        // md: 768px
+        // lg: 1024px
+        // xl: 1280px
+      },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',

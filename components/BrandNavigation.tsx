@@ -43,9 +43,9 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
 
   return (
     <nav className="border-b border-brand-light bg-white shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center space-x-3 sm:space-x-6">
+          <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-6">
             <Link href={`/brands/${brandSlug}/dashboard`} className="flex items-center space-x-3 group">
               {!logoError ? (
                 <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20 group-hover:ring-brand-primary/40 transition-all">

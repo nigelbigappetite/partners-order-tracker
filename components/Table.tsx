@@ -13,7 +13,7 @@ export default function Table({ headers, children, maxHeight, stickyHeader = tru
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
       {/* Horizontal scrolling container */}
-      <div className="overflow-x-auto scrollbar-thin -mx-1 sm:mx-0">
+      <div className="overflow-x-auto scrollbar-thin -mx-1 xs:mx-0 sm:mx-0">
         {/* Vertical scrolling container with optional max height */}
         <div 
           className="overflow-y-auto scrollbar-thin"
@@ -25,7 +25,7 @@ export default function Table({ headers, children, maxHeight, stickyHeader = tru
                 {headers.map((header, index) => (
                   <th
                     key={index}
-                    className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap"
+                    className="px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap"
                   >
                     {header}
                   </th>

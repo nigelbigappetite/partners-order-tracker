@@ -128,13 +128,13 @@ export default function BrandDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {isAdmin ? <Navigation /> : <BrandNavigation brandSlug={brandSlug} brandName={brandName} />}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{isAdmin ? 'Admin Dashboard' : `${brandName} Dashboard`}</h1>
+      <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-8">
+        <div className="mb-4 xs:mb-6 sm:mb-8">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">{isAdmin ? 'Admin Dashboard' : `${brandName} Dashboard`}</h1>
         </div>
 
         {/* Main Metrics */}
-        <div className="mb-4 sm:mb-6 grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-1 gap-2.5 xs:gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KPICard 
             metric={{
               label: 'Total Revenue',
@@ -190,22 +190,22 @@ export default function BrandDashboard() {
                         setIsModalOpen(true)
                       }}
                     >
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
                         {formatOrderId(order.orderId)}
                       </td>
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         {order.orderDate}
                       </td>
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         {order.franchisee}
                       </td>
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         <StatusPill status={order.orderStage} />
                       </td>
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
                         {formatCurrencyNoDecimals(order.orderTotal)}
                       </td>
-                      <td className="whitespace-nowrap px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         {order.daysOpen}
                       </td>
                     </tr>
@@ -227,9 +227,9 @@ export default function BrandDashboard() {
             </div>
             {/* Mobile: Horizontal scroll, Desktop: Grid */}
             <div className="lg:grid lg:grid-cols-4 lg:gap-3 lg:h-[500px]">
-              <div className="flex lg:contents overflow-x-auto lg:overflow-x-visible gap-3 pb-4 lg:pb-0">
+              <div className="flex lg:contents overflow-x-auto lg:overflow-x-visible gap-2 xs:gap-3 pb-4 lg:pb-0 scrollbar-thin">
                 {stages.map((stage) => (
-                  <div key={stage.key} className="flex-shrink-0 w-[280px] lg:w-auto lg:flex-1 lg:h-full">
+                  <div key={stage.key} className="flex-shrink-0 w-[260px] xs:w-[280px] sm:w-[300px] lg:w-auto lg:flex-1 lg:h-full">
                     <PipelineColumn
                       title={stage.title}
                       orders={getOrdersByStage(stage.key)}
