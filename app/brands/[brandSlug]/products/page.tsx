@@ -19,6 +19,7 @@ export default function BrandProductsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const isAdmin = brandSlug.toLowerCase() === 'admin'
+  const isSmshBn = brandSlug.toLowerCase() === 'smsh-bn' || brandSlug.toLowerCase() === 'smsh bn'
 
   useEffect(() => {
     fetchBrandName()
@@ -31,13 +32,13 @@ export default function BrandProductsPage() {
         (sku) =>
           sku.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
           sku.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          sku.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+          (!isSmshBn && sku.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       setFilteredSkus(filtered)
     } else {
       setFilteredSkus(skus)
     }
-  }, [searchTerm, skus])
+  }, [searchTerm, skus, isSmshBn])
 
   const fetchBrandName = async () => {
     try {
@@ -105,7 +106,7 @@ export default function BrandProductsPage() {
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by SKU, product name, or supplier..."
+              placeholder={isSmshBn ? "Search by SKU or product name..." : "Search by SKU, product name, or supplier..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-white placeholder:text-white/70 focus:border-gray-900 focus:outline-none"
@@ -119,7 +120,9 @@ export default function BrandProductsPage() {
             <p className="text-sm text-gray-500">{filteredSkus.length} products</p>
           </div>
           <Table 
-            headers={['SKU', 'Product Name', 'Unit Size', 'Selling Price', 'Supplier', 'Cost Per Unit']}
+            headers={isSmshBn 
+              ? ['SKU', 'Product Name', 'Unit Size', 'Selling Price', 'Cost Per Unit']
+              : ['SKU', 'Product Name', 'Unit Size', 'Selling Price', 'Supplier', 'Cost Per Unit']}
             maxHeight="calc(100vh - 300px)"
             stickyHeader={true}
           >
@@ -137,9 +140,11 @@ export default function BrandProductsPage() {
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                   {formatCurrency(sku.sellingPrice)}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {sku.supplier}
-                </td>
+                {!isSmshBn && (
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {sku.supplier}
+                  </td>
+                )}
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                   {formatCurrency(sku.costPerUnit)}
                 </td>
