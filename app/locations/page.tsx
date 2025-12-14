@@ -162,7 +162,7 @@ export default function LocationsPage() {
       {loading ? (
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="text-center">
-            <p className="text-gray-600">Loading locations...</p>
+            <p className="text-gray-600">Loading from Hungry Tum OS</p>
           </div>
         </div>
       ) : (

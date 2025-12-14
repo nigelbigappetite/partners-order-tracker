@@ -136,7 +136,7 @@ export default function BrandDashboard() {
       <div className="min-h-screen bg-gray-50">
         {isAdmin ? <Navigation /> : <BrandNavigation brandSlug={brandSlug} brandName={brandName} />}
         <div className="mx-auto max-w-7xl px-6 py-8">
-          <div className="text-center">Loading...</div>
+          <div className="text-center">Loading from Hungry Tum OS</div>
         </div>
       </div>
     )

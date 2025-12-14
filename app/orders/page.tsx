@@ -269,7 +269,7 @@ export default function OrdersPage() {
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         <div className="mx-auto max-w-7xl px-6 py-8">
-          <div className="text-center">Loading...</div>
+          <div className="text-center">Loading from Hungry Tum OS</div>
         </div>
       </div>
     )

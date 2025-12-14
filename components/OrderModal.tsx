@@ -175,7 +175,7 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
       title={order ? `Order ${formatOrderId(order.orderId)}` : 'Order Details'}
     >
       {loading ? (
-        <div className="py-8 text-center text-gray-500">Loading order details...</div>
+        <div className="py-8 text-center text-gray-500">Loading from Hungry Tum OS</div>
       ) : !order ? (
         <div className="py-8 text-center text-gray-500">Order not found</div>
       ) : (
@@ -282,7 +282,7 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
               ) : (
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
                   <p className="text-sm text-gray-500">
-                    {loading ? 'Loading order products...' : 'No products found for this order'}
+                    {loading ? 'Loading from Hungry Tum OS' : 'No products found for this order'}
                   </p>
                 </div>
               )}

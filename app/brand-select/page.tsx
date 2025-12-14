@@ -70,7 +70,7 @@ export default function BrandSelectPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading brands...</p>
+            <p className="text-gray-500">Loading from Hungry Tum OS</p>
           </div>
         ) : brands.length === 0 ? (
           <div className="text-center py-12">
