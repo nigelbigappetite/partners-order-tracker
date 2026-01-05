@@ -10,9 +10,17 @@ export async function GET(request: Request) {
     
     // Filter by brand if provided (skip filtering for admin)
     if (brand && brand.toLowerCase() !== 'admin') {
+      const normalizedBrand = brand.trim().toLowerCase()
       orders = orders.filter((order) => {
-        const orderBrand = (order.brand || '').trim()
-        return orderBrand.toLowerCase() === brand.toLowerCase()
+        const orderBrand = (order.brand || '').trim().toLowerCase()
+        const matches = orderBrand === normalizedBrand
+        
+        // Log mismatches for debugging
+        if (!matches && process.env.NODE_ENV === 'development') {
+          console.log(`[API /orders] Filtering out order ${order.orderId || order.invoiceNo}: expected brand "${brand}", got "${order.brand}"`)
+        }
+        
+        return matches
       })
     }
     

@@ -83,10 +83,12 @@ export default function BrandDashboard() {
       
       // For admin, pass "admin" which will be ignored by API (shows all orders)
       const brandParam = isAdmin ? 'admin' : brandToUse
+      console.log(`[BrandDashboard] Fetching orders for brand: "${brandParam}" (slug: "${brandSlug}")`)
       const response = await fetch(`/api/orders?brand=${encodeURIComponent(brandParam)}`)
       if (response.ok) {
         const data = await response.json()
         const ordersData = Array.isArray(data) ? data : []
+        console.log(`[BrandDashboard] Received ${ordersData.length} orders from API`)
         
         const processedOrders = ordersData.map((order: any) => {
           if (!order.daysOpen && order.orderDate) {
@@ -109,7 +111,27 @@ export default function BrandDashboard() {
           }
         })
         
-        setOrders(processedOrders)
+        // Add client-side filtering as safety measure (especially for non-admin)
+        // This ensures only orders matching the brand are shown, even if API returns incorrect data
+        let filteredOrders = processedOrders
+        if (!isAdmin && brandToUse) {
+          const expectedBrand = brandToUse.trim().toLowerCase()
+          console.log(`[BrandDashboard] Filtering orders - expected brand: "${expectedBrand}"`)
+          
+          filteredOrders = processedOrders.filter((order: any) => {
+            const orderBrand = (order.brand || '').trim().toLowerCase()
+            const matches = orderBrand === expectedBrand
+            
+            // Log all orders for debugging
+            console.log(`[BrandDashboard] Order ${order.orderId || order.invoiceNo}: brand="${order.brand}" (normalized: "${orderBrand}") - ${matches ? 'MATCH' : 'FILTERED OUT'}`)
+            
+            return matches
+          })
+          
+          console.log(`[BrandDashboard] After filtering: ${filteredOrders.length} orders match brand "${expectedBrand}"`)
+        }
+        
+        setOrders(filteredOrders)
       }
     } catch (error) {
       toast.error('Failed to load orders')
