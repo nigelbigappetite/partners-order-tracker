@@ -150,6 +150,8 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
     }
   }
 
+  const isSmshBn = brandSlug?.toLowerCase() === 'smsh-bn' || brandSlug?.toLowerCase() === 'smsh bn'
+  
   const timelineEvents = order
     ? [
         { date: formatDateSafe(order.orderDate), action: 'Order Created', description: `Order ${formatOrderId(order.orderId)}` },
@@ -243,53 +245,51 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
               </div>
             </div>
 
-            {/* Order Lines */}
-            <div>
-              <h3 className="mb-3 text-lg font-semibold text-gray-900">Order Products</h3>
-              {orderLines.length > 0 ? (
-                <Table
-                  headers={brandSlug?.toLowerCase() === 'smsh-bn' || brandSlug?.toLowerCase() === 'smsh bn'
-                    ? ['Product', 'SKU', 'Qty', 'Unit Price', 'Total']
-                    : ['Product', 'SKU', 'Qty', 'Unit Price', 'Total', 'Supplier']}
-                  maxHeight="300px"
-                  stickyHeader={true}
-                >
-                  {orderLines.map((line, index) => (
-                    <tr key={index}>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        {line.productName || 'N/A'}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        {line.sku || 'N/A'}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        {line.quantity || 0}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        {line.unitPrice ? formatCurrency(line.unitPrice) : 'N/A'}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                        {line.lineTotal ? formatCurrency(line.lineTotal) : 'N/A'}
-                      </td>
-                      {(brandSlug?.toLowerCase() !== 'smsh-bn' && brandSlug?.toLowerCase() !== 'smsh bn') && (
+            {/* Order Lines - Hidden for SMSH BN */}
+            {!isSmshBn && (
+              <div>
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Order Products</h3>
+                {orderLines.length > 0 ? (
+                  <Table
+                    headers={['Product', 'SKU', 'Qty', 'Unit Price', 'Total', 'Supplier']}
+                    maxHeight="300px"
+                    stickyHeader={true}
+                  >
+                    {orderLines.map((line, index) => (
+                      <tr key={index}>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          {line.productName || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          {line.sku || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          {line.quantity || 0}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          {line.unitPrice ? formatCurrency(line.unitPrice) : 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                          {line.lineTotal ? formatCurrency(line.lineTotal) : 'N/A'}
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                           {line.supplier || 'N/A'}
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                </Table>
-              ) : (
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
-                  <p className="text-sm text-gray-500">
-                    {loading ? 'Loading from Hungry Tum OS' : 'No products found for this order'}
-                  </p>
-                </div>
-              )}
-            </div>
+                      </tr>
+                    ))}
+                  </Table>
+                ) : (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
+                    <p className="text-sm text-gray-500">
+                      {loading ? 'Loading from Hungry Tum OS' : 'No products found for this order'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Timeline */}
-            {timelineEvents.length > 0 && (
+            {/* Timeline - Hidden for SMSH BN */}
+            {!isSmshBn && timelineEvents.length > 0 && (
               <div>
                 <h3 className="mb-3 text-lg font-semibold text-gray-900">Timeline</h3>
                 <Timeline events={timelineEvents} />
