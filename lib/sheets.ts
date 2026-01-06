@@ -1173,60 +1173,39 @@ export async function createOrder(orderData: {
 
     // Get headers for Order_Lines
     const { headers: lineHeaders } = await getSheetData('Order_Lines');
-    
-    // Fetch SKUs to get COGS data
-    const skus = await getSKUs();
-    const skuMap = new Map<string, SKU>();
-    skus.forEach((sku) => {
-      if (sku.sku) {
-        skuMap.set(sku.sku.trim().toLowerCase(), sku);
-      }
-    });
-    
-    // Get brand store URL
+
+    // Get brand store URL for required Order Store URL column
     const orderStoreUrl = getBrandStoreUrl(orderData.brand);
-    
-    // Extract city from franchisee name if not provided
-    const city = orderData.city || (() => {
-      const franchisee = orderData.franchisee || '';
-      const parts = franchisee.split(/[-–—]/).map(part => part.trim());
-      return parts.length > 1 ? parts[parts.length - 1] : franchisee.trim();
-    })();
-    
+
     // Build order lines rows using column mapping
+    // IMPORTANT: Only populate the required columns for order processing:
+    // A: Order ID (orderId)
+    // C: Order Store URL (orderStoreUrl)
+    // D: Order Date (orderDate)
+    // E: Franchisee Code (franchiseeCode)
+    // I: SKU (sku)
+    // J: Quantity (quantity)
+    // N: Invoice No (invoiceNo)
+    //
+    // All other columns are left empty so that sheet formulas
+    // can auto-populate them. We NEVER write to formula-driven columns.
     const lineMapping = columnMapping['Order_Lines'] || {};
     const lineRows = orderData.orderLines.map((line) => {
-      // Find SKU to get COGS data
-      const sku = skuMap.get(line.sku.trim().toLowerCase());
-      const cogsPerUnit = sku?.costPerUnit || 0;
-      const cogsTotal = cogsPerUnit * (line.quantity || 0);
-      const grossProfit = (line.lineTotal || 0) - cogsTotal;
-      const grossMargin = (line.lineTotal || 0) > 0 
-        ? (grossProfit / (line.lineTotal || 1)) * 100 
-        : 0;
-      
       return lineHeaders.map((header: string) => {
         const normalized = normalizeColumnName(header);
-        const mappedKey = Object.entries(lineMapping).find(([k]) => normalizeColumnName(k) === normalized)?.[1];
-        
+        const mappedKey = Object.entries(lineMapping).find(
+          ([k]) => normalizeColumnName(k) === normalized
+        )?.[1];
+
         if (mappedKey === 'orderId') return orderData.orderId;
-        if (mappedKey === 'brand') return orderData.brand;
         if (mappedKey === 'orderStoreUrl') return orderStoreUrl;
         if (mappedKey === 'orderDate') return orderData.orderDate;
         if (mappedKey === 'franchiseeCode') return orderData.franchiseeCode || '';
-        if (mappedKey === 'franchiseeName') return orderData.franchisee;
-        if (mappedKey === 'city') return city;
-        if (mappedKey === 'productName') return line.productName;
         if (mappedKey === 'sku') return line.sku;
         if (mappedKey === 'quantity') return line.quantity;
-        if (mappedKey === 'unitPrice') return line.unitPrice;
-        if (mappedKey === 'lineTotal') return line.lineTotal;
-        if (mappedKey === 'supplier') return line.supplier;
         if (mappedKey === 'invoiceNo') return orderData.invoiceNo || '';
-        if (mappedKey === 'cogsPerUnit') return cogsPerUnit;
-        if (mappedKey === 'cogsTotal') return cogsTotal;
-        if (mappedKey === 'grossProfit') return grossProfit;
-        if (mappedKey === 'grossMargin') return grossMargin;
+
+        // Leave all other columns empty to preserve formulas
         return '';
       });
     });
