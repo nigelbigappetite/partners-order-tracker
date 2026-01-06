@@ -1140,24 +1140,19 @@ export async function createOrder(orderData: {
     const { headers: orderHeaders } = await getSheetData('Orders_Header');
     
     // Build order row using column mapping
+    // IMPORTANT: Only populate the single required column (B) in Orders_Header,
+    // which holds the Order ID. All other columns are left empty so that
+    // sheet formulas can auto-populate them based on Order_Lines.
     const orderRow = orderHeaders.map((header: string) => {
       const normalized = normalizeColumnName(header);
       const mapping = columnMapping['Orders_Header'] || {};
-      const mappedKey = Object.entries(mapping).find(([k]) => normalizeColumnName(k) === normalized)?.[1];
-      
+      const mappedKey = Object.entries(mapping).find(
+        ([k]) => normalizeColumnName(k) === normalized
+      )?.[1];
+
       if (mappedKey === 'orderId') return orderData.orderId;
-      if (mappedKey === 'invoiceNo') return orderData.invoiceNo || '';
-      if (mappedKey === 'brand') return orderData.brand;
-      if (mappedKey === 'franchisee') return orderData.franchisee;
-      if (mappedKey === 'orderDate') return orderData.orderDate;
-      if (mappedKey === 'orderStage') return orderData.orderStage;
-      if (mappedKey === 'orderTotal') return orderData.orderTotal;
-      if (mappedKey === 'supplierOrdered') return false;
-      if (mappedKey === 'supplierShipped') return false;
-      if (mappedKey === 'deliveredToPartner') return false;
-      if (mappedKey === 'partnerPaid') return false;
-      if (mappedKey === 'daysOpen') return 0;
-      if (mappedKey === 'nextAction') return 'Review Order';
+
+      // Leave every other column blank to preserve formulas
       return '';
     });
 
