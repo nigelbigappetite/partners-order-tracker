@@ -178,7 +178,7 @@ export default function CreateOrderPage() {
 
       if (response.ok) {
         toast.success('Order created successfully')
-        router.push(`/order/${orderNumber.trim()}`)
+        router.push('/brands/admin/dashboard')
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to create order')
