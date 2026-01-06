@@ -34,6 +34,24 @@ async function getSheetsClient() {
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
 
+// Brand to Store URL mapping
+function getBrandStoreUrl(brand: string): string {
+  const brandLower = (brand || '').trim().toLowerCase();
+  
+  const urlMap: Record<string, string> = {
+    'smsh bn': 'https://fax0ch-it.myshopify.com/',
+    'smsh-bn': 'https://fax0ch-it.myshopify.com/',
+    'eggs n stuff': 'https://kebuxd-ca.myshopify.com/',
+    'eggsnstuff': 'https://kebuxd-ca.myshopify.com/',
+    'eggs-n-stuff': 'https://kebuxd-ca.myshopify.com/',
+    'wing shack co': 'https://wingshackco.store/',
+    'wingshackco': 'https://wingshackco.store/',
+    'wing-shack-co': 'https://wingshackco.store/',
+  };
+  
+  return urlMap[brandLower] || '';
+}
+
 // Column name mapping from sheet headers to TypeScript properties
 const columnMapping: Record<string, Record<string, string>> = {
   'Orders_Header': {
@@ -76,17 +94,26 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Order ID': 'orderId',
     'orderId': 'orderId',
     'OrderID': 'orderId',
-    'Invoice No': 'invoiceNo',
-    'invoiceNo': 'invoiceNo',
-    'Invoice Number': 'invoiceNo',
-    'invoiceNumber': 'invoiceNo',
     'Brand': 'brand',
     'brand': 'brand',
-    'SKU': 'sku',
-    'sku': 'sku',
+    'Order Store URL': 'orderStoreUrl',
+    'Order Store': 'orderStoreUrl',
+    'Store URL': 'orderStoreUrl',
+    'orderStoreUrl': 'orderStoreUrl',
+    'Order Date': 'orderDate',
+    'orderDate': 'orderDate',
+    'Franchisee Code': 'franchiseeCode',
+    'Franchise Code': 'franchiseeCode',
+    'franchiseeCode': 'franchiseeCode',
+    'Franchisee Name': 'franchiseeName',
+    'franchiseeName': 'franchiseeName',
+    'City': 'city',
+    'city': 'city',
     'Product Name': 'productName',
     'productName': 'productName',
     'Product': 'productName',
+    'SKU': 'sku',
+    'sku': 'sku',
     'Quantity': 'quantity',
     'quantity': 'quantity',
     'Qty': 'quantity',
@@ -99,6 +126,10 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Total': 'lineTotal',
     'Supplier': 'supplier',
     'supplier': 'supplier',
+    'Invoice No': 'invoiceNo',
+    'invoiceNo': 'invoiceNo',
+    'Invoice Number': 'invoiceNo',
+    'invoiceNumber': 'invoiceNo',
     'COGS per Unit': 'cogsPerUnit',
     'cogsPerUnit': 'cogsPerUnit',
     'COGS Per Unit': 'cogsPerUnit',
@@ -106,6 +137,11 @@ const columnMapping: Record<string, Record<string, string>> = {
     'COGS Total': 'cogsTotal',
     'cogsTotal': 'cogsTotal',
     'Total COGS': 'cogsTotal',
+    'Gross Profit': 'grossProfit',
+    'grossProfit': 'grossProfit',
+    'Gross Margin %': 'grossMargin',
+    'Gross Margin': 'grossMargin',
+    'grossMargin': 'grossMargin',
   },
   'SKU_COGS': {
     'SKU': 'sku',
@@ -1090,6 +1126,8 @@ export async function createOrder(orderData: {
   invoiceNo?: string;
   brand: string;
   franchisee: string;
+  franchiseeCode?: string;
+  city?: string;
   orderDate: string;
   orderStage: string;
   orderTotal: number;
@@ -1136,22 +1174,59 @@ export async function createOrder(orderData: {
     // Get headers for Order_Lines
     const { headers: lineHeaders } = await getSheetData('Order_Lines');
     
+    // Fetch SKUs to get COGS data
+    const skus = await getSKUs();
+    const skuMap = new Map<string, SKU>();
+    skus.forEach((sku) => {
+      if (sku.sku) {
+        skuMap.set(sku.sku.trim().toLowerCase(), sku);
+      }
+    });
+    
+    // Get brand store URL
+    const orderStoreUrl = getBrandStoreUrl(orderData.brand);
+    
+    // Extract city from franchisee name if not provided
+    const city = orderData.city || (() => {
+      const franchisee = orderData.franchisee || '';
+      const parts = franchisee.split(/[-–—]/).map(part => part.trim());
+      return parts.length > 1 ? parts[parts.length - 1] : franchisee.trim();
+    })();
+    
     // Build order lines rows using column mapping
     const lineMapping = columnMapping['Order_Lines'] || {};
     const lineRows = orderData.orderLines.map((line) => {
+      // Find SKU to get COGS data
+      const sku = skuMap.get(line.sku.trim().toLowerCase());
+      const cogsPerUnit = sku?.costPerUnit || 0;
+      const cogsTotal = cogsPerUnit * (line.quantity || 0);
+      const grossProfit = (line.lineTotal || 0) - cogsTotal;
+      const grossMargin = (line.lineTotal || 0) > 0 
+        ? (grossProfit / (line.lineTotal || 1)) * 100 
+        : 0;
+      
       return lineHeaders.map((header: string) => {
         const normalized = normalizeColumnName(header);
         const mappedKey = Object.entries(lineMapping).find(([k]) => normalizeColumnName(k) === normalized)?.[1];
         
         if (mappedKey === 'orderId') return orderData.orderId;
-        if (mappedKey === 'invoiceNo') return orderData.invoiceNo || '';
         if (mappedKey === 'brand') return orderData.brand;
-        if (mappedKey === 'sku') return line.sku;
+        if (mappedKey === 'orderStoreUrl') return orderStoreUrl;
+        if (mappedKey === 'orderDate') return orderData.orderDate;
+        if (mappedKey === 'franchiseeCode') return orderData.franchiseeCode || '';
+        if (mappedKey === 'franchiseeName') return orderData.franchisee;
+        if (mappedKey === 'city') return city;
         if (mappedKey === 'productName') return line.productName;
+        if (mappedKey === 'sku') return line.sku;
         if (mappedKey === 'quantity') return line.quantity;
         if (mappedKey === 'unitPrice') return line.unitPrice;
         if (mappedKey === 'lineTotal') return line.lineTotal;
         if (mappedKey === 'supplier') return line.supplier;
+        if (mappedKey === 'invoiceNo') return orderData.invoiceNo || '';
+        if (mappedKey === 'cogsPerUnit') return cogsPerUnit;
+        if (mappedKey === 'cogsTotal') return cogsTotal;
+        if (mappedKey === 'grossProfit') return grossProfit;
+        if (mappedKey === 'grossMargin') return grossMargin;
         return '';
       });
     });

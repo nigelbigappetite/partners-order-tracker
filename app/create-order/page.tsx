@@ -124,6 +124,13 @@ export default function CreateOrderPage() {
 
   const total = orderLines.reduce((sum, line) => sum + line.lineTotal, 0)
 
+  // Helper function to extract city from franchisee name
+  function getFranchiseLocation(franchisee: string): string {
+    if (!franchisee) return ''
+    const parts = franchisee.split(/[-–—]/).map(part => part.trim())
+    return parts.length > 1 ? parts[parts.length - 1] : franchisee.trim()
+  }
+
   const handleSubmit = async () => {
     if (!selectedFranchise) {
       toast.error('Please select a franchise')
@@ -152,11 +159,16 @@ export default function CreateOrderPage() {
 
     setSubmitting(true)
     try {
+      const franchiseeName = selectedFranchise.name || selectedFranchise.code
+      const city = getFranchiseLocation(franchiseeName)
+      
       const orderData = {
         orderId: orderNumber.trim(),
         invoiceNo: invoiceNumber.trim(),
         brand: selectedBrand,
-        franchisee: selectedFranchise.name || selectedFranchise.code,
+        franchisee: franchiseeName,
+        franchiseeCode: selectedFranchise.code || '',
+        city: city,
         orderDate: new Date().toISOString().split('T')[0],
         orderStage: 'New',
         orderTotal: total,
