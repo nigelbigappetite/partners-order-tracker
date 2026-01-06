@@ -844,16 +844,49 @@ export async function getSKUs(): Promise<SKU[]> {
 // FRANCHISE_SUMMARY operations
 export async function getFranchises(): Promise<Franchise[]> {
   try {
-    const { headers, data } = await getSheetData('Franchise_Summary');
+    // Read from the new Franchisee_Master sheet, but reuse the existing
+    // Franchise_Summary column mapping for compatibility.
+    const { headers, data } = await getSheetData('Franchisee_Master');
     if (!headers || headers.length === 0) {
-      throw new Error('Franchise_Summary sheet is empty or has no headers');
+      throw new Error('Franchisee_Master sheet is empty or has no headers');
     }
+    
+    console.log('[getFranchises] Fetched from Franchisee_Master:', {
+      headersCount: headers.length,
+      dataRows: data.length,
+      headers: headers.slice(0, 15) // Log first 15 headers
+    });
+    
+    // Log raw data for first few rows to see structure
+    if (data.length > 0) {
+      console.log('[getFranchises] First 3 raw rows:', data.slice(0, 3));
+    }
+    
     const franchises = rowsToObjects<Franchise>(data, headers, 'Franchise_Summary');
+    
+    console.log('[getFranchises] Parsed franchises:', franchises.length);
+    
+    // Check for Wanstead in raw data
+    const wansteadInRaw = data.find((row: any[]) => 
+      row.some((cell: any) => 
+        cell && cell.toString().toLowerCase().includes('wanstead')
+      )
+    );
+    console.log('[getFranchises] Wanstead found in raw data:', !!wansteadInRaw);
+    if (wansteadInRaw) {
+      console.log('[getFranchises] Wanstead raw row:', wansteadInRaw);
+    }
     
     // Validate and map with normalization
     const franchisesWithDefaults = franchises.map((franchise: any) => {
       const code = (franchise.code || franchise['Franchisee Code'] || franchise['Franchise Code'] || '').toString().trim()
       const name = (franchise.name || franchise['Franchisee Name'] || franchise['Franchise Name'] || '').toString().trim()
+      
+      // Check if this is Wanstead
+      const isWanstead = name.toLowerCase().includes('wanstead') || code.toLowerCase().includes('wanstead');
+      if (isWanstead) {
+        console.log('[getFranchises] Found Wanstead in parsed data:', { code, name, franchise });
+      }
       
       return {
         ...franchise,
@@ -865,9 +898,42 @@ export async function getFranchises(): Promise<Franchise[]> {
         totalRevenue: Number(franchise.totalRevenue || franchise['Total Revenue'] || franchise['Total_Revenue'] || 0),
         lastOrderDate: (franchise.lastOrderDate || franchise['Last Order Date'] || franchise['Last_Order_Date'] || '').toString().trim(),
       }
-    }).filter((f: any) => f.code || f.name); // Filter out franchises without code or name
+    });
     
-    return franchisesWithDefaults;
+    // Log franchises before filtering
+    console.log('[getFranchises] Before filtering:', franchisesWithDefaults.length, 'franchises');
+    if (franchisesWithDefaults.length > 0) {
+      console.log('[getFranchises] Sample franchises:', franchisesWithDefaults.slice(0, 5).map(f => ({
+        code: f.code,
+        name: f.name,
+        brand: f.brand
+      })));
+    }
+    
+    // Check for Wanstead before filtering
+    const wansteadBeforeFilter = franchisesWithDefaults.find((f: any) => 
+      f.name?.toLowerCase().includes('wanstead') || f.code?.toLowerCase().includes('wanstead')
+    );
+    console.log('[getFranchises] Wanstead before filtering:', wansteadBeforeFilter);
+    
+    // Filter out franchises without code or name
+    const filtered = franchisesWithDefaults.filter((f: any) => {
+      const hasCodeOrName = !!(f.code || f.name);
+      if (!hasCodeOrName) {
+        console.log('[getFranchises] Filtered out franchise (no code or name):', f);
+      }
+      return hasCodeOrName;
+    });
+    
+    // Check for Wanstead after filtering
+    const wansteadAfterFilter = filtered.find((f: any) => 
+      f.name?.toLowerCase().includes('wanstead') || f.code?.toLowerCase().includes('wanstead')
+    );
+    console.log('[getFranchises] Wanstead after filtering:', wansteadAfterFilter);
+    
+    console.log('[getFranchises] After filtering:', filtered.length, 'franchises');
+    
+    return filtered;
   } catch (error) {
     console.error('Error fetching franchises:', error);
     throw error;

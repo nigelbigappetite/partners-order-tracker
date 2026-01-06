@@ -32,6 +32,7 @@ export default function CreateOrderPage() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    console.log('[CreateOrder] Component mounted, fetching data...')
     fetchSKUs()
     fetchFranchises()
   }, [])
@@ -65,12 +66,40 @@ export default function CreateOrderPage() {
 
   const fetchFranchises = async () => {
     try {
-      const response = await fetch('/api/franchises')
+      console.log('[CreateOrder] Starting to fetch franchises...')
+      // Add cache-busting timestamp to ensure fresh data
+      const url = `/api/franchises?t=${Date.now()}`
+      console.log('[CreateOrder] Fetching from:', url)
+      
+      const response = await fetch(url)
+      console.log('[CreateOrder] Response status:', response.status, response.ok)
+      
       const data = await response.json()
+      console.log('[CreateOrder] Raw response data:', data)
+      console.log('[CreateOrder] Fetched franchises:', Array.isArray(data) ? data.length : 'Not an array')
+      
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('[CreateOrder] Sample franchises:', data.slice(0, 5).map((f: Franchise) => ({
+          code: f.code,
+          name: f.name,
+          brand: f.brand
+        })))
+        
+        // Check for Wanstead specifically
+        const wanstead = data.find((f: Franchise) => 
+          f.name?.toLowerCase().includes('wanstead') || 
+          f.code?.toLowerCase().includes('wanstead')
+        )
+        console.log('[CreateOrder] Wanstead location found:', wanstead)
+      }
       
       // Store all franchises (including duplicates by brand) for brand selection
-      setFranchises(data.filter((f: Franchise) => f.code))
+      const filtered = Array.isArray(data) ? data.filter((f: Franchise) => f.code) : []
+      console.log('[CreateOrder] Filtered franchises (with code):', filtered.length)
+      console.log('[CreateOrder] All franchise codes:', filtered.map((f: Franchise) => f.code))
+      setFranchises(filtered)
     } catch (error) {
+      console.error('[CreateOrder] Error fetching franchises:', error)
       toast.error('Failed to load franchises')
     }
   }
