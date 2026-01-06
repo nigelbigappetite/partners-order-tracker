@@ -340,7 +340,7 @@ export default function CreateOrderPage() {
                   </button>
                   
                   {productDropdownOpen && (
-                    <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute z-[9999] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
                       {skus.length === 0 ? (
                         <div className="p-4 text-center text-sm text-gray-500">No products available</div>
                       ) : (
@@ -384,7 +384,7 @@ export default function CreateOrderPage() {
                         min="1"
                         value={quantity}
                         onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                        className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-center text-white"
+                        className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-center text-gray-900"
                       />
                       <ActionButton onClick={addOrderLine} variant="primary">
                         <Plus className="mr-2 h-4 w-4" />
