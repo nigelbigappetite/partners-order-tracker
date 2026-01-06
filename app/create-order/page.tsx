@@ -482,7 +482,7 @@ export default function CreateOrderPage() {
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
                   placeholder="Enter order number"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-white placeholder:text-white/70 focus:border-gray-900 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder:text-gray-500 focus:border-gray-900 focus:outline-none"
                   required
                 />
               </div>
@@ -495,7 +495,7 @@ export default function CreateOrderPage() {
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="Enter invoice number"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-white placeholder:text-white/70 focus:border-gray-900 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder:text-gray-500 focus:border-gray-900 focus:outline-none"
                   required
                 />
               </div>
