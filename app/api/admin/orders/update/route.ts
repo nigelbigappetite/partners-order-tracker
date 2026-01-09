@@ -6,6 +6,7 @@ import {
   validatePaymentMethod,
   ORDERS_HEADER_COLUMNS,
   ALLOWED_PAYMENT_METHODS,
+  ALLOWED_ORDER_STAGES,
 } from '@/lib/googleSheets'
 
 export async function POST(request: Request) {
