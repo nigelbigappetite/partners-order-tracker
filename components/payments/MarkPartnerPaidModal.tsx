@@ -37,17 +37,19 @@ export default function MarkPartnerPaidModal({
     setLoading(true)
     
     try {
-      const response = await fetch('/api/payments/partner-payment', {
-        method: 'PATCH',
+      const response = await fetch('/api/admin/orders/update', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          salesInvoiceNo,
-          partnerPaid: true,
-          partnerPaidDate: paidDate,
-          partnerPaymentMethod: paymentMethod || undefined,
-          partnerPaymentRef: paymentRef || undefined,
+          sales_invoice_no: salesInvoiceNo,
+          action: 'mark_partner_paid',
+          payload: {
+            paid_date: paidDate,
+            payment_method: paymentMethod || undefined,
+            payment_ref: paymentRef || undefined,
+          },
         }),
       })
       
@@ -101,11 +103,10 @@ export default function MarkPartnerPaidModal({
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
           >
             <option value="">Select payment method</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="Credit Card">Credit Card</option>
-            <option value="Check">Check</option>
-            <option value="Cash">Cash</option>
-            <option value="Other">Other</option>
+            <option value="SHOPIFY">SHOPIFY</option>
+            <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+            <option value="CASH">CASH</option>
+            <option value="OTHER">OTHER</option>
           </select>
         </div>
         

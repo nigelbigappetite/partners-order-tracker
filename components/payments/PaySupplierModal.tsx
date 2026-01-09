@@ -97,13 +97,19 @@ export default function PaySupplierModal({
     try {
       // Update all selected invoices
       const updatePromises = selectedArray.map(async (invoiceId) => {
-        const response = await fetch(`/api/payments/supplier-invoices/${invoiceId}`, {
-          method: 'PATCH',
+        // Get the invoice to find supplier_invoice_no
+        const invoice = invoices.find((inv) => inv.id === invoiceId)
+        if (!invoice || !invoice.invoice_no) {
+          throw new Error(`Invoice ${invoiceId} not found or missing invoice number`)
+        }
+
+        const response = await fetch('/api/admin/supplier-invoices/mark-paid', {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            paid: true,
+            supplier_invoice_no: invoice.invoice_no,
             paid_date: paymentDates[invoiceId],
             payment_reference: paymentRefs[invoiceId] || undefined,
           }),

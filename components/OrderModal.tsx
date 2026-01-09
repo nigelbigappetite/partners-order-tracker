@@ -117,12 +117,63 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
     }
   }
 
+  // New admin API functions using sales_invoice_no
+  const updateOrderStage = async (stage: string) => {
+    if (!order?.invoiceNo) {
+      toast.error('Invoice number not found')
+      return
+    }
+
+    setUpdating(true)
+    try {
+      const response = await fetch('/api/admin/orders/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sales_invoice_no: order.invoiceNo,
+          action: 'set_stage',
+          payload: { stage },
+        }),
+      })
+
+      if (response.ok) {
+        toast.success(`Order stage updated to ${stage}`)
+        fetchOrder()
+        if (onUpdate) {
+          onUpdate()
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Update failed')
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update order stage')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const handleMarkShipped = () => {
-    updateStatus({ supplierShipped: true, orderStage: 'In Transit' })
+    updateOrderStage('In Transit')
   }
 
   const handleMarkDelivered = () => {
-    updateStatus({ deliveredToPartner: true, orderStage: 'Delivered' })
+    updateOrderStage('Delivered')
+  }
+
+  const handleMarkOrdered = () => {
+    updateOrderStage('Ordered with Supplier')
+  }
+
+  const handleMarkCompleted = () => {
+    updateOrderStage('Completed')
+  }
+
+  const handleCancelOrder = () => {
+    if (!confirm('Are you sure you want to cancel this order?')) {
+      return
+    }
+    updateOrderStage('Cancelled')
   }
 
   const handleMarkPaid = () => {
@@ -327,7 +378,17 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-              {!order.supplierShipped && (
+              {/* Order Stage Buttons */}
+              {order.orderStage !== 'Ordered with Supplier' && order.orderStage !== 'In Transit' && order.orderStage !== 'Delivered' && order.orderStage !== 'Completed' && order.orderStage !== 'Cancelled' && (
+                <ActionButton
+                  variant="primary"
+                  onClick={handleMarkOrdered}
+                  loading={updating}
+                >
+                  Mark Ordered with Supplier
+                </ActionButton>
+              )}
+              {order.orderStage === 'New' || order.orderStage === 'Ordered with Supplier' ? (
                 <ActionButton
                   variant="primary"
                   onClick={handleMarkShipped}
@@ -335,8 +396,8 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
                 >
                   Mark Shipped
                 </ActionButton>
-              )}
-              {order.supplierShipped && !order.deliveredToPartner && (
+              ) : null}
+              {order.orderStage === 'In Transit' && (
                 <ActionButton
                   variant="primary"
                   onClick={handleMarkDelivered}
@@ -345,13 +406,22 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
                   Mark Delivered
                 </ActionButton>
               )}
-              {order.deliveredToPartner && !order.partnerPaid && (
+              {order.orderStage === 'Delivered' && (
                 <ActionButton
                   variant="primary"
-                  onClick={handleMarkPaid}
+                  onClick={handleMarkCompleted}
                   loading={updating}
                 >
-                  Mark Paid
+                  Mark Completed
+                </ActionButton>
+              )}
+              {order.orderStage !== 'Cancelled' && order.orderStage !== 'Completed' && (
+                <ActionButton
+                  variant="danger"
+                  onClick={handleCancelOrder}
+                  loading={updating}
+                >
+                  Cancel Order
                 </ActionButton>
               )}
               <ActionButton
