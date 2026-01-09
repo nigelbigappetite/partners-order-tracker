@@ -1583,29 +1583,88 @@ export async function getPaymentsTracker(): Promise<PaymentTrackerRow[]> {
     if (!headers || headers.length === 0) {
       throw new Error('Payments_Tracker_View sheet is empty or has no headers');
     }
+    
+    // Debug: Log headers to help identify column name mismatches
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[getPaymentsTracker] Sheet headers:', headers);
+      console.log('[getPaymentsTracker] Sample row (first 3 columns):', data[0]?.slice(0, 3));
+    }
+    
     const rows = rowsToObjects<PaymentTrackerRow>(data, headers, 'Payments_Tracker_View');
     
+    // Debug: Log a sample row to see what we're getting
+    if (process.env.NODE_ENV === 'development' && rows.length > 0) {
+      console.log('[getPaymentsTracker] Sample parsed row keys:', Object.keys(rows[0]));
+      console.log('[getPaymentsTracker] Sample row partner_paid value:', rows[0].partner_paid, typeof rows[0].partner_paid);
+    }
+    
+    // Helper to convert value to boolean (handles YES/NO, true/false, etc.)
+    const toBoolean = (value: any): boolean => {
+      if (value === true || value === 'TRUE' || value === 'true' || value === 'YES' || value === 'Yes' || value === 'yes' || value === 'Y' || value === 'y') {
+        return true;
+      }
+      if (value === false || value === 'FALSE' || value === 'false' || value === 'NO' || value === 'No' || value === 'no' || value === 'N' || value === 'n' || value === '' || value === null || value === undefined) {
+        return false;
+      }
+      // If it's already a boolean, return it
+      if (typeof value === 'boolean') {
+        return value;
+      }
+      // Default to false for unknown values
+      return false;
+    };
+    
     // Normalize and validate payment tracker rows
-    const normalizedRows = rows.map((row: any) => ({
-      ...row,
-      sales_invoice_no: (row.sales_invoice_no || row['Sales Invoice No'] || '').toString().trim(),
-      brand: (row.brand || row.Brand || '').toString().trim(),
-      franchisee_name: (row.franchisee_name || row['Franchisee Name'] || row.Franchisee || '').toString().trim(),
-      order_date: (row.order_date || row['Order Date'] || '').toString().trim(),
-      total_order_value: Number(row.total_order_value || row['Total Order Value'] || row['Order Total'] || 0),
-      partner_paid: row.partner_paid ?? row['Partner Paid?'] ?? row['Partner Paid'] ?? false,
-      partner_paid_date: (row.partner_paid_date || row['Partner Paid Date'] || '').toString().trim() || undefined,
-      partner_payment_method: (row.partner_payment_method || row['Partner Payment Method'] || '').toString().trim() || undefined,
-      partner_payment_ref: (row.partner_payment_ref || row['Partner Payment Ref'] || '').toString().trim() || undefined,
-      funds_cleared: row.funds_cleared ?? row['Funds Cleared?'] ?? row['Funds Cleared'] ?? false,
-      cleared_date: (row.cleared_date || row['Cleared Date'] || '').toString().trim() || undefined,
-      supplier_invoices_count: Number(row.supplier_invoices_count || row['Supplier Invoices Count'] || 0),
-      supplier_unpaid_count: Number(row.supplier_unpaid_count || row['Supplier Unpaid Count'] || 0),
-      supplier_allocated_total: Number(row.supplier_allocated_total || row['Supplier Allocated Total'] || 0),
-      supplier_side_paid: row.supplier_side_paid ?? row['Supplier Side Paid?'] ?? false,
-      supplier_payment_ready: row.supplier_payment_ready ?? row['Supplier Payment Ready?'] ?? false,
-      settlement_status: (row.settlement_status || row['Settlement Status'] || 'OPEN').toString().trim() as PaymentTrackerRow['settlement_status'],
-    }));
+    const normalizedRows = rows.map((row: any) => {
+      // Try to get partner_paid from multiple possible column names
+      const partnerPaidValue = row.partner_paid !== undefined ? row.partner_paid :
+                               row['Partner Paid?'] !== undefined ? row['Partner Paid?'] :
+                               row['Partner Paid'] !== undefined ? row['Partner Paid'] :
+                               row.partnerPaid !== undefined ? row.partnerPaid :
+                               false;
+      
+      // Try to get funds_cleared from multiple possible column names
+      const fundsClearedValue = row.funds_cleared !== undefined ? row.funds_cleared :
+                                row['Funds Cleared?'] !== undefined ? row['Funds Cleared?'] :
+                                row['Funds Cleared'] !== undefined ? row['Funds Cleared'] :
+                                row.fundsCleared !== undefined ? row.fundsCleared :
+                                false;
+      
+      // Try to get supplier_side_paid from multiple possible column names
+      const supplierSidePaidValue = row.supplier_side_paid !== undefined ? row.supplier_side_paid :
+                                    row['Supplier Side Paid?'] !== undefined ? row['Supplier Side Paid?'] :
+                                    row['Supplier Side Paid'] !== undefined ? row['Supplier Side Paid'] :
+                                    row.supplierSidePaid !== undefined ? row.supplierSidePaid :
+                                    false;
+      
+      // Try to get supplier_payment_ready from multiple possible column names
+      const supplierPaymentReadyValue = row.supplier_payment_ready !== undefined ? row.supplier_payment_ready :
+                                       row['Supplier Payment Ready?'] !== undefined ? row['Supplier Payment Ready?'] :
+                                       row['Supplier Payment Ready'] !== undefined ? row['Supplier Payment Ready'] :
+                                       row.supplierPaymentReady !== undefined ? row.supplierPaymentReady :
+                                       false;
+      
+      return {
+        ...row,
+        sales_invoice_no: (row.sales_invoice_no || row['Sales Invoice No'] || '').toString().trim(),
+        brand: (row.brand || row.Brand || '').toString().trim(),
+        franchisee_name: (row.franchisee_name || row['Franchisee Name'] || row.Franchisee || '').toString().trim(),
+        order_date: (row.order_date || row['Order Date'] || '').toString().trim(),
+        total_order_value: Number(row.total_order_value || row['Total Order Value'] || row['Order Total'] || 0),
+        partner_paid: toBoolean(partnerPaidValue),
+        partner_paid_date: (row.partner_paid_date || row['Partner Paid Date'] || '').toString().trim() || undefined,
+        partner_payment_method: (row.partner_payment_method || row['Partner Payment Method'] || '').toString().trim() || undefined,
+        partner_payment_ref: (row.partner_payment_ref || row['Partner Payment Ref'] || '').toString().trim() || undefined,
+        funds_cleared: toBoolean(fundsClearedValue),
+        cleared_date: (row.cleared_date || row['Cleared Date'] || '').toString().trim() || undefined,
+        supplier_invoices_count: Number(row.supplier_invoices_count || row['Supplier Invoices Count'] || 0),
+        supplier_unpaid_count: Number(row.supplier_unpaid_count || row['Supplier Unpaid Count'] || 0),
+        supplier_allocated_total: Number(row.supplier_allocated_total || row['Supplier Allocated Total'] || 0),
+        supplier_side_paid: toBoolean(supplierSidePaidValue),
+        supplier_payment_ready: toBoolean(supplierPaymentReadyValue),
+        settlement_status: (row.settlement_status || row['Settlement Status'] || 'OPEN').toString().trim() as PaymentTrackerRow['settlement_status'],
+      };
+    });
     
     return normalizedRows;
   } catch (error) {
