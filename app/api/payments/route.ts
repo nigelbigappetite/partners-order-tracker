@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getPaymentsTracker, calculateSettlementStatus } from '@/lib/sheets'
+import { getPaymentsTracker } from '@/lib/sheets'
 
 export async function GET(request: Request) {
   try {
@@ -10,25 +10,11 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     
+    // Get all data from Payments_Tracker_View (source of truth)
     const payments = await getPaymentsTracker()
     
-    // Calculate and override settlement_status from Supplier_Invoices data
-    const paymentsWithCalculatedStatus = await Promise.all(
-      payments.map(async (payment) => {
-        const calculatedStatus = await calculateSettlementStatus(
-          payment.sales_invoice_no,
-          payment.partner_paid,
-          payment.funds_cleared
-        )
-        return {
-          ...payment,
-          settlement_status: calculatedStatus,
-        }
-      })
-    )
-    
     // Apply filters
-    let filtered = paymentsWithCalculatedStatus
+    let filtered = payments
     
     if (settlementStatus && settlementStatus !== 'all') {
       filtered = filtered.filter((p) => p.settlement_status === settlementStatus)
