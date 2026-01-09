@@ -681,6 +681,130 @@ export async function updateOrderStatus(
   }
 }
 
+// DELETE ORDER
+export async function deleteOrder(orderId: string): Promise<void> {
+  try {
+    console.log('[deleteOrder] Starting order deletion:', { orderId });
+
+    const sheets = await getSheetsClient();
+    
+    // Normalize orderId for matching - same as updateOrderStatus
+    const normalizeOrderId = (id: string): string => {
+      return String(id).replace(/#/g, '').trim().toLowerCase();
+    };
+    
+    const searchOrderId = normalizeOrderId(orderId);
+    console.log('[deleteOrder] Normalized search orderId:', searchOrderId);
+
+    // Delete from Orders_Header
+    const { headers: orderHeaders, data: orderData } = await getSheetData('Orders_Header');
+    const orderIdIndex = findColumnIndex(orderHeaders, 'Order ID');
+    if (orderIdIndex === -1) {
+      throw new Error('Order ID column not found in Orders_Header sheet');
+    }
+
+    const orderRowIndex = orderData.findIndex((row: any) => {
+      const rowOrderId = row[orderIdIndex];
+      const normalizedRowOrderId = normalizeOrderId(String(rowOrderId || ''));
+      return normalizedRowOrderId === searchOrderId;
+    });
+
+    if (orderRowIndex !== -1) {
+      const sheetRowNumber = orderRowIndex + 2; // +1 for header, +1 for 1-based indexing
+      console.log('[deleteOrder] Deleting from Orders_Header at row:', sheetRowNumber);
+      
+      const ordersHeaderSheetId = await getSheetId('Orders_Header');
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: ordersHeaderSheetId,
+                dimension: 'ROWS',
+                startIndex: orderRowIndex + 1, // +1 because data array is 0-indexed but excludes header
+                endIndex: orderRowIndex + 2,
+              },
+            },
+          }],
+        },
+      });
+      console.log('[deleteOrder] Successfully deleted from Orders_Header');
+    } else {
+      console.warn('[deleteOrder] Order not found in Orders_Header, continuing with Order_Lines deletion');
+    }
+
+    // Delete from Order_Lines
+    const { headers: lineHeaders, data: lineData } = await getSheetData('Order_Lines');
+    const lineOrderIdIndex = findColumnIndex(lineHeaders, 'Order ID');
+    if (lineOrderIdIndex === -1) {
+      throw new Error('Order ID column not found in Order_Lines sheet');
+    }
+
+    // Find all rows with this order ID (there can be multiple line items)
+    const lineRowIndices: number[] = [];
+    lineData.forEach((row: any, index: number) => {
+      const rowOrderId = row[lineOrderIdIndex];
+      const normalizedRowOrderId = normalizeOrderId(String(rowOrderId || ''));
+      if (normalizedRowOrderId === searchOrderId) {
+        lineRowIndices.push(index);
+      }
+    });
+
+    if (lineRowIndices.length > 0) {
+      console.log('[deleteOrder] Found', lineRowIndices.length, 'line items to delete');
+      
+      // Delete rows in reverse order to maintain correct indices
+      const orderLinesSheetId = await getSheetId('Order_Lines');
+      const deleteRequests = lineRowIndices.reverse().map((dataIndex) => ({
+        deleteDimension: {
+          range: {
+            sheetId: orderLinesSheetId,
+            dimension: 'ROWS',
+            startIndex: dataIndex + 1, // +1 because data array is 0-indexed but excludes header
+            endIndex: dataIndex + 2,
+          },
+        },
+      }));
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: deleteRequests,
+        },
+      });
+      console.log('[deleteOrder] Successfully deleted', lineRowIndices.length, 'rows from Order_Lines');
+    } else {
+      console.warn('[deleteOrder] No line items found for this order');
+    }
+
+    console.log('[deleteOrder] Order deletion completed successfully:', { orderId });
+  } catch (error: any) {
+    console.error('[deleteOrder] Error deleting order:', {
+      orderId,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
+    throw error;
+  }
+}
+
+// Helper to get sheet ID by name
+async function getSheetId(sheetName: string): Promise<number> {
+  const sheets = await getSheetsClient();
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId: SPREADSHEET_ID,
+  });
+  
+  const sheet = spreadsheet.data.sheets?.find((s: any) => s.properties?.title === sheetName);
+  if (!sheet?.properties?.sheetId) {
+    throw new Error(`Sheet "${sheetName}" not found`);
+  }
+  
+  return sheet.properties.sheetId;
+}
+
 // ORDER_LINES operations
 export async function getAllOrderLines(): Promise<OrderLine[]> {
   try {

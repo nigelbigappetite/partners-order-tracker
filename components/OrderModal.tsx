@@ -129,6 +129,35 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
     updateStatus({ partnerPaid: true, orderStage: 'Completed' })
   }
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return
+    }
+
+    setUpdating(true)
+    try {
+      const encodedOrderId = encodeURIComponent(orderId)
+      const response = await fetch(`/api/orders/${encodedOrderId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Order deleted successfully')
+        onClose()
+        if (onUpdate) {
+          onUpdate()
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Delete failed')
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete order')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   if (!isOpen) return null
 
   // Helper to format date safely
@@ -325,6 +354,13 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
                   Mark Paid
                 </ActionButton>
               )}
+              <ActionButton
+                variant="danger"
+                onClick={handleDelete}
+                loading={updating}
+              >
+                Delete Order
+              </ActionButton>
             </div>
           </div>
         </div>

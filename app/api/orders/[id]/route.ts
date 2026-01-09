@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getOrderById, updateOrderStatus } from '@/lib/sheets'
+import { getOrderById, updateOrderStatus, deleteOrder } from '@/lib/sheets'
 
 export async function GET(
   request: Request,
@@ -84,3 +84,39 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Decode the orderId (handles URL encoding like %23 for #)
+    const decodedOrderId = decodeURIComponent(params.id)
+    
+    console.log('[API /orders/[id] DELETE] Deleting order:', {
+      rawId: params.id,
+      decodedOrderId,
+    });
+    
+    await deleteOrder(decodedOrderId)
+    
+    console.log('[API /orders/[id] DELETE] Order deletion completed successfully:', {
+      orderId: decodedOrderId,
+    });
+    
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('[API /orders/[id] DELETE] Error deleting order:', {
+      orderId: params.id,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
+    return NextResponse.json(
+      { 
+        error: error.message || 'Failed to delete order',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      }, 
+      { status: 500 }
+    )
+  }
+}
