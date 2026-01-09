@@ -1400,55 +1400,11 @@ export async function createOrder(orderData: {
 
     const sheets = await getSheetsClient();
     
-    // Get headers for Orders_Header
-    console.log('[createOrder] Fetching Orders_Header headers...');
-    const { headers: orderHeaders } = await getSheetData('Orders_Header');
-    console.log('[createOrder] Orders_Header headers count:', orderHeaders.length);
+    // IMPORTANT: Orders_Header is completely self-populating via formulas
+    // We do NOT write to Orders_Header - it automatically populates from Order_Lines
+    // Only write to Order_Lines, and Orders_Header will update automatically
     
-    // Build order row using column mapping
-    // IMPORTANT: Only populate the single required column (B) in Orders_Header,
-    // which holds the Order ID. All other columns are left empty so that
-    // sheet formulas can auto-populate them based on Order_Lines.
-    const orderRow = orderHeaders.map((header: string) => {
-      const normalized = normalizeColumnName(header);
-      const mapping = columnMapping['Orders_Header'] || {};
-      const mappedKey = Object.entries(mapping).find(
-        ([k]) => normalizeColumnName(k) === normalized
-      )?.[1];
-
-      if (mappedKey === 'orderId') return orderData.orderId;
-
-      // Leave every other column blank to preserve formulas
-      return '';
-    });
-
-    console.log('[createOrder] Writing to Orders_Header:', {
-      orderId: orderData.orderId,
-      rowLength: orderRow.length,
-      orderIdColumnIndex: orderRow.findIndex((val: any, idx: number) => {
-        const header = orderHeaders[idx];
-        const normalized = normalizeColumnName(header);
-        const mapping = columnMapping['Orders_Header'] || {};
-        const mappedKey = Object.entries(mapping).find(
-          ([k]) => normalizeColumnName(k) === normalized
-        )?.[1];
-        return mappedKey === 'orderId';
-      }),
-    });
-
-    // Append order to Orders_Header
-    const headerResult = await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Orders_Header!A:Z',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [orderRow],
-      },
-    });
-    console.log('[createOrder] Orders_Header write successful:', {
-      updatedRange: headerResult.data.updates?.updatedRange,
-      updatedRows: headerResult.data.updates?.updatedRows,
-    });
+    console.log('[createOrder] Skipping Orders_Header write - it is self-populating from Order_Lines formulas');
 
     // Get headers for Order_Lines
     console.log('[createOrder] Fetching Order_Lines headers...');
@@ -1536,8 +1492,8 @@ export async function createOrder(orderData: {
 
     console.log('[createOrder] Order creation completed successfully:', {
       orderId: orderData.orderId,
-      headerWriteSuccess: !!headerResult.data.updates,
       linesWriteSuccess: !!linesResult.data.updates,
+      note: 'Orders_Header will auto-populate from Order_Lines formulas',
     });
   } catch (error: any) {
     console.error('[createOrder] Error creating order:', {
