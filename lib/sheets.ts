@@ -1478,21 +1478,24 @@ export async function createOrder(orderData: {
     // O (index 14): Empty (reserved column)
     // P+ (index 15+): Empty (COGS, Gross Profit, Margin - formulas will populate)
     const lineRows = orderData.orderLines.map((line, lineIndex) => {
-      // Initialize array with empty strings for all columns up to at least column N (index 13)
-      // This ensures the array starts at index 0 and has no gaps
-      const maxColumns = Math.max(14, lineHeaders.length);
-      const row: any[] = new Array(maxColumns).fill('');
-      
-      // Set values at specific column indices
-      row[0] = orderData.orderId; // Column A: Order ID
-      row[1] = ''; // Column B: Empty (Brand - formula)
-      row[2] = orderStoreUrl; // Column C: Order Store URL
-      row[3] = orderData.orderDate; // Column D: Order Date
-      row[4] = orderData.franchiseeCode || ''; // Column E: Franchisee Code
-      row[8] = line.sku; // Column I: SKU
-      row[9] = line.quantity; // Column J: Quantity
-      row[13] = orderData.invoiceNo || ''; // Column N: Invoice No
-      // All other indices already set to '' by fill()
+      // Build a dense array starting at index 0 with exactly the values we need
+      // Only include columns up to N (index 13) to ensure we start at column A
+      const row: (string | number)[] = [
+        orderData.orderId,        // Column A (index 0): Order ID
+        '',                       // Column B (index 1): Empty (Brand - formula)
+        orderStoreUrl,            // Column C (index 2): Order Store URL
+        orderData.orderDate,      // Column D (index 3): Order Date
+        orderData.franchiseeCode || '', // Column E (index 4): Franchisee Code
+        '',                       // Column F (index 5): Empty (Franchisee Name - formula)
+        '',                       // Column G (index 6): Empty (City - formula)
+        '',                       // Column H (index 7): Empty (Product Name - formula)
+        line.sku,                 // Column I (index 8): SKU
+        line.quantity,            // Column J (index 9): Quantity
+        '',                       // Column K (index 10): Empty (Unit Price - formula)
+        '',                       // Column L (index 11): Empty (Line Total - formula)
+        '',                       // Column M (index 12): Empty (Supplier - formula)
+        orderData.invoiceNo || '', // Column N (index 13): Invoice No
+      ];
       
       return row;
     });
@@ -1500,7 +1503,6 @@ export async function createOrder(orderData: {
     console.log('[createOrder] Writing to Order_Lines:', {
       orderId: orderData.orderId,
       lineRowsCount: lineRows.length,
-      maxColumns: Math.max(14, lineHeaders.length),
       sampleRow: lineRows[0] ? {
         rowLength: lineRows[0].length,
         first10Values: lineRows[0].slice(0, 10),
@@ -1511,15 +1513,18 @@ export async function createOrder(orderData: {
         sku: lineRows[0][8],
         quantity: lineRows[0][9],
         invoiceNo: lineRows[0][13],
-        allIndices: lineRows[0].map((val: any, idx: number) => ({ idx, val: val || '(empty)' })).slice(0, 15),
+        fullRow: lineRows[0],
+        rowString: JSON.stringify(lineRows[0]),
       } : null,
     });
 
-    // Append order lines
+    // Append order lines - use explicit range starting at column A
+    // This ensures data always starts at column A, row after the last data row
     const linesResult = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Order_Lines!A:Z',
+      range: 'Order_Lines!A:N', // Explicitly specify columns A through N
       valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS', // Insert new rows instead of overwriting
       requestBody: {
         values: lineRows,
       },
