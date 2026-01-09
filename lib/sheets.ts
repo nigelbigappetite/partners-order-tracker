@@ -1354,39 +1354,21 @@ export async function createOrder(orderData: {
     // O (index 14): Empty (reserved column)
     // P+ (index 15+): Empty (COGS, Gross Profit, Margin - formulas will populate)
     const lineRows = orderData.orderLines.map((line, lineIndex) => {
-      const row: any[] = [];
+      // Initialize array with empty strings for all columns up to at least column N (index 13)
+      // This ensures the array starts at index 0 and has no gaps
+      const maxColumns = Math.max(14, lineHeaders.length);
+      const row: any[] = new Array(maxColumns).fill('');
       
-      // Ensure we have enough columns (at least up to column N)
-      for (let i = 0; i < Math.max(14, lineHeaders.length); i++) {
-        if (i === 0) {
-          // Column A: Order ID
-          row[i] = orderData.orderId;
-        } else if (i === 1) {
-          // Column B: Empty (Brand - formula)
-          row[i] = '';
-        } else if (i === 2) {
-          // Column C: Order Store URL
-          row[i] = orderStoreUrl;
-        } else if (i === 3) {
-          // Column D: Order Date
-          row[i] = orderData.orderDate;
-        } else if (i === 4) {
-          // Column E: Franchisee Code
-          row[i] = orderData.franchiseeCode || '';
-        } else if (i === 8) {
-          // Column I: SKU
-          row[i] = line.sku;
-        } else if (i === 9) {
-          // Column J: Quantity
-          row[i] = line.quantity;
-        } else if (i === 13) {
-          // Column N: Invoice No
-          row[i] = orderData.invoiceNo || '';
-        } else {
-          // All other columns: Empty (formulas will populate)
-          row[i] = '';
-        }
-      }
+      // Set values at specific column indices
+      row[0] = orderData.orderId; // Column A: Order ID
+      row[1] = ''; // Column B: Empty (Brand - formula)
+      row[2] = orderStoreUrl; // Column C: Order Store URL
+      row[3] = orderData.orderDate; // Column D: Order Date
+      row[4] = orderData.franchiseeCode || ''; // Column E: Franchisee Code
+      row[8] = line.sku; // Column I: SKU
+      row[9] = line.quantity; // Column J: Quantity
+      row[13] = orderData.invoiceNo || ''; // Column N: Invoice No
+      // All other indices already set to '' by fill()
       
       return row;
     });
@@ -1394,7 +1376,10 @@ export async function createOrder(orderData: {
     console.log('[createOrder] Writing to Order_Lines:', {
       orderId: orderData.orderId,
       lineRowsCount: lineRows.length,
+      maxColumns: Math.max(14, lineHeaders.length),
       sampleRow: lineRows[0] ? {
+        rowLength: lineRows[0].length,
+        first10Values: lineRows[0].slice(0, 10),
         orderId: lineRows[0][0],
         orderStoreUrl: lineRows[0][2],
         orderDate: lineRows[0][3],
@@ -1402,6 +1387,7 @@ export async function createOrder(orderData: {
         sku: lineRows[0][8],
         quantity: lineRows[0][9],
         invoiceNo: lineRows[0][13],
+        allIndices: lineRows[0].map((val: any, idx: number) => ({ idx, val: val || '(empty)' })).slice(0, 15),
       } : null,
     });
 
