@@ -109,3 +109,44 @@ export interface SKUMetrics {
   marginPercent: number;
 }
 
+// Payment tracking types
+export interface PaymentTrackerRow {
+  sales_invoice_no: string;
+  brand: string;
+  franchisee_name: string;
+  order_date: string;
+  total_order_value: number;
+  partner_paid: boolean;
+  partner_paid_date?: string;
+  partner_payment_method?: string;
+  partner_payment_ref?: string;
+  funds_cleared: boolean;
+  cleared_date?: string;
+  supplier_invoices_count: number;
+  supplier_unpaid_count: number;
+  supplier_allocated_total: number;
+  supplier_side_paid: boolean;
+  supplier_payment_ready: boolean;
+  settlement_status: 'OPEN' | 'PAID_NOT_CLEARED' | 'WAITING_SUPPLIERS' | 'SETTLED';
+  [key: string]: any;
+}
+
+export interface SupplierInvoice {
+  id?: string;
+  invoice_no?: string;
+  sales_invoice_no?: string;
+  supplier?: string;
+  amount?: number;
+  paid: boolean;
+  paid_date?: string;
+  payment_reference?: string;
+  [key: string]: any;
+}
+
+export interface OrderSupplierAllocation {
+  sales_invoice_no: string;
+  supplier_invoice_no: string;
+  allocated_amount: number;
+  [key: string]: any;
+}
+

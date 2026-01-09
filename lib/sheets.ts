@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { Order, OrderLine, SKU, Franchise, Supplier, Brand } from './types';
+import { Order, OrderLine, SKU, Franchise, Supplier, Brand, PaymentTrackerRow, SupplierInvoice, OrderSupplierAllocation } from './types';
 
 // Initialize Google Sheets API client
 let sheetsClient: any = null;
@@ -310,6 +310,76 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Last_Order_Date': 'lastOrderDate',
     'lastOrderDate': 'lastOrderDate',
     'Last Order Date': 'lastOrderDate',
+  },
+  'Payments_Tracker_View': {
+    'Sales Invoice No': 'sales_invoice_no',
+    'sales_invoice_no': 'sales_invoice_no',
+    'Sales Invoice Number': 'sales_invoice_no',
+    'Invoice No': 'sales_invoice_no',
+    'Brand': 'brand',
+    'brand': 'brand',
+    'Franchisee Name': 'franchisee_name',
+    'franchisee_name': 'franchisee_name',
+    'Franchisee': 'franchisee_name',
+    'Order Date': 'order_date',
+    'order_date': 'order_date',
+    'Total Order Value': 'total_order_value',
+    'total_order_value': 'total_order_value',
+    'Order Total': 'total_order_value',
+    'Partner Paid?': 'partner_paid',
+    'partner_paid': 'partner_paid',
+    'Partner Paid': 'partner_paid',
+    'Partner Paid Date': 'partner_paid_date',
+    'partner_paid_date': 'partner_paid_date',
+    'Partner Payment Method': 'partner_payment_method',
+    'partner_payment_method': 'partner_payment_method',
+    'Partner Payment Ref': 'partner_payment_ref',
+    'partner_payment_ref': 'partner_payment_ref',
+    'Funds Cleared?': 'funds_cleared',
+    'funds_cleared': 'funds_cleared',
+    'Funds Cleared': 'funds_cleared',
+    'Cleared Date': 'cleared_date',
+    'cleared_date': 'cleared_date',
+    'Supplier Invoices Count': 'supplier_invoices_count',
+    'supplier_invoices_count': 'supplier_invoices_count',
+    'Supplier Unpaid Count': 'supplier_unpaid_count',
+    'supplier_unpaid_count': 'supplier_unpaid_count',
+    'Supplier Allocated Total': 'supplier_allocated_total',
+    'supplier_allocated_total': 'supplier_allocated_total',
+    'Supplier Side Paid?': 'supplier_side_paid',
+    'supplier_side_paid': 'supplier_side_paid',
+    'Supplier Payment Ready?': 'supplier_payment_ready',
+    'supplier_payment_ready': 'supplier_payment_ready',
+    'Settlement Status': 'settlement_status',
+    'settlement_status': 'settlement_status',
+  },
+  'Supplier_Invoices': {
+    'Invoice No': 'invoice_no',
+    'invoice_no': 'invoice_no',
+    'Invoice Number': 'invoice_no',
+    'Sales Invoice No': 'sales_invoice_no',
+    'sales_invoice_no': 'sales_invoice_no',
+    'Supplier': 'supplier',
+    'supplier': 'supplier',
+    'Amount': 'amount',
+    'amount': 'amount',
+    'Paid?': 'paid',
+    'paid': 'paid',
+    'Paid': 'paid',
+    'Paid Date': 'paid_date',
+    'paid_date': 'paid_date',
+    'Payment Reference': 'payment_reference',
+    'payment_reference': 'payment_reference',
+    'Payment Ref': 'payment_reference',
+  },
+  'Order_Supplier_Allocations': {
+    'Sales Invoice No': 'sales_invoice_no',
+    'sales_invoice_no': 'sales_invoice_no',
+    'Supplier Invoice No': 'supplier_invoice_no',
+    'supplier_invoice_no': 'supplier_invoice_no',
+    'Allocated Amount': 'allocated_amount',
+    'allocated_amount': 'allocated_amount',
+    'Amount': 'allocated_amount',
   },
 };
 
@@ -1502,6 +1572,351 @@ export async function createOrder(orderData: {
       stack: error.stack,
       errorName: error.name,
     });
+    throw error;
+  }
+}
+
+// PAYMENTS_TRACKER_VIEW operations (read-only)
+export async function getPaymentsTracker(): Promise<PaymentTrackerRow[]> {
+  try {
+    const { headers, data } = await getSheetData('Payments_Tracker_View');
+    if (!headers || headers.length === 0) {
+      throw new Error('Payments_Tracker_View sheet is empty or has no headers');
+    }
+    const rows = rowsToObjects<PaymentTrackerRow>(data, headers, 'Payments_Tracker_View');
+    
+    // Normalize and validate payment tracker rows
+    const normalizedRows = rows.map((row: any) => ({
+      ...row,
+      sales_invoice_no: (row.sales_invoice_no || row['Sales Invoice No'] || '').toString().trim(),
+      brand: (row.brand || row.Brand || '').toString().trim(),
+      franchisee_name: (row.franchisee_name || row['Franchisee Name'] || row.Franchisee || '').toString().trim(),
+      order_date: (row.order_date || row['Order Date'] || '').toString().trim(),
+      total_order_value: Number(row.total_order_value || row['Total Order Value'] || row['Order Total'] || 0),
+      partner_paid: row.partner_paid ?? row['Partner Paid?'] ?? row['Partner Paid'] ?? false,
+      partner_paid_date: (row.partner_paid_date || row['Partner Paid Date'] || '').toString().trim() || undefined,
+      partner_payment_method: (row.partner_payment_method || row['Partner Payment Method'] || '').toString().trim() || undefined,
+      partner_payment_ref: (row.partner_payment_ref || row['Partner Payment Ref'] || '').toString().trim() || undefined,
+      funds_cleared: row.funds_cleared ?? row['Funds Cleared?'] ?? row['Funds Cleared'] ?? false,
+      cleared_date: (row.cleared_date || row['Cleared Date'] || '').toString().trim() || undefined,
+      supplier_invoices_count: Number(row.supplier_invoices_count || row['Supplier Invoices Count'] || 0),
+      supplier_unpaid_count: Number(row.supplier_unpaid_count || row['Supplier Unpaid Count'] || 0),
+      supplier_allocated_total: Number(row.supplier_allocated_total || row['Supplier Allocated Total'] || 0),
+      supplier_side_paid: row.supplier_side_paid ?? row['Supplier Side Paid?'] ?? false,
+      supplier_payment_ready: row.supplier_payment_ready ?? row['Supplier Payment Ready?'] ?? false,
+      settlement_status: (row.settlement_status || row['Settlement Status'] || 'OPEN').toString().trim() as PaymentTrackerRow['settlement_status'],
+    }));
+    
+    return normalizedRows;
+  } catch (error) {
+    console.error('Error fetching payments tracker:', error);
+    throw error;
+  }
+}
+
+// Update partner payment in Orders_Header
+export async function updatePartnerPayment(
+  salesInvoiceNo: string,
+  updates: {
+    partnerPaid: boolean;
+    partnerPaidDate?: string;
+    partnerPaymentMethod?: string;
+    partnerPaymentRef?: string;
+  }
+): Promise<void> {
+  try {
+    console.log('[updatePartnerPayment] Starting partner payment update:', {
+      salesInvoiceNo,
+      updates,
+    });
+
+    const sheets = await getSheetsClient();
+    const { headers, data } = await getSheetData('Orders_Header');
+    
+    // Find row by invoice number
+    const invoiceNoIndex = findColumnIndex(headers, 'Invoice No');
+    if (invoiceNoIndex === -1) {
+      throw new Error('Invoice No column not found in Orders_Header sheet');
+    }
+    
+    const normalizeInvoiceNo = (inv: string): string => {
+      return String(inv).replace(/#/g, '').trim().toLowerCase();
+    };
+    
+    const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo);
+    const rowIndex = data.findIndex((row: any) => {
+      const rowInvoiceNo = row[invoiceNoIndex];
+      return normalizeInvoiceNo(String(rowInvoiceNo || '')) === searchInvoiceNo;
+    });
+    
+    if (rowIndex === -1) {
+      throw new Error(`Sales invoice ${salesInvoiceNo} not found in Orders_Header`);
+    }
+    
+    console.log('[updatePartnerPayment] Order found at row index:', rowIndex, '(sheet row:', rowIndex + 2, ')');
+
+    // Reverse mapping from TypeScript property to sheet column
+    const reverseMapping: Record<string, string> = {};
+    Object.entries(columnMapping['Orders_Header'] || {}).forEach(([sheetCol, tsProp]) => {
+      reverseMapping[tsProp] = sheetCol;
+    });
+    
+    // Allowed fields for write-back
+    const allowedFields: Record<string, string> = {
+      partnerPaid: 'Partner Paid?',
+      partnerPaidDate: 'Partner Paid Date',
+      partnerPaymentMethod: 'Partner Payment Method',
+      partnerPaymentRef: 'Partner Payment Ref',
+    };
+    
+    // Helper to convert column index to A1 notation
+    const getColumnLetter = (colIndex: number): string => {
+      let result = '';
+      while (colIndex >= 0) {
+        result = String.fromCharCode(65 + (colIndex % 26)) + result;
+        colIndex = Math.floor(colIndex / 26) - 1;
+      }
+      return result;
+    };
+
+    // Build update values - only allow specific fields
+    const updateValues: any[] = [];
+    Object.entries(updates).forEach(([tsKey, value]) => {
+      if (!allowedFields[tsKey]) {
+        console.warn('[updatePartnerPayment] Attempted to write to protected field:', tsKey);
+        return;
+      }
+      
+      const sheetColumn = allowedFields[tsKey];
+      const colIndex = findColumnIndex(headers, sheetColumn);
+      if (colIndex !== -1) {
+        const colLetter = getColumnLetter(colIndex);
+        updateValues.push({
+          range: `Orders_Header!${colLetter}${rowIndex + 2}`,
+          values: [[value]],
+        });
+        console.log('[updatePartnerPayment] Adding update:', {
+          property: tsKey,
+          sheetColumn,
+          columnIndex: colIndex,
+          columnLetter: colLetter,
+          sheetRow: rowIndex + 2,
+          range: `Orders_Header!${colLetter}${rowIndex + 2}`,
+          value,
+        });
+      } else {
+        console.warn('[updatePartnerPayment] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
+      }
+    });
+
+    if (updateValues.length === 0) {
+      throw new Error('No valid columns to update');
+    }
+
+    console.log('[updatePartnerPayment] Executing batch update with', updateValues.length, 'updates');
+
+    // Batch update
+    const updateResult = await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: updateValues,
+      },
+    });
+    
+    console.log('[updatePartnerPayment] Batch update successful:', {
+      salesInvoiceNo,
+      updatedRanges: updateResult.data.responses?.map((r: any) => r.updatedRange),
+      totalUpdatedCells: updateResult.data.totalUpdatedCells,
+    });
+  } catch (error: any) {
+    console.error('[updatePartnerPayment] Error updating partner payment:', {
+      salesInvoiceNo,
+      updates,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
+    throw error;
+  }
+}
+
+// Get supplier invoices
+export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<SupplierInvoice[]> {
+  try {
+    const { headers, data } = await getSheetData('Supplier_Invoices');
+    if (!headers || headers.length === 0) {
+      throw new Error('Supplier_Invoices sheet is empty or has no headers');
+    }
+    const invoices = rowsToObjects<SupplierInvoice>(data, headers, 'Supplier_Invoices');
+    
+    // Normalize supplier invoices - preserve actual row number for updates
+    let normalizedInvoices = invoices.map((inv: any, index: number) => ({
+      ...inv,
+      id: String(index + 2), // Row number in sheet (1-based header + 1-based index)
+      invoice_no: (inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
+      sales_invoice_no: (inv.sales_invoice_no || inv['Sales Invoice No'] || '').toString().trim(),
+      supplier: (inv.supplier || inv.Supplier || '').toString().trim(),
+      amount: Number(inv.amount || inv.Amount || 0),
+      paid: inv.paid ?? inv['Paid?'] ?? inv.Paid ?? false,
+      paid_date: (inv.paid_date || inv['Paid Date'] || '').toString().trim() || undefined,
+      payment_reference: (inv.payment_reference || inv['Payment Reference'] || inv['Payment Ref'] || '').toString().trim() || undefined,
+    }));
+    
+    // Filter by sales invoice if provided (but keep original row numbers)
+    if (salesInvoiceNo) {
+      const normalizeInvoiceNo = (inv: string): string => {
+        return String(inv).replace(/#/g, '').trim().toLowerCase();
+      };
+      const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo);
+      normalizedInvoices = normalizedInvoices.filter((inv) => {
+        const invNo = normalizeInvoiceNo(inv.sales_invoice_no || '');
+        return invNo === searchInvoiceNo;
+      });
+    }
+    
+    return normalizedInvoices;
+  } catch (error) {
+    console.error('Error fetching supplier invoices:', error);
+    throw error;
+  }
+}
+
+// Update supplier invoice
+export async function updateSupplierInvoice(
+  invoiceId: string,
+  updates: {
+    paid: boolean;
+    paid_date?: string;
+    payment_reference?: string;
+  }
+): Promise<void> {
+  try {
+    console.log('[updateSupplierInvoice] Starting supplier invoice update:', {
+      invoiceId,
+      updates,
+    });
+
+    const sheets = await getSheetsClient();
+    const { headers, data } = await getSheetData('Supplier_Invoices');
+    
+    // invoiceId is the row number (1-based, including header)
+    const rowIndex = parseInt(invoiceId) - 2; // Convert to 0-based data index (subtract 1 for header, 1 for 0-based)
+    
+    if (rowIndex < 0 || rowIndex >= data.length) {
+      throw new Error(`Supplier invoice row ${invoiceId} not found`);
+    }
+    
+    console.log('[updateSupplierInvoice] Invoice found at row index:', rowIndex, '(sheet row:', rowIndex + 2, ')');
+    
+    // Allowed fields for write-back
+    const allowedFields: Record<string, string> = {
+      paid: 'Paid?',
+      paid_date: 'Paid Date',
+      payment_reference: 'Payment Reference',
+    };
+    
+    // Helper to convert column index to A1 notation
+    const getColumnLetter = (colIndex: number): string => {
+      let result = '';
+      while (colIndex >= 0) {
+        result = String.fromCharCode(65 + (colIndex % 26)) + result;
+        colIndex = Math.floor(colIndex / 26) - 1;
+      }
+      return result;
+    };
+
+    // Build update values - only allow specific fields
+    const updateValues: any[] = [];
+    Object.entries(updates).forEach(([tsKey, value]) => {
+      if (!allowedFields[tsKey]) {
+        console.warn('[updateSupplierInvoice] Attempted to write to protected field:', tsKey);
+        return;
+      }
+      
+      const sheetColumn = allowedFields[tsKey];
+      const colIndex = findColumnIndex(headers, sheetColumn);
+      if (colIndex !== -1) {
+        const colLetter = getColumnLetter(colIndex);
+        updateValues.push({
+          range: `Supplier_Invoices!${colLetter}${rowIndex + 2}`,
+          values: [[value]],
+        });
+        console.log('[updateSupplierInvoice] Adding update:', {
+          property: tsKey,
+          sheetColumn,
+          columnIndex: colIndex,
+          columnLetter: colLetter,
+          sheetRow: rowIndex + 2,
+          range: `Supplier_Invoices!${colLetter}${rowIndex + 2}`,
+          value,
+        });
+      } else {
+        console.warn('[updateSupplierInvoice] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
+      }
+    });
+
+    if (updateValues.length === 0) {
+      throw new Error('No valid columns to update');
+    }
+
+    console.log('[updateSupplierInvoice] Executing batch update with', updateValues.length, 'updates');
+
+    // Batch update
+    const updateResult = await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: updateValues,
+      },
+    });
+    
+    console.log('[updateSupplierInvoice] Batch update successful:', {
+      invoiceId,
+      updatedRanges: updateResult.data.responses?.map((r: any) => r.updatedRange),
+      totalUpdatedCells: updateResult.data.totalUpdatedCells,
+    });
+  } catch (error: any) {
+    console.error('[updateSupplierInvoice] Error updating supplier invoice:', {
+      invoiceId,
+      updates,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
+    throw error;
+  }
+}
+
+// Get order supplier allocations
+export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promise<OrderSupplierAllocation[]> {
+  try {
+    const { headers, data } = await getSheetData('Order_Supplier_Allocations');
+    if (!headers || headers.length === 0) {
+      throw new Error('Order_Supplier_Allocations sheet is empty or has no headers');
+    }
+    const allocations = rowsToObjects<OrderSupplierAllocation>(data, headers, 'Order_Supplier_Allocations');
+    
+    // Normalize allocations
+    const normalizedAllocations = allocations.map((alloc: any) => ({
+      ...alloc,
+      sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || '').toString().trim(),
+      supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || '').toString().trim(),
+      allocated_amount: Number(alloc.allocated_amount || alloc['Allocated Amount'] || alloc.Amount || 0),
+    }));
+    
+    // Filter by sales invoice
+    const normalizeInvoiceNo = (inv: string): string => {
+      return String(inv).replace(/#/g, '').trim().toLowerCase();
+    };
+    const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo);
+    
+    return normalizedAllocations.filter((alloc) => {
+      const allocNo = normalizeInvoiceNo(alloc.sales_invoice_no || '');
+      return allocNo === searchInvoiceNo;
+    });
+  } catch (error) {
+    console.error('Error fetching order supplier allocations:', error);
     throw error;
   }
 }

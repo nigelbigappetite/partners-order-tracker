@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard } from 'lucide-react'
 
 const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/brands', label: 'Brands', icon: Tag },
   { href: '/suppliers', label: 'Suppliers', icon: Store },
   { href: '/locations', label: 'Locations', icon: MapPin },
+  { href: '/admin/payments', label: 'Payments', icon: CreditCard },
 ]
 
 export default function Navigation() {
@@ -48,7 +49,9 @@ export default function Navigation() {
             <div className="hidden lg:flex space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href || (item.href === '/brands/admin/dashboard' && pathname === '/')
+                const isActive = pathname === item.href || 
+                  (item.href === '/brands/admin/dashboard' && pathname === '/') ||
+                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments'))
                 return (
                   <Link
                     key={item.href}
@@ -91,7 +94,9 @@ export default function Navigation() {
             <div className="space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href || (item.href === '/brands/admin/dashboard' && pathname === '/')
+                const isActive = pathname === item.href || 
+                  (item.href === '/brands/admin/dashboard' && pathname === '/') ||
+                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments'))
                 return (
                   <Link
                     key={item.href}
