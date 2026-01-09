@@ -199,6 +199,9 @@ const columnMapping: Record<string, Record<string, string>> = {
     // Brand/Region mappings
     'Brand': 'brand',
     'brand': 'brand',
+    'Active Brands': 'brand',
+    'ActiveBrands': 'brand',
+    'activeBrands': 'brand',
     'Region': 'region',
     'region': 'region',
     
@@ -1238,37 +1241,60 @@ export async function createOrder(orderData: {
     // Get brand store URL for required Order Store URL column
     const orderStoreUrl = getBrandStoreUrl(orderData.brand);
 
-    // Build order lines rows using column mapping
-    // IMPORTANT: Only populate the required columns for order processing:
-    // A: Order ID (orderId)
-    // C: Order Store URL (orderStoreUrl)
-    // D: Order Date (orderDate)
-    // E: Franchisee Code (franchiseeCode)
-    // I: SKU (sku)
-    // J: Quantity (quantity)
-    // N: Invoice No (invoiceNo)
-    //
-    // All other columns are left empty so that sheet formulas
-    // can auto-populate them. We NEVER write to formula-driven columns.
-    const lineMapping = columnMapping['Order_Lines'] || {};
+    // Build order lines rows - IMPORTANT: Write to specific column positions
+    // regardless of header order to ensure data goes to correct columns:
+    // A (index 0): Order ID
+    // B (index 1): Empty (Brand - formula will populate)
+    // C (index 2): Order Store URL
+    // D (index 3): Order Date
+    // E (index 4): Franchisee Code
+    // F (index 5): Empty (Franchisee Name - formula will populate)
+    // G (index 6): Empty (City - formula will populate)
+    // H (index 7): Empty (Product Name - formula will populate)
+    // I (index 8): SKU
+    // J (index 9): Quantity
+    // K (index 10): Empty (Unit Price - formula will populate)
+    // L (index 11): Empty (Line Total - formula will populate)
+    // M (index 12): Empty (Supplier - formula will populate)
+    // N (index 13): Invoice No
+    // O (index 14): Empty (reserved column)
+    // P+ (index 15+): Empty (COGS, Gross Profit, Margin - formulas will populate)
     const lineRows = orderData.orderLines.map((line) => {
-      return lineHeaders.map((header: string) => {
-        const normalized = normalizeColumnName(header);
-        const mappedKey = Object.entries(lineMapping).find(
-          ([k]) => normalizeColumnName(k) === normalized
-        )?.[1];
-
-        if (mappedKey === 'orderId') return orderData.orderId;
-        if (mappedKey === 'orderStoreUrl') return orderStoreUrl;
-        if (mappedKey === 'orderDate') return orderData.orderDate;
-        if (mappedKey === 'franchiseeCode') return orderData.franchiseeCode || '';
-        if (mappedKey === 'sku') return line.sku;
-        if (mappedKey === 'quantity') return line.quantity;
-        if (mappedKey === 'invoiceNo') return orderData.invoiceNo || '';
-
-        // Leave all other columns empty to preserve formulas
-        return '';
-      });
+      const row: any[] = [];
+      
+      // Ensure we have enough columns (at least up to column N)
+      for (let i = 0; i < Math.max(14, lineHeaders.length); i++) {
+        if (i === 0) {
+          // Column A: Order ID
+          row[i] = orderData.orderId;
+        } else if (i === 1) {
+          // Column B: Empty (Brand - formula)
+          row[i] = '';
+        } else if (i === 2) {
+          // Column C: Order Store URL
+          row[i] = orderStoreUrl;
+        } else if (i === 3) {
+          // Column D: Order Date
+          row[i] = orderData.orderDate;
+        } else if (i === 4) {
+          // Column E: Franchisee Code
+          row[i] = orderData.franchiseeCode || '';
+        } else if (i === 8) {
+          // Column I: SKU
+          row[i] = line.sku;
+        } else if (i === 9) {
+          // Column J: Quantity
+          row[i] = line.quantity;
+        } else if (i === 13) {
+          // Column N: Invoice No
+          row[i] = orderData.invoiceNo || '';
+        } else {
+          // All other columns: Empty (formulas will populate)
+          row[i] = '';
+        }
+      }
+      
+      return row;
     });
 
     // Append order lines

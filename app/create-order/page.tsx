@@ -29,6 +29,7 @@ export default function CreateOrderPage() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [productDropdownOpen, setProductDropdownOpen] = useState(false)
+  const [productSearchTerm, setProductSearchTerm] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -63,6 +64,16 @@ export default function CreateOrderPage() {
       toast.error('Failed to load products')
     }
   }
+
+  // Filter SKUs based on search term
+  const filteredSkus = useMemo(() => {
+    if (!productSearchTerm.trim()) return skus
+    const searchLower = productSearchTerm.toLowerCase()
+    return skus.filter((sku) => 
+      sku.productName?.toLowerCase().includes(searchLower) ||
+      sku.sku?.toLowerCase().includes(searchLower)
+    )
+  }, [skus, productSearchTerm])
 
   const fetchFranchises = async () => {
     try {
@@ -114,14 +125,24 @@ export default function CreateOrderPage() {
   // Get available brands for selected franchise
   const availableBrands = useMemo(() => {
     if (!selectedFranchise) return []
-    return Array.from(
-      new Set(
-        franchises
-          .filter((f) => f.code === selectedFranchise.code)
-          .map((f) => f.brand)
-          .filter(Boolean)
+    
+    // Get all brand strings for the selected franchise
+    const brandStrings = franchises
+      .filter((f) => f.code === selectedFranchise.code)
+      .map((f) => f.brand)
+      .filter(Boolean)
+    
+    // Split comma-separated brands, trim whitespace, and flatten
+    const allBrands = brandStrings
+      .flatMap((brandStr) => 
+        brandStr
+          .split(',')
+          .map((brand) => brand.trim())
+          .filter((brand) => brand.length > 0)
       )
-    ).sort()
+    
+    // Remove duplicates and sort
+    return Array.from(new Set(allBrands)).sort()
   }, [selectedFranchise, franchises])
 
   const addOrderLine = () => {
@@ -144,6 +165,7 @@ export default function CreateOrderPage() {
     setSelectedSku(null)
     setQuantity(1)
     setProductDropdownOpen(false)
+    setProductSearchTerm('') // Clear search when product is added
     toast.success('Product added to order')
   }
 
@@ -381,31 +403,52 @@ export default function CreateOrderPage() {
                   </button>
                   
                   {productDropdownOpen && (
-                    <div className="absolute z-[9999] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-                      {skus.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">No products available</div>
-                      ) : (
-                        skus.map((sku) => (
-                          <button
-                            key={sku.sku}
-                            type="button"
-                            onClick={() => {
-                              setSelectedSku(sku)
-                              setProductDropdownOpen(false)
-                            }}
-                            className={`w-full border-b border-gray-100 p-3 text-left transition-colors hover:bg-gray-50 ${
-                              selectedSku?.sku === sku.sku ? 'bg-blue-50' : ''
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-gray-900">{sku.productName}</p>
-                                <p className="text-sm text-gray-500">SKU: {sku.sku} • {formatCurrency(sku.sellingPrice)}</p>
+                    <div className="absolute z-[9999] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+                      {/* Search Input */}
+                      <div className="border-b border-gray-200 p-2">
+                        <input
+                          type="text"
+                          placeholder="Search by product name or SKU..."
+                          value={productSearchTerm}
+                          onChange={(e) => setProductSearchTerm(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                          autoFocus
+                        />
+                      </div>
+                      
+                      {/* Product List */}
+                      <div className="max-h-64 overflow-y-auto">
+                        {skus.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-500">No products available</div>
+                        ) : filteredSkus.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            No products found matching "{productSearchTerm}"
+                          </div>
+                        ) : (
+                          filteredSkus.map((sku) => (
+                            <button
+                              key={sku.sku}
+                              type="button"
+                              onClick={() => {
+                                setSelectedSku(sku)
+                                setProductDropdownOpen(false)
+                                setProductSearchTerm('') // Clear search when product is selected
+                              }}
+                              className={`w-full border-b border-gray-100 p-3 text-left transition-colors hover:bg-gray-50 ${
+                                selectedSku?.sku === sku.sku ? 'bg-blue-50' : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">{sku.productName}</p>
+                                  <p className="text-sm text-gray-500">SKU: {sku.sku} • {formatCurrency(sku.sellingPrice)}</p>
+                                </div>
                               </div>
-                            </div>
-                          </button>
-                        ))
-                      )}
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
