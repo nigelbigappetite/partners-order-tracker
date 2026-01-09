@@ -130,7 +130,7 @@ export default function CreateOrderPage() {
     const brandStrings = franchises
       .filter((f) => f.code === selectedFranchise.code)
       .map((f) => f.brand)
-      .filter(Boolean)
+      .filter((brand): brand is string => Boolean(brand))
     
     // Split comma-separated brands, trim whitespace, and flatten
     const allBrands = brandStrings
