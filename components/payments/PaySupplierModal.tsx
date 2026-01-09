@@ -84,7 +84,8 @@ export default function PaySupplierModal({
     }
     
     // Validate all selected invoices have dates
-    for (const invoiceId of selectedInvoices) {
+    const selectedArray = Array.from(selectedInvoices)
+    for (const invoiceId of selectedArray) {
       if (!paymentDates[invoiceId]) {
         toast.error('Please provide a paid date for all selected invoices')
         return
@@ -95,7 +96,7 @@ export default function PaySupplierModal({
     
     try {
       // Update all selected invoices
-      const updatePromises = Array.from(selectedInvoices).map(async (invoiceId) => {
+      const updatePromises = selectedArray.map(async (invoiceId) => {
         const response = await fetch(`/api/payments/supplier-invoices/${invoiceId}`, {
           method: 'PATCH',
           headers: {
@@ -116,7 +117,7 @@ export default function PaySupplierModal({
       
       await Promise.all(updatePromises)
       
-      toast.success(`Marked ${selectedInvoices.size} invoice(s) as paid`)
+      toast.success(`Marked ${selectedArray.length} invoice(s) as paid`)
       onSuccess()
       onClose()
       
