@@ -144,7 +144,7 @@ export default function PaySupplierModal({
 
   if (loading) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} title="Pay Supplier Invoices">
+      <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
         <div className="text-center py-8">
           <div className="text-gray-500">Loading supplier invoices...</div>
         </div>
@@ -154,7 +154,7 @@ export default function PaySupplierModal({
 
   if (invoices.length === 0) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} title="Pay Supplier Invoices">
+      <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
         <div className="text-center py-8">
           <div className="text-gray-500">No unpaid supplier invoices found for this sales invoice.</div>
         </div>
@@ -163,10 +163,15 @@ export default function PaySupplierModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Pay Supplier Invoices">
+    <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="text-sm text-gray-600 mb-4">
-          Select supplier invoices to mark as paid for sales invoice: <strong>{salesInvoiceNo}</strong>
+          <p className="mb-2">
+            <strong>Note:</strong> This is for recording payment details after you have manually paid the supplier invoices.
+          </p>
+          <p>
+            Select supplier invoices to mark as paid for sales invoice: <strong>{salesInvoiceNo}</strong>
+          </p>
         </div>
         
         <div className="space-y-3 max-h-96 overflow-y-auto">

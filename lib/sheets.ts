@@ -1980,3 +1980,60 @@ export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promi
   }
 }
 
+// Calculate settlement status from Supplier_Invoices data
+export async function calculateSettlementStatus(
+  salesInvoiceNo: string,
+  partnerPaid: boolean,
+  fundsCleared: boolean
+): Promise<'OPEN' | 'PAID_NOT_CLEARED' | 'WAITING_SUPPLIERS' | 'SETTLED'> {
+  try {
+    // If partner hasn't paid, status is OPEN
+    if (!partnerPaid) {
+      return 'OPEN';
+    }
+    
+    // If partner paid but funds not cleared, status is PAID_NOT_CLEARED
+    if (!fundsCleared) {
+      return 'PAID_NOT_CLEARED';
+    }
+    
+    // Get supplier invoices for this sales invoice
+    const allocations = await getOrderSupplierAllocations(salesInvoiceNo);
+    if (allocations.length === 0) {
+      // No supplier invoices linked - if partner paid and cleared, it's SETTLED
+      return 'SETTLED';
+    }
+    
+    // Get all supplier invoices linked to this sales invoice
+    const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no);
+    const allInvoices = await getSupplierInvoices();
+    
+    // Match supplier invoices by invoice number from allocations
+    const normalizeInvoiceNo = (inv: string): string => {
+      return String(inv).replace(/#/g, '').trim().toLowerCase();
+    };
+    
+    const linkedInvoices = allInvoices.filter((inv) => {
+      const invNo = normalizeInvoiceNo(inv.invoice_no || '');
+      return supplierInvoiceNos.some((allocNo) => 
+        normalizeInvoiceNo(allocNo) === invNo
+      );
+    });
+    
+    // Check if all supplier invoices are paid
+    const allPaid = linkedInvoices.length > 0 && linkedInvoices.every((inv) => inv.paid);
+    
+    // If any supplier invoice is unpaid, status is WAITING_SUPPLIERS
+    if (!allPaid) {
+      return 'WAITING_SUPPLIERS';
+    }
+    
+    // All conditions met - SETTLED
+    return 'SETTLED';
+  } catch (error) {
+    console.error('Error calculating settlement status:', error);
+    // Default to OPEN on error
+    return 'OPEN';
+  }
+}
+
