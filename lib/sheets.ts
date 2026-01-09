@@ -557,8 +557,22 @@ export async function updateOrderStatus(
   updates: Partial<Order>
 ): Promise<void> {
   try {
+    console.log('[updateOrderStatus] Starting status update:', {
+      orderId,
+      updates,
+    });
+
     const sheets = await getSheetsClient();
     const { headers, data } = await getSheetData('Orders_Header');
+    
+    // Normalize orderId for matching - remove all #, trim whitespace, case-insensitive
+    // This matches the normalization used in getOrderById
+    const normalizeOrderId = (id: string): string => {
+      return String(id).replace(/#/g, '').trim().toLowerCase();
+    };
+    
+    const searchOrderId = normalizeOrderId(orderId);
+    console.log('[updateOrderStatus] Normalized search orderId:', searchOrderId);
     
     // Reverse mapping from TypeScript property to sheet column
     const reverseMapping: Record<string, string> = {};
@@ -572,10 +586,33 @@ export async function updateOrderStatus(
       throw new Error('Order ID column not found in sheet');
     }
     
-    const rowIndex = data.findIndex((row: any) => row[orderIdIndex] === orderId);
+    console.log('[updateOrderStatus] Searching for order in', data.length, 'rows');
+    const rowIndex = data.findIndex((row: any) => {
+      const rowOrderId = row[orderIdIndex];
+      const normalizedRowOrderId = normalizeOrderId(String(rowOrderId || ''));
+      const matches = normalizedRowOrderId === searchOrderId;
+      if (matches) {
+        console.log('[updateOrderStatus] Found matching order:', {
+          rowIndex: data.indexOf(row),
+          rawOrderId: rowOrderId,
+          normalizedRowOrderId,
+          searchOrderId,
+        });
+      }
+      return matches;
+    });
+    
     if (rowIndex === -1) {
+      console.error('[updateOrderStatus] Order not found. Searched orderIds:', 
+        data.slice(0, 5).map((row: any) => ({
+          raw: row[orderIdIndex],
+          normalized: normalizeOrderId(String(row[orderIdIndex] || '')),
+        }))
+      );
       throw new Error(`Order ${orderId} not found`);
     }
+    
+    console.log('[updateOrderStatus] Order found at row index:', rowIndex, '(sheet row:', rowIndex + 2, ')');
 
     // Helper to convert column index to A1 notation
     const getColumnLetter = (colIndex: number): string => {
@@ -598,6 +635,17 @@ export async function updateOrderStatus(
           range: `Orders_Header!${colLetter}${rowIndex + 2}`,
           values: [[value]],
         });
+        console.log('[updateOrderStatus] Adding update:', {
+          property: tsKey,
+          sheetColumn,
+          columnIndex: colIndex,
+          columnLetter: colLetter,
+          sheetRow: rowIndex + 2,
+          range: `Orders_Header!${colLetter}${rowIndex + 2}`,
+          value,
+        });
+      } else {
+        console.warn('[updateOrderStatus] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
       }
     });
 
@@ -605,16 +653,30 @@ export async function updateOrderStatus(
       throw new Error('No valid columns to update');
     }
 
+    console.log('[updateOrderStatus] Executing batch update with', updateValues.length, 'updates');
+
     // Batch update
-    await sheets.spreadsheets.values.batchUpdate({
+    const updateResult = await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
         valueInputOption: 'USER_ENTERED',
         data: updateValues,
       },
     });
-  } catch (error) {
-    console.error('Error updating order status:', error);
+    
+    console.log('[updateOrderStatus] Batch update successful:', {
+      orderId,
+      updatedRanges: updateResult.data.responses?.map((r: any) => r.updatedRange),
+      totalUpdatedCells: updateResult.data.totalUpdatedCells,
+    });
+  } catch (error: any) {
+    console.error('[updateOrderStatus] Error updating order status:', {
+      orderId,
+      updates,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
     throw error;
   }
 }
@@ -1203,10 +1265,21 @@ export async function createOrder(orderData: {
   orderLines: Omit<OrderLine, 'orderId'>[];
 }): Promise<void> {
   try {
+    console.log('[createOrder] Starting order creation:', {
+      orderId: orderData.orderId,
+      invoiceNo: orderData.invoiceNo,
+      brand: orderData.brand,
+      franchisee: orderData.franchisee,
+      franchiseeCode: orderData.franchiseeCode,
+      orderLinesCount: orderData.orderLines.length,
+    });
+
     const sheets = await getSheetsClient();
     
     // Get headers for Orders_Header
+    console.log('[createOrder] Fetching Orders_Header headers...');
     const { headers: orderHeaders } = await getSheetData('Orders_Header');
+    console.log('[createOrder] Orders_Header headers count:', orderHeaders.length);
     
     // Build order row using column mapping
     // IMPORTANT: Only populate the single required column (B) in Orders_Header,
@@ -1225,8 +1298,22 @@ export async function createOrder(orderData: {
       return '';
     });
 
+    console.log('[createOrder] Writing to Orders_Header:', {
+      orderId: orderData.orderId,
+      rowLength: orderRow.length,
+      orderIdColumnIndex: orderRow.findIndex((val: any, idx: number) => {
+        const header = orderHeaders[idx];
+        const normalized = normalizeColumnName(header);
+        const mapping = columnMapping['Orders_Header'] || {};
+        const mappedKey = Object.entries(mapping).find(
+          ([k]) => normalizeColumnName(k) === normalized
+        )?.[1];
+        return mappedKey === 'orderId';
+      }),
+    });
+
     // Append order to Orders_Header
-    await sheets.spreadsheets.values.append({
+    const headerResult = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Orders_Header!A:Z',
       valueInputOption: 'USER_ENTERED',
@@ -1234,12 +1321,19 @@ export async function createOrder(orderData: {
         values: [orderRow],
       },
     });
+    console.log('[createOrder] Orders_Header write successful:', {
+      updatedRange: headerResult.data.updates?.updatedRange,
+      updatedRows: headerResult.data.updates?.updatedRows,
+    });
 
     // Get headers for Order_Lines
+    console.log('[createOrder] Fetching Order_Lines headers...');
     const { headers: lineHeaders } = await getSheetData('Order_Lines');
+    console.log('[createOrder] Order_Lines headers count:', lineHeaders.length);
 
     // Get brand store URL for required Order Store URL column
     const orderStoreUrl = getBrandStoreUrl(orderData.brand);
+    console.log('[createOrder] Brand store URL:', orderStoreUrl);
 
     // Build order lines rows - IMPORTANT: Write to specific column positions
     // regardless of header order to ensure data goes to correct columns:
@@ -1259,7 +1353,7 @@ export async function createOrder(orderData: {
     // N (index 13): Invoice No
     // O (index 14): Empty (reserved column)
     // P+ (index 15+): Empty (COGS, Gross Profit, Margin - formulas will populate)
-    const lineRows = orderData.orderLines.map((line) => {
+    const lineRows = orderData.orderLines.map((line, lineIndex) => {
       const row: any[] = [];
       
       // Ensure we have enough columns (at least up to column N)
@@ -1297,8 +1391,22 @@ export async function createOrder(orderData: {
       return row;
     });
 
+    console.log('[createOrder] Writing to Order_Lines:', {
+      orderId: orderData.orderId,
+      lineRowsCount: lineRows.length,
+      sampleRow: lineRows[0] ? {
+        orderId: lineRows[0][0],
+        orderStoreUrl: lineRows[0][2],
+        orderDate: lineRows[0][3],
+        franchiseeCode: lineRows[0][4],
+        sku: lineRows[0][8],
+        quantity: lineRows[0][9],
+        invoiceNo: lineRows[0][13],
+      } : null,
+    });
+
     // Append order lines
-    await sheets.spreadsheets.values.append({
+    const linesResult = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Order_Lines!A:Z',
       valueInputOption: 'USER_ENTERED',
@@ -1306,8 +1414,23 @@ export async function createOrder(orderData: {
         values: lineRows,
       },
     });
-  } catch (error) {
-    console.error('Error creating order:', error);
+    console.log('[createOrder] Order_Lines write successful:', {
+      updatedRange: linesResult.data.updates?.updatedRange,
+      updatedRows: linesResult.data.updates?.updatedRows,
+    });
+
+    console.log('[createOrder] Order creation completed successfully:', {
+      orderId: orderData.orderId,
+      headerWriteSuccess: !!headerResult.data.updates,
+      linesWriteSuccess: !!linesResult.data.updates,
+    });
+  } catch (error: any) {
+    console.error('[createOrder] Error creating order:', {
+      orderId: orderData.orderId,
+      error: error.message,
+      stack: error.stack,
+      errorName: error.name,
+    });
     throw error;
   }
 }
