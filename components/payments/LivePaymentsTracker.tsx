@@ -80,8 +80,11 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
       }
       
       const data = await response.json()
-      // Double-check: filter out any SETTLED orders that might have slipped through
-      const outstanding = data.filter((p: PaymentTrackerRow) => p.settlement_status !== 'SETTLED')
+      // Filter: only show unpaid sales invoices (partner hasn't paid yet)
+      // Exclude SETTLED orders and any invoices where partner_paid = true
+      const outstanding = data.filter((p: PaymentTrackerRow) => 
+        p.settlement_status !== 'SETTLED' && !p.partner_paid
+      )
       setPayments(outstanding)
       setLastRefresh(new Date())
     } catch (error: any) {

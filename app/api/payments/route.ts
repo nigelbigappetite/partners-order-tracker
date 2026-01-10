@@ -18,8 +18,11 @@ export async function GET(request: Request) {
     let filtered = payments
     
     // Exclude SETTLED orders if requested (for live tracker)
+    // Also exclude paid invoices - only show unpaid sales invoices
     if (excludeSettled) {
-      filtered = filtered.filter((p) => p.settlement_status !== 'SETTLED')
+      filtered = filtered.filter((p) => 
+        p.settlement_status !== 'SETTLED' && !p.partner_paid
+      )
     }
     
     if (settlementStatus && settlementStatus !== 'all') {
