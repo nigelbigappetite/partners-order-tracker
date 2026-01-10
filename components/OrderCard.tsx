@@ -23,7 +23,9 @@ export default function OrderCard({ order, onUpdate }: OrderCardProps) {
         <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-1.5 xs:space-x-2 min-w-0 flex-1">
-              <h3 className="text-xs xs:text-sm font-semibold text-gray-900 truncate">{formatOrderId(order.orderId)}</h3>
+              <h3 className="text-xs xs:text-sm font-semibold text-gray-900 truncate">
+                {order.invoiceNo ? formatOrderId(order.invoiceNo) : formatOrderId(order.orderId)}
+              </h3>
             </div>
             <span className="text-xs font-medium text-gray-900 flex-shrink-0">
               {formatCurrencyNoDecimals(order.orderTotal)}
@@ -42,7 +44,7 @@ export default function OrderCard({ order, onUpdate }: OrderCardProps) {
       <OrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        orderId={order.orderId}
+        orderId={order.invoiceNo || order.orderId}
         onUpdate={onUpdate}
       />
     </>
