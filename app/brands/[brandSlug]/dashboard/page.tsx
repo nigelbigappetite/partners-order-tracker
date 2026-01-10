@@ -263,12 +263,14 @@ export default function BrandDashboard() {
                       key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => {
-                        setSelectedOrderId(order.orderId)
+                        // Use invoice number as primary identifier (unique across brands)
+                        const identifier = order.invoiceNo || order.orderId
+                        setSelectedOrderId(identifier)
                         setIsModalOpen(true)
                       }}
                     >
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
-                        {formatOrderId(order.orderId)}
+                        {order.invoiceNo ? formatOrderId(order.invoiceNo) : formatOrderId(order.orderId)}
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
                         {order.orderDate}

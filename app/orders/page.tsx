@@ -111,10 +111,12 @@ export default function OrdersPage() {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase().trim()
       filtered = filtered.filter((o) => {
+        const invoiceNo = String(o.invoiceNo || '').toLowerCase().replace('#', '')
         const orderId = String(o.orderId || '').toLowerCase().replace('#', '')
         const franchisee = String(o.franchisee || '').toLowerCase()
         const brand = String(o.brand || '').toLowerCase()
         return (
+          invoiceNo.includes(searchLower) ||
           orderId.includes(searchLower) ||
           franchisee.includes(searchLower) ||
           brand.includes(searchLower)
@@ -228,8 +230,10 @@ export default function OrdersPage() {
     }
   }
 
-  const handleRowClick = (orderId: string) => {
-    setSelectedOrderId(orderId)
+  const handleRowClick = (order: Order) => {
+    // Use invoice number as primary identifier (unique across brands)
+    const identifier = order.invoiceNo || order.orderId
+    setSelectedOrderId(identifier)
     setIsModalOpen(true)
   }
 
@@ -502,11 +506,11 @@ export default function OrdersPage() {
                   filteredAndSortedOrders.map((order) => (
                     <tr
                       key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
-                      onClick={() => handleRowClick(order.orderId)}
+                      onClick={() => handleRowClick(order)}
                       className="cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                        {formatOrderId(order.orderId)}
+                        {order.invoiceNo ? formatOrderId(order.invoiceNo) : formatOrderId(order.orderId)}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                         {(() => {

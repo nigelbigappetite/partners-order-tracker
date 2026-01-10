@@ -1,26 +1,36 @@
 import { NextResponse } from 'next/server'
-import { getOrderById, updateOrderStatus, deleteOrder } from '@/lib/sheets'
+import { getOrderByInvoiceNo, getOrderById, updateOrderStatus, deleteOrder } from '@/lib/sheets'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Decode the orderId (handles URL encoding like %23 for #)
-    const decodedOrderId = decodeURIComponent(params.id)
+    // Decode the id (handles URL encoding like %23 for #)
+    // Try as invoice number first (primary identifier), then fall back to order ID
+    const decodedId = decodeURIComponent(params.id)
     console.log('[API /orders/[id] GET] Fetching order:', {
       rawId: params.id,
-      decodedOrderId,
+      decodedId,
     });
     
-    const order = await getOrderById(decodedOrderId)
+    // Try invoice number first (unique identifier)
+    let order = await getOrderByInvoiceNo(decodedId)
+    
+    // If not found, try as order ID (for backward compatibility)
     if (!order) {
-      console.warn('[API /orders/[id] GET] Order not found:', decodedOrderId);
+      console.log('[API /orders/[id] GET] Not found by invoice number, trying order ID...');
+      order = await getOrderById(decodedId)
+    }
+    
+    if (!order) {
+      console.warn('[API /orders/[id] GET] Order not found:', decodedId);
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
     
     console.log('[API /orders/[id] GET] Order found:', {
       orderId: order.orderId,
+      invoiceNo: order.invoiceNo,
       brand: order.brand,
       orderStage: order.orderStage,
     });
@@ -28,7 +38,7 @@ export async function GET(
     return NextResponse.json(order)
   } catch (error: any) {
     console.error('[API /orders/[id] GET] Error fetching order:', {
-      orderId: params.id,
+      id: params.id,
       error: error.message,
       stack: error.stack,
       errorName: error.name,

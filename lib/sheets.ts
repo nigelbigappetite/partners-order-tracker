@@ -580,6 +580,42 @@ export async function getOrders(): Promise<Order[]> {
   }
 }
 
+// Get order by invoice number (primary identifier - unique across brands)
+export async function getOrderByInvoiceNo(invoiceNo: string): Promise<Order | null> {
+  try {
+    const orders = await getOrders();
+    
+    // Normalize invoice number for matching - remove all #, trim whitespace, case-insensitive
+    const normalizeInvoiceNo = (inv: string): string => {
+      if (!inv) return '';
+      return String(inv).replace(/#/g, '').trim().toLowerCase();
+    };
+    
+    const searchInvoiceNo = normalizeInvoiceNo(invoiceNo);
+    
+    // Try exact match first
+    let order = orders.find((o) => {
+      const orderInvoiceNo = o.invoiceNo || '';
+      return normalizeInvoiceNo(String(orderInvoiceNo)) === searchInvoiceNo;
+    });
+    
+    // If not found, try normalized match
+    if (!order) {
+      order = orders.find((o) => {
+        const orderInvoiceNo = o.invoiceNo || '';
+        const normalized = normalizeInvoiceNo(String(orderInvoiceNo));
+        return normalized === searchInvoiceNo;
+      });
+    }
+    
+    return order || null;
+  } catch (error) {
+    console.error('Error fetching order by invoice number:', error);
+    throw error;
+  }
+}
+
+// Get order by order ID (for backward compatibility - may return multiple if duplicates exist)
 export async function getOrderById(orderId: string): Promise<Order | null> {
   try {
     const orders = await getOrders();

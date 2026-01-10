@@ -104,9 +104,10 @@ export default function BrandOrdersPage() {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase().trim()
       filtered = filtered.filter((o) => {
+        const invoiceNo = String(o.invoiceNo || '').toLowerCase().replace('#', '')
         const orderId = String(o.orderId || '').toLowerCase().replace('#', '')
         const franchisee = String(o.franchisee || '').toLowerCase()
-        return orderId.includes(searchLower) || franchisee.includes(searchLower)
+        return invoiceNo.includes(searchLower) || orderId.includes(searchLower) || franchisee.includes(searchLower)
       })
     }
 
@@ -185,18 +186,20 @@ export default function BrandOrdersPage() {
             maxHeight="calc(100vh - 300px)"
             stickyHeader={true}
           >
-            {filteredAndSortedOrders.map((order) => (
-              <tr
-                key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => {
-                  setSelectedOrderId(order.orderId)
-                  setIsModalOpen(true)
-                }}
-              >
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                  {formatOrderId(order.orderId)}
-                </td>
+            {                  filteredAndSortedOrders.map((order) => (
+                    <tr
+                      key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        // Use invoice number as primary identifier (unique across brands)
+                        const identifier = order.invoiceNo || order.orderId
+                        setSelectedOrderId(identifier)
+                        setIsModalOpen(true)
+                      }}
+                    >
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                        {order.invoiceNo ? formatOrderId(order.invoiceNo) : formatOrderId(order.orderId)}
+                      </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                   {order.orderDate}
                 </td>

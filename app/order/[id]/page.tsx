@@ -14,7 +14,7 @@ import { format } from 'date-fns'
 
 export default function OrderDetailPage() {
   const params = useParams()
-  const orderId = params.id as string
+  const orderId = params.id as string // Can be invoice number or order ID
   const [order, setOrder] = useState<Order | null>(null)
   const [orderLines, setOrderLines] = useState<OrderLine[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,9 +23,15 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (orderId) {
       fetchOrder()
-      fetchOrderLines()
     }
   }, [orderId])
+
+  // Fetch order lines after order is loaded (so we have invoice number)
+  useEffect(() => {
+    if (order && orderId) {
+      fetchOrderLines()
+    }
+  }, [order, orderId])
 
   const fetchOrder = async () => {
     try {
@@ -42,8 +48,11 @@ export default function OrderDetailPage() {
   }
 
   const fetchOrderLines = async () => {
+    if (!order) return
     try {
-      const response = await fetch(`/api/orders/${orderId}/lines`)
+      // Use invoice number if available, otherwise use the orderId param
+      const identifier = order.invoiceNo || orderId
+      const response = await fetch(`/api/orders/${encodeURIComponent(identifier)}/lines`)
       if (response.ok) {
         const data = await response.json()
         setOrderLines(data)
