@@ -127,9 +127,7 @@ export default function PaymentsTable({
                         )}
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm">
-                        {isSettled ? (
-                          <span className="text-gray-400 text-xs">Read-only</span>
-                        ) : (
+                        {!isSettled && (
                           <div className="flex flex-col xs:flex-row gap-2">
                             {!payment.partner_paid && (
                               <button
