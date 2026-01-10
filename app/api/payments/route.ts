@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const settlementStatus = searchParams.get('settlementStatus')
+    const excludeSettled = searchParams.get('excludeSettled') === 'true'
     const brand = searchParams.get('brand')
     const franchisee = searchParams.get('franchisee')
     const startDate = searchParams.get('startDate')
@@ -15,6 +16,11 @@ export async function GET(request: Request) {
     
     // Apply filters
     let filtered = payments
+    
+    // Exclude SETTLED orders if requested (for live tracker)
+    if (excludeSettled) {
+      filtered = filtered.filter((p) => p.settlement_status !== 'SETTLED')
+    }
     
     if (settlementStatus && settlementStatus !== 'all') {
       filtered = filtered.filter((p) => p.settlement_status === settlementStatus)

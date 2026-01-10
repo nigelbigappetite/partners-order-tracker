@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Navigation from '@/components/Navigation'
+import LivePaymentsTracker from '@/components/payments/LivePaymentsTracker'
 import PaymentsTable from '@/components/payments/PaymentsTable'
 import MarkPartnerPaidModal from '@/components/payments/MarkPartnerPaidModal'
 import PaySupplierModal from '@/components/payments/PaySupplierModal'
@@ -196,12 +197,23 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
 
-        {/* Payments Table */}
-        <PaymentsTable
-          payments={payments}
-          onMarkPartnerPaid={handleMarkPartnerPaid}
-          onPaySupplier={handlePaySupplier}
-        />
+        {/* Live Outstanding Payments Tracker */}
+        <LivePaymentsTracker />
+
+        {/* All Payments Table */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">All Payments</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Complete payment history including settled orders
+            </p>
+          </div>
+          <PaymentsTable
+            payments={payments}
+            onMarkPartnerPaid={handleMarkPartnerPaid}
+            onPaySupplier={handlePaySupplier}
+          />
+        </div>
 
         {/* Modals */}
         {selectedInvoiceForPartner && (
