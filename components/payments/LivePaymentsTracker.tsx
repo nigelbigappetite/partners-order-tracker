@@ -205,7 +205,7 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
     { field: 'franchisee_name' as SortField, label: 'Franchisee' },
     { field: 'order_date' as SortField, label: 'Order Date' },
     { field: 'total_order_value' as SortField, label: 'Order Value' },
-    { field: 'settlement_status' as SortField, label: 'Status' },
+    { field: 'settlement_status' as SortField, label: 'Status', showInfo: true },
   ]
 
   return (
