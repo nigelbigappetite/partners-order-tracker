@@ -1495,31 +1495,16 @@ export async function createOrder(orderData: {
   orderLines: Omit<OrderLine, 'orderId'>[];
 }): Promise<void> {
   try {
-    console.log('[createOrder] Starting order creation:', {
-      orderId: orderData.orderId,
-      invoiceNo: orderData.invoiceNo,
-      brand: orderData.brand,
-      franchisee: orderData.franchisee,
-      franchiseeCode: orderData.franchiseeCode,
-      orderLinesCount: orderData.orderLines.length,
-    });
-
     const sheets = await getSheetsClient();
     
     // IMPORTANT: Orders_Header is completely self-populating via formulas
     // We do NOT write to Orders_Header - it automatically populates from Order_Lines
     // Only write to Order_Lines, and Orders_Header will update automatically
     
-    console.log('[createOrder] Skipping Orders_Header write - it is self-populating from Order_Lines formulas');
-
-    // Get headers for Order_Lines
-    console.log('[createOrder] Fetching Order_Lines headers...');
-    const { headers: lineHeaders } = await getSheetData('Order_Lines');
-    console.log('[createOrder] Order_Lines headers count:', lineHeaders.length);
+    // OPTIMIZATION: Removed header fetch - we write to fixed column positions, headers not needed
 
     // Get brand store URL for required Order Store URL column
     const orderStoreUrl = getBrandStoreUrl(orderData.brand);
-    console.log('[createOrder] Brand store URL:', orderStoreUrl);
 
     // Build order lines rows - IMPORTANT: Write to specific column positions
     // regardless of header order to ensure data goes to correct columns:
@@ -1562,44 +1547,17 @@ export async function createOrder(orderData: {
       return row;
     });
 
-    console.log('[createOrder] Writing to Order_Lines:', {
-      orderId: orderData.orderId,
-      lineRowsCount: lineRows.length,
-      sampleRow: lineRows[0] ? {
-        rowLength: lineRows[0].length,
-        first10Values: lineRows[0].slice(0, 10),
-        orderId: lineRows[0][0],
-        orderStoreUrl: lineRows[0][2],
-        orderDate: lineRows[0][3],
-        franchiseeCode: lineRows[0][4],
-        sku: lineRows[0][8],
-        quantity: lineRows[0][9],
-        invoiceNo: lineRows[0][13],
-        fullRow: lineRows[0],
-        rowString: JSON.stringify(lineRows[0]),
-      } : null,
-    });
-
-    // Append order lines - use explicit range starting at column A
-    // This ensures data always starts at column A, row after the last data row
-    const linesResult = await sheets.spreadsheets.values.append({
+    // OPTIMIZED: Append order lines with RAW valueInputOption for faster writes
+    // RAW is faster than USER_ENTERED as it doesn't require Google Sheets to parse values
+    // Formulas in the sheet will still work correctly
+    await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Order_Lines!A:N', // Explicitly specify columns A through N
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW', // Changed from USER_ENTERED for faster writes
       insertDataOption: 'INSERT_ROWS', // Insert new rows instead of overwriting
       requestBody: {
         values: lineRows,
       },
-    });
-    console.log('[createOrder] Order_Lines write successful:', {
-      updatedRange: linesResult.data.updates?.updatedRange,
-      updatedRows: linesResult.data.updates?.updatedRows,
-    });
-
-    console.log('[createOrder] Order creation completed successfully:', {
-      orderId: orderData.orderId,
-      linesWriteSuccess: !!linesResult.data.updates,
-      note: 'Orders_Header will auto-populate from Order_Lines formulas',
     });
   } catch (error: any) {
     console.error('[createOrder] Error creating order:', {
