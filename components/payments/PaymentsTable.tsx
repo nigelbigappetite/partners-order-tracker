@@ -76,20 +76,12 @@ export default function PaymentsTable({
                         {showInfo && (
                           <div className="relative group/info">
                             <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/info:block z-20 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                              <div className="space-y-2">
-                                <div>
-                                  <strong className="text-yellow-300">OPEN:</strong> Partner has not paid yet
-                                </div>
-                                <div>
-                                  <strong className="text-yellow-300">PAID NOT CLEARED:</strong> Partner paid but funds haven't cleared
-                                </div>
-                                <div>
-                                  <strong className="text-yellow-300">WAITING SUPPLIERS:</strong> Waiting for supplier invoices to be paid
-                                </div>
-                                <div>
-                                  <strong className="text-yellow-300">SETTLED:</strong> All payments complete and cleared
-                                </div>
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/info:block z-20 w-72 p-3 bg-gray-900 text-white text-sm rounded-lg shadow-xl">
+                              <div className="space-y-2.5 leading-relaxed">
+                                <div>Partner has not paid for this invoice yet. Payment is still pending.</div>
+                                <div>Partner has paid but funds haven't cleared yet. Waiting for bank clearance.</div>
+                                <div>Partner payment is complete, but supplier invoices are still unpaid. Waiting for supplier payments to be marked as paid.</div>
+                                <div>Invoice paid in full. All partner and supplier payments are complete and cleared.</div>
                               </div>
                               <div className="absolute bottom-0 left-4 transform translate-y-full">
                                 <div className="border-4 border-transparent border-t-gray-900"></div>
@@ -144,27 +136,19 @@ export default function PaymentsTable({
                           >
                             {payment.settlement_status.replace(/_/g, ' ')}
                           </span>
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/status:block z-20 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                            <div>
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/status:block z-20 w-72 p-3 bg-gray-900 text-white text-sm rounded-lg shadow-xl">
+                            <div className="leading-relaxed">
                               {payment.settlement_status === 'OPEN' && (
-                                <div>
-                                  <strong className="text-yellow-300">OPEN:</strong> Partner has not paid for this invoice yet. Payment is still pending.
-                                </div>
+                                <div>Partner has not paid for this invoice yet. Payment is still pending.</div>
                               )}
                               {payment.settlement_status === 'PAID_NOT_CLEARED' && (
-                                <div>
-                                  <strong className="text-yellow-300">PAID NOT CLEARED:</strong> Partner has paid but funds haven't cleared yet. Waiting for bank clearance.
-                                </div>
+                                <div>Partner has paid but funds haven't cleared yet. Waiting for bank clearance.</div>
                               )}
                               {payment.settlement_status === 'WAITING_SUPPLIERS' && (
-                                <div>
-                                  <strong className="text-yellow-300">WAITING SUPPLIERS:</strong> Partner payment is complete, but supplier invoices are still unpaid. Waiting for supplier payments to be marked as paid.
-                                </div>
+                                <div>Partner payment is complete, but supplier invoices are still unpaid. Waiting for supplier payments to be marked as paid.</div>
                               )}
                               {payment.settlement_status === 'SETTLED' && (
-                                <div>
-                                  <strong className="text-yellow-300">SETTLED:</strong> Invoice paid in full. All partner and supplier payments are complete and cleared.
-                                </div>
+                                <div>Invoice paid in full. All partner and supplier payments are complete and cleared.</div>
                               )}
                             </div>
                             <div className="absolute bottom-0 left-4 transform translate-y-full">
