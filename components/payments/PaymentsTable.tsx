@@ -3,6 +3,7 @@
 import { PaymentTrackerRow } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 import ActionButton from '@/components/ActionButton'
+import { Info } from 'lucide-react'
 
 interface PaymentsTableProps {
   payments: PaymentTrackerRow[]
@@ -49,7 +50,7 @@ export default function PaymentsTable({
     'Franchisee',
     'Order Date',
     'Order Value',
-    'Settlement Status',
+    { label: 'Settlement Status', showInfo: true },
     'Unpaid Suppliers',
     'Actions',
   ]
@@ -61,14 +62,45 @@ export default function PaymentsTable({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                {headers.map((header, index) => (
-                  <th
-                    key={index}
-                    className="px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap"
-                  >
-                    {header}
-                  </th>
-                ))}
+                {headers.map((header, index) => {
+                  const headerLabel = typeof header === 'string' ? header : header.label
+                  const showInfo = typeof header === 'object' && header.showInfo
+                  
+                  return (
+                    <th
+                      key={index}
+                      className="px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap"
+                    >
+                      <div className="flex items-center gap-1">
+                        {headerLabel}
+                        {showInfo && (
+                          <div className="relative group/info">
+                            <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/info:block z-20 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                              <div className="space-y-2">
+                                <div>
+                                  <strong className="text-yellow-300">OPEN:</strong> Partner has not paid yet
+                                </div>
+                                <div>
+                                  <strong className="text-yellow-300">PAID NOT CLEARED:</strong> Partner paid but funds haven't cleared
+                                </div>
+                                <div>
+                                  <strong className="text-yellow-300">WAITING SUPPLIERS:</strong> Waiting for supplier invoices to be paid
+                                </div>
+                                <div>
+                                  <strong className="text-yellow-300">SETTLED:</strong> All payments complete and cleared
+                                </div>
+                              </div>
+                              <div className="absolute bottom-0 left-4 transform translate-y-full">
+                                <div className="border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
