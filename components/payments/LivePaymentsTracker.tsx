@@ -219,7 +219,7 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Live Outstanding Payments Tracker</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Auto-refreshing every {refreshInterval / 1000}s • {filteredAndSortedPayments.length} outstanding invoice{filteredAndSortedPayments.length !== 1 ? 's' : ''}
+              Auto-refreshing every {refreshInterval / 1000}s • {filteredAndSortedPayments.length} unpaid invoice{filteredAndSortedPayments.length !== 1 ? 's' : ''} (partner payment pending)
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
