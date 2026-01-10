@@ -376,13 +376,42 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                       {formatCurrencyNoDecimals(payment.total_order_value)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${getSettlementStatusBadge(
-                          payment.settlement_status
-                        )}`}
-                      >
-                        {payment.settlement_status.replace(/_/g, ' ')}
-                      </span>
+                      <div className="relative inline-flex group/status">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${getSettlementStatusBadge(
+                            payment.settlement_status
+                          )} cursor-help`}
+                        >
+                          {payment.settlement_status.replace(/_/g, ' ')}
+                        </span>
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover/status:block z-20 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                          <div>
+                            {payment.settlement_status === 'OPEN' && (
+                              <div>
+                                <strong className="text-yellow-300">OPEN:</strong> Partner has not paid for this invoice yet. Payment is still pending.
+                              </div>
+                            )}
+                            {payment.settlement_status === 'PAID_NOT_CLEARED' && (
+                              <div>
+                                <strong className="text-yellow-300">PAID NOT CLEARED:</strong> Partner has paid but funds haven't cleared yet. Waiting for bank clearance.
+                              </div>
+                            )}
+                            {payment.settlement_status === 'WAITING_SUPPLIERS' && (
+                              <div>
+                                <strong className="text-yellow-300">WAITING SUPPLIERS:</strong> Partner payment is complete, but supplier invoices are still unpaid. Waiting for supplier payments to be marked as paid.
+                              </div>
+                            )}
+                            {payment.settlement_status === 'SETTLED' && (
+                              <div>
+                                <strong className="text-yellow-300">SETTLED:</strong> Invoice paid in full. All partner and supplier payments are complete and cleared.
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute bottom-0 left-4 transform translate-y-full">
+                            <div className="border-4 border-transparent border-t-gray-900"></div>
+                          </div>
+                        </div>
+                      </div>
                       {!payment.funds_cleared && (
                         <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800">
                           Funds Not Cleared
