@@ -1,9 +1,13 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { PaymentTrackerRow } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 import ActionButton from '@/components/ActionButton'
-import { Info } from 'lucide-react'
+import { Info, ChevronUp, ChevronDown } from 'lucide-react'
+
+type SortField = 'sales_invoice_no' | 'brand' | 'franchisee_name' | 'order_date' | 'total_order_value' | 'settlement_status'
+type SortDirection = 'asc' | 'desc'
 
 interface PaymentsTableProps {
   payments: PaymentTrackerRow[]
@@ -44,16 +48,77 @@ export default function PaymentsTable({
   onMarkPartnerPaid,
   onPaySupplier,
 }: PaymentsTableProps) {
+  const [sortField, setSortField] = useState<SortField>('order_date')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
   const headers = [
-    'Sales Invoice',
-    'Brand',
-    'Franchisee',
-    'Order Date',
-    'Order Value',
-    { label: 'Settlement Status', showInfo: true },
-    'Unpaid Suppliers',
-    'Actions',
+    { label: 'Sales Invoice', field: 'sales_invoice_no' as SortField },
+    { label: 'Brand', field: 'brand' as SortField },
+    { label: 'Franchisee', field: 'franchisee_name' as SortField },
+    { label: 'Order Date', field: 'order_date' as SortField },
+    { label: 'Order Value', field: 'total_order_value' as SortField },
+    { label: 'Settlement Status', showInfo: true, field: 'settlement_status' as SortField },
+    { label: 'Unpaid Suppliers' },
+    { label: 'Actions' },
   ]
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ChevronUp className="ml-1 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-50" />
+    }
+    return sortDirection === 'asc' ? (
+      <ChevronUp className="ml-1 h-4 w-4 text-gray-600" />
+    ) : (
+      <ChevronDown className="ml-1 h-4 w-4 text-gray-600" />
+    )
+  }
+
+  const sortedPayments = useMemo(() => {
+    const sorted = [...payments]
+
+    sorted.sort((a, b) => {
+      let aValue: any = a[sortField]
+      let bValue: any = b[sortField]
+
+      // Handle date sorting
+      if (sortField === 'order_date') {
+        try {
+          aValue = new Date(aValue).getTime()
+          bValue = new Date(bValue).getTime()
+        } catch {
+          aValue = 0
+          bValue = 0
+        }
+      }
+
+      // Handle number sorting
+      if (sortField === 'total_order_value') {
+        aValue = Number(aValue) || 0
+        bValue = Number(bValue) || 0
+      }
+
+      // Handle string sorting
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase()
+        bValue = bValue.toLowerCase()
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return sorted
+  }, [payments, sortField, sortDirection])
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -63,13 +128,18 @@ export default function PaymentsTable({
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 {headers.map((header, index) => {
-                  const headerLabel = typeof header === 'string' ? header : header.label
-                  const showInfo = typeof header === 'object' && header.showInfo
+                  const headerLabel = header.label
+                  const showInfo = header.showInfo
+                  const field = header.field
+                  const isSortable = !!field
                   
                   return (
                     <th
                       key={index}
-                      className="px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap"
+                      onClick={() => field && handleSort(field)}
+                      className={`px-2 xs:px-3 sm:px-6 py-2 xs:py-2.5 sm:py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap ${
+                        isSortable ? 'cursor-pointer hover:bg-gray-100 group' : ''
+                      }`}
                     >
                       <div className="flex items-center gap-1">
                         {headerLabel}
@@ -89,6 +159,7 @@ export default function PaymentsTable({
                             </div>
                           </div>
                         )}
+                        {field && <SortIcon field={field} />}
                       </div>
                     </th>
                   )
@@ -96,14 +167,14 @@ export default function PaymentsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {payments.length === 0 ? (
+              {sortedPayments.length === 0 ? (
                 <tr>
                   <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
                     No payments found
                   </td>
                 </tr>
               ) : (
-                payments.map((payment) => {
+                sortedPayments.map((payment) => {
                   const isSettled = payment.settlement_status === 'SETTLED'
                   const rowColor = getSettlementStatusColor(payment.settlement_status)
                   
