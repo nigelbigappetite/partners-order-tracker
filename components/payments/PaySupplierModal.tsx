@@ -34,6 +34,7 @@ export default function PaySupplierModal({
 
   const [allInvoices, setAllInvoices] = useState<SupplierInvoice[]>([])
   const [allPaid, setAllPaid] = useState(false)
+  const [allocatedTotal, setAllocatedTotal] = useState<number | null>(null)
 
   const fetchSupplierInvoices = async () => {
     setLoading(true)
@@ -79,6 +80,17 @@ export default function PaySupplierModal({
         console.log(`All ${data.length} supplier invoice(s) for ${salesInvoiceNo} are already marked as paid`)
       } else if (data.length === 0) {
         console.log(`No supplier invoices found linked to ${salesInvoiceNo}`)
+      }
+      
+      // Also fetch the allocated total to verify it's correct
+      try {
+        const allocatedResponse = await fetch(`/api/payments/verify-allocated-total?salesInvoiceNo=${encodeURIComponent(salesInvoiceNo)}`)
+        if (allocatedResponse.ok) {
+          const allocatedData = await allocatedResponse.json()
+          setAllocatedTotal(allocatedData.calculated_total || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching allocated total:', error)
       }
     } catch (error: any) {
       console.error('Error fetching supplier invoices:', error)
@@ -208,18 +220,35 @@ export default function PaySupplierModal({
               click the button below to refresh the payment status.
             </div>
             <div className="mt-6">
-              <div className="text-sm text-gray-500 mb-3">
-                The settlement status should automatically update to "SETTLED" when the Google Sheets formula recalculates.
-              </div>
-              <button
-                onClick={handleRefreshStatus}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600"
-              >
-                Refresh Dashboard
-              </button>
-              <div className="text-xs text-gray-400 text-center mt-2">
-                This will refresh the payments list to show the updated status
-              </div>
+            <div className="text-sm text-gray-500 mb-3 space-y-2">
+              <div>The settlement status should automatically update to "SETTLED" when the Google Sheets formula recalculates.</div>
+              {allocatedTotal !== null && allocatedTotal === 0 && (
+                <div className="text-amber-600 font-semibold mt-2">
+                  ⚠️ Issue Found: Supplier Allocated Total is 0 in Google Sheets
+                </div>
+              )}
+              {allocatedTotal !== null && allocatedTotal > 0 && (
+                <div className="text-gray-600 mt-2">
+                  Supplier Allocated Total should be: <strong>£{allocatedTotal.toFixed(2)}</strong>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleRefreshStatus}
+              className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600"
+            >
+              Refresh Dashboard
+            </button>
+            <div className="text-xs text-gray-400 text-center mt-2">
+              {allocatedTotal === 0 ? (
+                <div>
+                  Check the "Supplier Allocated Total" formula in Payments_Tracker_View column X. 
+                  It should sum amounts from Order_Supplier_Allocations for this invoice.
+                </div>
+              ) : (
+                'This will refresh the payments list to show the updated status'
+              )}
+            </div>
             </div>
           </div>
         </Modal>
