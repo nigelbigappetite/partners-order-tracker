@@ -515,45 +515,56 @@ function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string):
 async function getSheetData(sheetName: string) {
   const sheets = await getSheetsClient();
   
-  // Use a more flexible range - just the sheet name without column restrictions
-  // This will get all data in the sheet
-  const range = sheetName.includes('!') ? sheetName : `${sheetName}!A:ZZ`;
+  // Clean sheet name - remove any existing range notation
+  const cleanSheetName = sheetName.split('!')[0];
   
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: range,
-    });
+  // Try multiple approaches in order of preference
+  const attempts = [
+    { range: `${cleanSheetName}!A:ZZ`, description: 'A:ZZ range' },
+    { range: cleanSheetName, description: 'sheet name only' },
+    { range: `'${cleanSheetName}'`, description: 'quoted sheet name' },
+  ];
+  
+  let lastError: any = null;
+  
+  for (const attempt of attempts) {
+    try {
+      console.log(`[getSheetData] Attempting to read ${cleanSheetName} using ${attempt.description}: ${attempt.range}`);
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: attempt.range,
+      });
 
-    const rows = response.data.values || [];
-    if (rows.length === 0) return { headers: [], data: [] };
-
-    const headers = rows[0];
-    const data = rows.slice(1);
-    return { headers, data };
-  } catch (error: any) {
-    // If A:ZZ fails, try without column restriction (just sheet name)
-    if (error.message?.includes('parse range') || error.message?.includes('Unable to parse')) {
-      console.warn(`[getSheetData] Range ${range} failed, trying without column restriction for ${sheetName}`);
-      try {
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId: SPREADSHEET_ID,
-          range: sheetName, // Just the sheet name - gets all data
-        });
-
-        const rows = response.data.values || [];
-        if (rows.length === 0) return { headers: [], data: [] };
-
-        const headers = rows[0];
-        const data = rows.slice(1);
-        return { headers, data };
-      } catch (retryError: any) {
-        console.error(`[getSheetData] Error reading sheet ${sheetName}:`, retryError);
-        throw new Error(`Failed to read sheet "${sheetName}": ${retryError.message}`);
+      const rows = response.data.values || [];
+      if (rows.length === 0) {
+        console.log(`[getSheetData] Sheet ${cleanSheetName} is empty`);
+        return { headers: [], data: [] };
       }
+
+      const headers = rows[0];
+      const data = rows.slice(1);
+      console.log(`[getSheetData] Successfully read ${cleanSheetName}: ${data.length} rows using ${attempt.description}`);
+      return { headers, data };
+    } catch (error: any) {
+      lastError = error;
+      const errorMsg = error.message || String(error);
+      console.warn(`[getSheetData] Failed to read ${cleanSheetName} using ${attempt.description} (${attempt.range}):`, errorMsg);
+      
+      // If it's not a range parsing error, don't try other methods
+      if (!errorMsg.includes('parse range') && 
+          !errorMsg.includes('Unable to parse') &&
+          !errorMsg.includes('Invalid value') &&
+          !errorMsg.includes('INVALID_ARGUMENT')) {
+        console.error(`[getSheetData] Non-range error for ${cleanSheetName}, stopping attempts:`, errorMsg);
+        throw error;
+      }
+      // Continue to next attempt
     }
-    throw error;
   }
+  
+  // All attempts failed
+  console.error(`[getSheetData] All attempts failed for ${cleanSheetName}. Last error:`, lastError);
+  throw new Error(`Failed to read sheet "${cleanSheetName}": ${lastError?.message || 'Unknown error'}`);
 }
 
 // ORDERS_HEADER operations
