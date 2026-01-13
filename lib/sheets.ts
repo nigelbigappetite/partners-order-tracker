@@ -514,17 +514,46 @@ function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string):
 // Helper to get headers and data rows
 async function getSheetData(sheetName: string) {
   const sheets = await getSheetsClient();
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A:Z`,
-  });
+  
+  // Use a more flexible range - just the sheet name without column restrictions
+  // This will get all data in the sheet
+  const range = sheetName.includes('!') ? sheetName : `${sheetName}!A:ZZ`;
+  
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: range,
+    });
 
-  const rows = response.data.values || [];
-  if (rows.length === 0) return { headers: [], data: [] };
+    const rows = response.data.values || [];
+    if (rows.length === 0) return { headers: [], data: [] };
 
-  const headers = rows[0];
-  const data = rows.slice(1);
-  return { headers, data };
+    const headers = rows[0];
+    const data = rows.slice(1);
+    return { headers, data };
+  } catch (error: any) {
+    // If A:ZZ fails, try without column restriction (just sheet name)
+    if (error.message?.includes('parse range') || error.message?.includes('Unable to parse')) {
+      console.warn(`[getSheetData] Range ${range} failed, trying without column restriction for ${sheetName}`);
+      try {
+        const response = await sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: sheetName, // Just the sheet name - gets all data
+        });
+
+        const rows = response.data.values || [];
+        if (rows.length === 0) return { headers: [], data: [] };
+
+        const headers = rows[0];
+        const data = rows.slice(1);
+        return { headers, data };
+      } catch (retryError: any) {
+        console.error(`[getSheetData] Error reading sheet ${sheetName}:`, retryError);
+        throw new Error(`Failed to read sheet "${sheetName}": ${retryError.message}`);
+      }
+    }
+    throw error;
+  }
 }
 
 // ORDERS_HEADER operations
