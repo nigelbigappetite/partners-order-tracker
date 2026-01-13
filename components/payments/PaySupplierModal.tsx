@@ -57,9 +57,9 @@ export default function PaySupplierModal({
       const unpaidInvoices = data.filter((inv: SupplierInvoice) => !inv.paid)
       setInvoices(unpaidInvoices)
       
-      // Check if all invoices are paid
-      const allInvoicesPaid = data.length > 0 && unpaidInvoices.length === 0
-      setAllPaid(allInvoicesPaid)
+    // Check if all invoices are paid
+    const allInvoicesPaid = data.length > 0 && unpaidInvoices.length === 0
+    setAllPaid(allInvoicesPaid)
       
       // Initialize payment dates and refs
       const today = new Date().toISOString().split('T')[0]
@@ -208,12 +208,18 @@ export default function PaySupplierModal({
               click the button below to refresh the payment status.
             </div>
             <div className="mt-6">
+              <div className="text-sm text-gray-500 mb-3">
+                The settlement status should automatically update to "SETTLED" when the Google Sheets formula recalculates.
+              </div>
               <button
                 onClick={handleRefreshStatus}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600"
               >
-                Refresh Payment Status
+                Refresh Dashboard
               </button>
+              <div className="text-xs text-gray-400 text-center mt-2">
+                This will refresh the payments list to show the updated status
+              </div>
             </div>
           </div>
         </Modal>
