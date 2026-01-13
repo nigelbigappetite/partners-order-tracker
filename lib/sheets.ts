@@ -2063,6 +2063,9 @@ export async function calculateSettlementStatus(
     const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no);
     const allInvoices = await getSupplierInvoices();
     
+    // Debug logging
+    console.log(`[calculateSettlementStatus] ${salesInvoiceNo}: Found ${allocations.length} allocations, ${allInvoices.length} total supplier invoices`);
+    
     // Match supplier invoices by invoice number from allocations
     const normalizeInvoiceNo = (inv: string): string => {
       return String(inv).replace(/#/g, '').trim().toLowerCase();
@@ -2074,6 +2077,15 @@ export async function calculateSettlementStatus(
         normalizeInvoiceNo(allocNo) === invNo
       );
     });
+    
+    // If allocations exist but no matching invoices found, log warning but treat as SETTLED
+    // This handles cases where supplier invoices haven't been created yet or invoice numbers don't match
+    if (linkedInvoices.length === 0 && allocations.length > 0) {
+      console.warn(`[calculateSettlementStatus] Allocations found for ${salesInvoiceNo} but no matching supplier invoices found. Allocations:`, supplierInvoiceNos);
+      // If partner paid and cleared, and no invoices exist to pay, consider it SETTLED
+      // (supplier invoices may not have been created yet, or they're handled separately)
+      return 'SETTLED';
+    }
     
     // Check if all supplier invoices are paid
     const allPaid = linkedInvoices.length > 0 && linkedInvoices.every((inv) => inv.paid);
