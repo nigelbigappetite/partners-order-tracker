@@ -253,7 +253,7 @@ export default function PaymentsTable({
                                 Mark Franchise Paid
                               </button>
                             )}
-                            {payment.supplier_payment_ready && (
+                            {(payment.supplier_payment_ready || payment.settlement_status === 'WAITING_SUPPLIERS') && (
                               <button
                                 onClick={() => onPaySupplier(payment.sales_invoice_no)}
                                 className="px-2 xs:px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"

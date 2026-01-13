@@ -1506,57 +1506,118 @@ export async function createOrder(orderData: {
     // Get brand store URL for required Order Store URL column
     const orderStoreUrl = getBrandStoreUrl(orderData.brand);
 
-    // Build order lines rows - IMPORTANT: Write to specific column positions
-    // regardless of header order to ensure data goes to correct columns:
-    // A (index 0): Order ID
-    // B (index 1): Empty (Brand - formula will populate)
-    // C (index 2): Order Store URL
-    // D (index 3): Order Date
-    // E (index 4): Franchisee Code
-    // F (index 5): Empty (Franchisee Name - formula will populate)
-    // G (index 6): Empty (City - formula will populate)
-    // H (index 7): Empty (Product Name - formula will populate)
-    // I (index 8): SKU
-    // J (index 9): Quantity
-    // K (index 10): Empty (Unit Price - formula will populate)
-    // L (index 11): Empty (Line Total - formula will populate)
-    // M (index 12): Empty (Supplier - formula will populate)
-    // N (index 13): Invoice No
-    // O (index 14): Empty (reserved column)
-    // P+ (index 15+): Empty (COGS, Gross Profit, Margin - formulas will populate)
-    const lineRows = orderData.orderLines.map((line, lineIndex) => {
-      // Build a dense array starting at index 0 with exactly the values we need
-      // Only include columns up to N (index 13) to ensure we start at column A
-      const row: (string | number)[] = [
-        orderData.orderId,        // Column A (index 0): Order ID
-        '',                       // Column B (index 1): Empty (Brand - formula)
-        orderStoreUrl,            // Column C (index 2): Order Store URL
-        orderData.orderDate,      // Column D (index 3): Order Date
-        orderData.franchiseeCode || '', // Column E (index 4): Franchisee Code
-        '',                       // Column F (index 5): Empty (Franchisee Name - formula)
-        '',                       // Column G (index 6): Empty (City - formula)
-        '',                       // Column H (index 7): Empty (Product Name - formula)
-        line.sku,                 // Column I (index 8): SKU
-        line.quantity,            // Column J (index 9): Quantity
-        '',                       // Column K (index 10): Empty (Unit Price - formula)
-        '',                       // Column L (index 11): Empty (Line Total - formula)
-        '',                       // Column M (index 12): Empty (Supplier - formula)
-        orderData.invoiceNo || '', // Column N (index 13): Invoice No
-      ];
-      
-      return row;
-    });
-
-    // OPTIMIZED: Append order lines with RAW valueInputOption for faster writes
-    // RAW is faster than USER_ENTERED as it doesn't require Google Sheets to parse values
-    // Formulas in the sheet will still work correctly
-    await sheets.spreadsheets.values.append({
+    // CRITICAL FIX: Only write to columns that don't have formulas to avoid overwriting them
+    // Columns with formulas (B, F, G, H, K, L, M) will be left untouched so formulas can populate them
+    // We'll insert rows first, then write only to specific columns: A, C, D, E, I, J, N
+    
+    // First, get the sheet ID for Order_Lines
+    const spreadsheet = await sheets.spreadsheets.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Order_Lines!A:N', // Explicitly specify columns A through N
-      valueInputOption: 'RAW', // Changed from USER_ENTERED for faster writes
-      insertDataOption: 'INSERT_ROWS', // Insert new rows instead of overwriting
+    });
+    const orderLinesSheet = spreadsheet.data.sheets?.find(
+      (sheet) => sheet.properties?.title === 'Order_Lines'
+    );
+    if (!orderLinesSheet?.properties?.sheetId) {
+      throw new Error('Order_Lines sheet not found');
+    }
+    const sheetId = orderLinesSheet.properties.sheetId;
+    
+    // Get the current last row to know where to insert
+    // values.length includes the header row, so if length=101, we have header (row 1) + 100 data rows
+    const currentData = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Order_Lines!A:A', // Just get column A to find the last row
+    });
+    
+    const numExistingRows = currentData.data.values ? currentData.data.values.length : 1;
+    // numExistingRows includes header, so last data row is at index (numExistingRows - 1) in 0-indexed
+    // We want to insert after the last data row, so startIndex = numExistingRows (0-indexed)
+    const numRowsToInsert = orderData.orderLines.length;
+    const insertStartRow1Indexed = numExistingRows + 1; // 1-indexed for range notation (A2, A3, etc.)
+    
+    // Step 1: Insert the required number of rows
+    // insertDimension uses 0-indexed: 0 = header row, 1 = first data row, etc.
+    // We want to insert after the last existing row, so startIndex = numExistingRows
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
       requestBody: {
-        values: lineRows,
+        requests: [
+          {
+            insertDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: numExistingRows, // 0-indexed: insert after last existing row
+                endIndex: numExistingRows + numRowsToInsert,
+              },
+            },
+          },
+        ],
+      },
+    });
+    
+    // Step 2: Write data only to columns without formulas (A, C, D, E, I, J, N)
+    // Columns B, F, G, H, K, L, M will have their formulas preserved from the row above
+    const dataUpdates: any[] = [];
+    
+    // Prepare data arrays for each column
+    const orderIds: string[] = [];
+    const storeUrls: string[] = [];
+    const orderDates: string[] = [];
+    const franchiseeCodes: string[] = [];
+    const skus: string[] = [];
+    const quantities: number[] = [];
+    const invoiceNos: string[] = [];
+    
+    orderData.orderLines.forEach((line) => {
+      orderIds.push(orderData.orderId);
+      storeUrls.push(orderStoreUrl);
+      orderDates.push(orderData.orderDate);
+      franchiseeCodes.push(orderData.franchiseeCode || '');
+      skus.push(line.sku);
+      quantities.push(line.quantity);
+      invoiceNos.push(orderData.invoiceNo || '');
+    });
+    
+    // Add updates for each column (only columns without formulas)
+    if (orderIds.length > 0) {
+      dataUpdates.push({
+        range: `Order_Lines!A${insertStartRow1Indexed}:A${insertStartRow1Indexed + orderIds.length - 1}`,
+        values: orderIds.map(id => [id]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!C${insertStartRow1Indexed}:C${insertStartRow1Indexed + storeUrls.length - 1}`,
+        values: storeUrls.map(url => [url]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!D${insertStartRow1Indexed}:D${insertStartRow1Indexed + orderDates.length - 1}`,
+        values: orderDates.map(date => [date]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!E${insertStartRow1Indexed}:E${insertStartRow1Indexed + franchiseeCodes.length - 1}`,
+        values: franchiseeCodes.map(code => [code]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!I${insertStartRow1Indexed}:I${insertStartRow1Indexed + skus.length - 1}`,
+        values: skus.map(sku => [sku]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!J${insertStartRow1Indexed}:J${insertStartRow1Indexed + quantities.length - 1}`,
+        values: quantities.map(qty => [qty]),
+      });
+      dataUpdates.push({
+        range: `Order_Lines!N${insertStartRow1Indexed}:N${insertStartRow1Indexed + invoiceNos.length - 1}`,
+        values: invoiceNos.map(inv => [inv]),
+      });
+    }
+    
+    // Execute batch update - this will only write to the specified columns
+    // Columns B, F, G, H, K, L, M (formula columns) will have their formulas preserved
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: dataUpdates,
       },
     });
   } catch (error: any) {
