@@ -1515,7 +1515,7 @@ export async function createOrder(orderData: {
       spreadsheetId: SPREADSHEET_ID,
     });
     const orderLinesSheet = spreadsheet.data.sheets?.find(
-      (sheet) => sheet.properties?.title === 'Order_Lines'
+      (sheet: any) => sheet.properties?.title === 'Order_Lines'
     );
     if (!orderLinesSheet?.properties?.sheetId) {
       throw new Error('Order_Lines sheet not found');
