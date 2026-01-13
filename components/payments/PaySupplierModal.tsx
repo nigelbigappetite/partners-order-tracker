@@ -32,6 +32,9 @@ export default function PaySupplierModal({
     }
   }, [isOpen, salesInvoiceNo])
 
+  const [allInvoices, setAllInvoices] = useState<SupplierInvoice[]>([])
+  const [allPaid, setAllPaid] = useState(false)
+
   const fetchSupplierInvoices = async () => {
     setLoading(true)
     try {
@@ -48,9 +51,15 @@ export default function PaySupplierModal({
         throw new Error('Invalid response format from server')
       }
       
+      setAllInvoices(data)
+      
       // Filter to only unpaid invoices
       const unpaidInvoices = data.filter((inv: SupplierInvoice) => !inv.paid)
       setInvoices(unpaidInvoices)
+      
+      // Check if all invoices are paid
+      const allInvoicesPaid = data.length > 0 && unpaidInvoices.length === 0
+      setAllPaid(allInvoicesPaid)
       
       // Initialize payment dates and refs
       const today = new Date().toISOString().split('T')[0]
@@ -75,9 +84,18 @@ export default function PaySupplierModal({
       console.error('Error fetching supplier invoices:', error)
       toast.error(error.message || 'Failed to fetch supplier invoices')
       setInvoices([]) // Set empty array on error so UI shows appropriate message
+      setAllInvoices([])
+      setAllPaid(false)
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleRefreshStatus = () => {
+    // Refresh the payments data to update settlement status
+    onSuccess()
+    onClose()
+    toast.success('Refreshing payment status...')
   }
 
   const handleToggleInvoice = (invoiceId: string) => {
@@ -174,6 +192,35 @@ export default function PaySupplierModal({
   }
 
   if (invoices.length === 0) {
+    // If all invoices are paid, show a success message with refresh button
+    if (allPaid && allInvoices.length > 0) {
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="All Supplier Invoices Paid">
+          <div className="text-center py-8 space-y-4">
+            <div className="text-green-600 font-semibold">
+              ✓ All supplier invoices are already marked as paid
+            </div>
+            <div className="text-sm text-gray-600">
+              Found <strong>{allInvoices.length}</strong> supplier invoice(s) for sales invoice: <strong>{salesInvoiceNo}</strong>
+            </div>
+            <div className="text-sm text-gray-500 mt-4">
+              The settlement status should update automatically. If it still shows "WAITING_SUPPLIERS", 
+              click the button below to refresh the payment status.
+            </div>
+            <div className="mt-6">
+              <button
+                onClick={handleRefreshStatus}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                Refresh Payment Status
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )
+    }
+    
+    // Otherwise show the standard "no invoices" message
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
         <div className="text-center py-8 space-y-4">
