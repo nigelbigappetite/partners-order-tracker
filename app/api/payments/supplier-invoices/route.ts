@@ -16,15 +16,46 @@ export async function GET(request: Request) {
     console.log('[GET /api/payments/supplier-invoices] Fetching supplier invoices for:', salesInvoiceNo)
     
     // Get allocations to find linked supplier invoices
-    const allocations = await getOrderSupplierAllocations(salesInvoiceNo)
-    console.log('[GET /api/payments/supplier-invoices] Found allocations:', allocations.length)
+    let allocations: any[] = []
+    try {
+      allocations = await getOrderSupplierAllocations(salesInvoiceNo)
+      console.log('[GET /api/payments/supplier-invoices] Found allocations:', allocations.length)
+    } catch (error: any) {
+      console.error('[GET /api/payments/supplier-invoices] Error fetching allocations:', error)
+      // If allocations fail, we can still try to get invoices by sales invoice number directly
+      // Return empty array to indicate no allocations found
+      allocations = []
+      console.warn('[GET /api/payments/supplier-invoices] Continuing without allocations, will try direct lookup')
+    }
     
     const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no)
     console.log('[GET /api/payments/supplier-invoices] Supplier invoice numbers from allocations:', supplierInvoiceNos)
     
-    // Get all supplier invoices and filter by the ones linked to this sales invoice
-    const allInvoices = await getSupplierInvoices()
-    console.log('[GET /api/payments/supplier-invoices] Total supplier invoices:', allInvoices.length)
+    // Get all supplier invoices
+    let allInvoices: any[] = []
+    try {
+      allInvoices = await getSupplierInvoices()
+      console.log('[GET /api/payments/supplier-invoices] Total supplier invoices:', allInvoices.length)
+    } catch (error: any) {
+      console.error('[GET /api/payments/supplier-invoices] Error fetching supplier invoices:', error)
+      // If we can't get invoices, return empty array
+      return NextResponse.json([])
+    }
+    
+    // If no allocations found, try to find invoices by sales invoice number directly
+    if (allocations.length === 0) {
+      console.log('[GET /api/payments/supplier-invoices] No allocations found, trying direct lookup by sales invoice number')
+      const normalizeInvoiceNo = (inv: string): string => {
+        return String(inv).replace(/#/g, '').trim().toLowerCase()
+      }
+      const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo)
+      const directMatchInvoices = allInvoices.filter((inv) => {
+        const invSalesInvoiceNo = normalizeInvoiceNo(inv.sales_invoice_no || inv['Sales Invoice No'] || '')
+        return invSalesInvoiceNo === searchInvoiceNo
+      })
+      console.log('[GET /api/payments/supplier-invoices] Found', directMatchInvoices.length, 'invoices by direct sales invoice match')
+      return NextResponse.json(directMatchInvoices)
+    }
     
     // Match supplier invoices by invoice number from allocations
     const linkedInvoices = allInvoices.filter((inv) => {
