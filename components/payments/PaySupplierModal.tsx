@@ -37,9 +37,16 @@ export default function PaySupplierModal({
     try {
       const response = await fetch(`/api/payments/supplier-invoices?salesInvoiceNo=${encodeURIComponent(salesInvoiceNo)}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch supplier invoices')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to fetch supplier invoices (${response.status})`)
       }
       const data = await response.json()
+      
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', data)
+        throw new Error('Invalid response format from server')
+      }
       
       // Filter to only unpaid invoices
       const unpaidInvoices = data.filter((inv: SupplierInvoice) => !inv.paid)
@@ -57,9 +64,17 @@ export default function PaySupplierModal({
       })
       setPaymentDates(dates)
       setPaymentRefs(refs)
+      
+      // Log for debugging
+      if (unpaidInvoices.length === 0 && data.length > 0) {
+        console.log(`All ${data.length} supplier invoice(s) for ${salesInvoiceNo} are already marked as paid`)
+      } else if (data.length === 0) {
+        console.log(`No supplier invoices found linked to ${salesInvoiceNo}`)
+      }
     } catch (error: any) {
       console.error('Error fetching supplier invoices:', error)
       toast.error(error.message || 'Failed to fetch supplier invoices')
+      setInvoices([]) // Set empty array on error so UI shows appropriate message
     } finally {
       setLoading(false)
     }
@@ -161,8 +176,21 @@ export default function PaySupplierModal({
   if (invoices.length === 0) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
-        <div className="text-center py-8">
-          <div className="text-gray-500">No unpaid supplier invoices found for this sales invoice.</div>
+        <div className="text-center py-8 space-y-4">
+          <div className="text-gray-500">
+            No unpaid supplier invoices found for sales invoice: <strong>{salesInvoiceNo}</strong>
+          </div>
+          <div className="text-sm text-gray-400">
+            This could mean:
+            <ul className="list-disc list-inside mt-2 space-y-1 text-left max-w-md mx-auto">
+              <li>All supplier invoices are already marked as paid</li>
+              <li>No supplier invoices are linked to this order in Order_Supplier_Allocations</li>
+              <li>The supplier invoices exist but aren't in the Supplier_Invoices table</li>
+            </ul>
+          </div>
+          <div className="text-xs text-gray-400 mt-4">
+            If the order still shows "WAITING_SUPPLIERS", check the Order_Supplier_Allocations and Supplier_Invoices sheets in Google Sheets.
+          </div>
         </div>
       </Modal>
     )
