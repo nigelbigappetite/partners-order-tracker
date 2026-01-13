@@ -4,12 +4,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard, Receipt } from 'lucide-react'
 
 const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders', label: 'Orders', icon: FileText },
   { href: '/create-order', label: 'Create Order', icon: ShoppingCart },
+  { href: '/create-supplier-invoice', label: 'Create Supplier Invoice', icon: Receipt },
   { href: '/products', label: 'Products', icon: Package },
   { href: '/brands', label: 'Brands', icon: Tag },
   { href: '/suppliers', label: 'Suppliers', icon: Store },

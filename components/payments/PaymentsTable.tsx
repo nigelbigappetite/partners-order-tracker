@@ -13,6 +13,7 @@ interface PaymentsTableProps {
   payments: PaymentTrackerRow[]
   onMarkPartnerPaid: (salesInvoiceNo: string) => void
   onPaySupplier: (salesInvoiceNo: string) => void
+  onCreateSupplierInvoice?: (salesInvoiceNo: string) => void
 }
 
 const getSettlementStatusColor = (status: string): string => {
@@ -47,6 +48,7 @@ export default function PaymentsTable({
   payments,
   onMarkPartnerPaid,
   onPaySupplier,
+  onCreateSupplierInvoice,
 }: PaymentsTableProps) {
   const [sortField, setSortField] = useState<SortField>('order_date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -251,6 +253,15 @@ export default function PaymentsTable({
                                 className="px-2 xs:px-3 py-1 text-xs font-medium text-white bg-gray-900 rounded hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900"
                               >
                                 Mark Franchise Paid
+                              </button>
+                            )}
+                            {payment.settlement_status === 'WAITING_SUPPLIERS' && onCreateSupplierInvoice && (
+                              <button
+                                onClick={() => onCreateSupplierInvoice(payment.sales_invoice_no)}
+                                className="px-2 xs:px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600"
+                                title="Create supplier invoices for this order"
+                              >
+                                Create Invoice
                               </button>
                             )}
                             {(payment.supplier_payment_ready || payment.settlement_status === 'WAITING_SUPPLIERS') && (

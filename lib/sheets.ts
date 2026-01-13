@@ -2031,6 +2031,261 @@ export async function updateSupplierInvoice(
   }
 }
 
+// Create supplier invoice
+export async function createSupplierInvoice(invoiceData: {
+  invoice_no: string;
+  sales_invoice_no?: string;
+  supplier: string;
+  amount: number;
+  paid?: boolean;
+  paid_date?: string;
+  payment_reference?: string;
+}): Promise<void> {
+  try {
+    const sheets = await getSheetsClient();
+    
+    // Get sheet ID for Supplier_Invoices
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID,
+    });
+    const supplierInvoicesSheet = spreadsheet.data.sheets?.find(
+      (sheet: any) => sheet.properties?.title === 'Supplier_Invoices'
+    );
+    if (!supplierInvoicesSheet?.properties?.sheetId) {
+      throw new Error('Supplier_Invoices sheet not found');
+    }
+    const sheetId = supplierInvoicesSheet.properties.sheetId;
+    
+    // Get current last row
+    const currentData = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Supplier_Invoices!A:A',
+    });
+    
+    const numExistingRows = currentData.data.values ? currentData.data.values.length : 1;
+    const insertStartRow1Indexed = numExistingRows + 1;
+    
+    // Step 1: Insert row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            insertDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: numExistingRows,
+                endIndex: numExistingRows + 1,
+              },
+            },
+          },
+        ],
+      },
+    });
+    
+    // Step 2: Write data to specific columns
+    // Column A: Invoice No
+    // Column B: Sales Invoice No
+    // Column C: Supplier
+    // Column D: Amount
+    // Column G: Paid? (if provided)
+    // Column H: Paid Date (if provided)
+    // Column I: Payment Reference (if provided)
+    const dataUpdates: any[] = [];
+    
+    dataUpdates.push({
+      range: `Supplier_Invoices!A${insertStartRow1Indexed}:A${insertStartRow1Indexed}`,
+      values: [[invoiceData.invoice_no]],
+    });
+    dataUpdates.push({
+      range: `Supplier_Invoices!B${insertStartRow1Indexed}:B${insertStartRow1Indexed}`,
+      values: [[invoiceData.sales_invoice_no || '']],
+    });
+    dataUpdates.push({
+      range: `Supplier_Invoices!C${insertStartRow1Indexed}:C${insertStartRow1Indexed}`,
+      values: [[invoiceData.supplier]],
+    });
+    dataUpdates.push({
+      range: `Supplier_Invoices!D${insertStartRow1Indexed}:D${insertStartRow1Indexed}`,
+      values: [[invoiceData.amount]],
+    });
+    
+    if (invoiceData.paid !== undefined) {
+      dataUpdates.push({
+        range: `Supplier_Invoices!G${insertStartRow1Indexed}:G${insertStartRow1Indexed}`,
+        values: [[invoiceData.paid ? 'YES' : 'NO']],
+      });
+    }
+    
+    if (invoiceData.paid_date) {
+      dataUpdates.push({
+        range: `Supplier_Invoices!H${insertStartRow1Indexed}:H${insertStartRow1Indexed}`,
+        values: [[invoiceData.paid_date]],
+      });
+    }
+    
+    if (invoiceData.payment_reference) {
+      dataUpdates.push({
+        range: `Supplier_Invoices!I${insertStartRow1Indexed}:I${insertStartRow1Indexed}`,
+        values: [[invoiceData.payment_reference]],
+      });
+    }
+    
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: dataUpdates,
+      },
+    });
+    
+    console.log('[createSupplierInvoice] Supplier invoice created successfully:', invoiceData.invoice_no);
+  } catch (error: any) {
+    console.error('[createSupplierInvoice] Error creating supplier invoice:', error);
+    throw error;
+  }
+}
+
+// Create supplier invoice allocation
+export async function createSupplierInvoiceAllocation(allocationData: {
+  sales_invoice_no: string;
+  supplier_invoice_no: string;
+  allocated_amount: number;
+}): Promise<void> {
+  try {
+    const sheets = await getSheetsClient();
+    
+    // Get sheet ID for Order_Supplier_Allocations
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID,
+    });
+    const allocationsSheet = spreadsheet.data.sheets?.find(
+      (sheet: any) => sheet.properties?.title === 'Order_Supplier_Allocations'
+    );
+    if (!allocationsSheet?.properties?.sheetId) {
+      throw new Error('Order_Supplier_Allocations sheet not found');
+    }
+    const sheetId = allocationsSheet.properties.sheetId;
+    
+    // Get current last row
+    const currentData = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Order_Supplier_Allocations!A:A',
+    });
+    
+    const numExistingRows = currentData.data.values ? currentData.data.values.length : 1;
+    const insertStartRow1Indexed = numExistingRows + 1;
+    
+    // Step 1: Insert row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            insertDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: numExistingRows,
+                endIndex: numExistingRows + 1,
+              },
+            },
+          },
+        ],
+      },
+    });
+    
+    // Step 2: Write data
+    // Column A: Sales Invoice No
+    // Column B: Supplier Invoice No
+    // Column C: Allocated Amount
+    const dataUpdates: any[] = [];
+    
+    dataUpdates.push({
+      range: `Order_Supplier_Allocations!A${insertStartRow1Indexed}:A${insertStartRow1Indexed}`,
+      values: [[allocationData.sales_invoice_no]],
+    });
+    dataUpdates.push({
+      range: `Order_Supplier_Allocations!B${insertStartRow1Indexed}:B${insertStartRow1Indexed}`,
+      values: [[allocationData.supplier_invoice_no]],
+    });
+    dataUpdates.push({
+      range: `Order_Supplier_Allocations!C${insertStartRow1Indexed}:C${insertStartRow1Indexed}`,
+      values: [[allocationData.allocated_amount]],
+    });
+    
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: dataUpdates,
+      },
+    });
+    
+    console.log('[createSupplierInvoiceAllocation] Allocation created successfully:', {
+      sales_invoice_no: allocationData.sales_invoice_no,
+      supplier_invoice_no: allocationData.supplier_invoice_no,
+    });
+  } catch (error: any) {
+    console.error('[createSupplierInvoiceAllocation] Error creating allocation:', error);
+    throw error;
+  }
+}
+
+// Create multiple supplier invoices with allocations (batch)
+export async function createSupplierInvoices(invoicesData: {
+  sales_invoice_no?: string;
+  invoices: Array<{
+    supplier_invoice_no: string;
+    supplier: string;
+    amount: number;
+    allocated_amount?: number;
+    paid?: boolean;
+    paid_date?: string;
+    payment_reference?: string;
+  }>;
+}): Promise<void> {
+  try {
+    // Create all invoices and allocations
+    const promises: Promise<void>[] = [];
+    
+    for (const invoice of invoicesData.invoices) {
+      // Create supplier invoice
+      promises.push(
+        createSupplierInvoice({
+          invoice_no: invoice.supplier_invoice_no,
+          sales_invoice_no: invoicesData.sales_invoice_no || '',
+          supplier: invoice.supplier,
+          amount: invoice.amount,
+          paid: invoice.paid,
+          paid_date: invoice.paid_date,
+          payment_reference: invoice.payment_reference,
+        })
+      );
+      
+      // Create allocation only if sales_invoice_no is provided
+      if (invoicesData.sales_invoice_no && invoice.allocated_amount) {
+        promises.push(
+          createSupplierInvoiceAllocation({
+            sales_invoice_no: invoicesData.sales_invoice_no,
+            supplier_invoice_no: invoice.supplier_invoice_no,
+            allocated_amount: invoice.allocated_amount,
+          })
+        );
+      }
+    }
+    
+    await Promise.all(promises);
+    
+    const allocationCount = invoicesData.sales_invoice_no ? invoicesData.invoices.length : 0;
+    console.log(`[createSupplierInvoices] Successfully created ${invoicesData.invoices.length} supplier invoice(s)${allocationCount > 0 ? ` with ${allocationCount} allocation(s)` : ''}`);
+  } catch (error: any) {
+    console.error('[createSupplierInvoices] Error creating supplier invoices:', error);
+    throw error;
+  }
+}
+
 // Get order supplier allocations
 export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promise<OrderSupplierAllocation[]> {
   try {

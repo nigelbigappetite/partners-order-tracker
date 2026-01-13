@@ -6,6 +6,7 @@ import LivePaymentsTracker from '@/components/payments/LivePaymentsTracker'
 import PaymentsTable from '@/components/payments/PaymentsTable'
 import MarkPartnerPaidModal from '@/components/payments/MarkPartnerPaidModal'
 import PaySupplierModal from '@/components/payments/PaySupplierModal'
+import CreateSupplierInvoiceModal from '@/components/payments/CreateSupplierInvoiceModal'
 import { PaymentTrackerRow } from '@/lib/types'
 import toast from 'react-hot-toast'
 
@@ -14,6 +15,7 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedInvoiceForPartner, setSelectedInvoiceForPartner] = useState<string | null>(null)
   const [selectedInvoiceForSupplier, setSelectedInvoiceForSupplier] = useState<string | null>(null)
+  const [selectedInvoiceForCreation, setSelectedInvoiceForCreation] = useState<string | null>(null)
   
   // Filters
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>('all')
@@ -77,6 +79,10 @@ export default function AdminPaymentsPage() {
 
   const handlePaySupplier = (salesInvoiceNo: string) => {
     setSelectedInvoiceForSupplier(salesInvoiceNo)
+  }
+
+  const handleCreateSupplierInvoice = (salesInvoiceNo: string) => {
+    setSelectedInvoiceForCreation(salesInvoiceNo)
   }
 
   const handlePaymentSuccess = () => {
@@ -230,6 +236,15 @@ export default function AdminPaymentsPage() {
             isOpen={!!selectedInvoiceForSupplier}
             onClose={() => setSelectedInvoiceForSupplier(null)}
             salesInvoiceNo={selectedInvoiceForSupplier}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
+
+        {selectedInvoiceForCreation && (
+          <CreateSupplierInvoiceModal
+            isOpen={!!selectedInvoiceForCreation}
+            onClose={() => setSelectedInvoiceForCreation(null)}
+            salesInvoiceNo={selectedInvoiceForCreation}
             onSuccess={handlePaymentSuccess}
           />
         )}
