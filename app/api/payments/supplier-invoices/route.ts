@@ -20,6 +20,13 @@ export async function GET(request: Request) {
     try {
       allocations = await getOrderSupplierAllocations(salesInvoiceNo)
       console.log('[GET /api/payments/supplier-invoices] Found allocations:', allocations.length)
+      if (allocations.length > 0) {
+        console.log('[GET /api/payments/supplier-invoices] Allocation details:', allocations.map(a => ({
+          sales_invoice_no: a.sales_invoice_no,
+          supplier_invoice_no: a.supplier_invoice_no,
+          allocated_amount: a.allocated_amount
+        })))
+      }
     } catch (error: any) {
       console.error('[GET /api/payments/supplier-invoices] Error fetching allocations:', error)
       // If allocations fail, we can still try to get invoices by sales invoice number directly
@@ -28,7 +35,7 @@ export async function GET(request: Request) {
       console.warn('[GET /api/payments/supplier-invoices] Continuing without allocations, will try direct lookup')
     }
     
-    const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no)
+    const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no).filter(Boolean)
     console.log('[GET /api/payments/supplier-invoices] Supplier invoice numbers from allocations:', supplierInvoiceNos)
     
     // Get all supplier invoices
@@ -43,15 +50,33 @@ export async function GET(request: Request) {
     }
     
     // If no allocations found, try to find invoices by sales invoice number directly
-    if (allocations.length === 0) {
+    if (allocations.length === 0 || supplierInvoiceNos.length === 0) {
       console.log('[GET /api/payments/supplier-invoices] No allocations found, trying direct lookup by sales invoice number')
       const normalizeInvoiceNo = (inv: string): string => {
         return String(inv).replace(/#/g, '').trim().toLowerCase()
       }
       const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo)
+      console.log('[GET /api/payments/supplier-invoices] Searching for sales invoice:', searchInvoiceNo)
+      
+      // Check what sales invoice numbers exist in supplier invoices
+      const sampleSalesInvoiceNos = allInvoices.slice(0, 10).map(inv => ({
+        invoice_no: inv.invoice_no,
+        sales_invoice_no: inv.sales_invoice_no || inv['Sales Invoice No'],
+        normalized: normalizeInvoiceNo(inv.sales_invoice_no || inv['Sales Invoice No'] || '')
+      }))
+      console.log('[GET /api/payments/supplier-invoices] Sample supplier invoice sales invoice numbers:', sampleSalesInvoiceNos)
+      
       const directMatchInvoices = allInvoices.filter((inv) => {
         const invSalesInvoiceNo = normalizeInvoiceNo(inv.sales_invoice_no || inv['Sales Invoice No'] || '')
-        return invSalesInvoiceNo === searchInvoiceNo
+        const matches = invSalesInvoiceNo === searchInvoiceNo
+        if (matches) {
+          console.log('[GET /api/payments/supplier-invoices] Direct match found:', {
+            invoice_no: inv.invoice_no,
+            sales_invoice_no: inv.sales_invoice_no,
+            has_file_link: !!inv.invoice_file_link
+          })
+        }
+        return matches
       })
       console.log('[GET /api/payments/supplier-invoices] Found', directMatchInvoices.length, 'invoices by direct sales invoice match')
       return NextResponse.json(directMatchInvoices)
