@@ -562,9 +562,11 @@ async function getSheetData(sheetName: string) {
     }
   }
   
-  // All attempts failed
-  console.error(`[getSheetData] All attempts failed for ${cleanSheetName}. Last error:`, lastError);
-  throw new Error(`Failed to read sheet "${cleanSheetName}": ${lastError?.message || 'Unknown error'}`);
+  // All attempts failed - return empty data instead of throwing
+  // This prevents the entire payments table from crashing
+  console.error(`[getSheetData] All attempts failed for ${cleanSheetName}. Last error:`, lastError?.message || 'Unknown error');
+  console.warn(`[getSheetData] Returning empty data for ${cleanSheetName} to prevent crash`);
+  return { headers: [], data: [] };
 }
 
 // ORDERS_HEADER operations
