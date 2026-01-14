@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { PaymentTrackerRow } from '@/lib/types'
+import { PaymentTrackerRow, SupplierInvoice } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 import ActionButton from '@/components/ActionButton'
 import { Info, ChevronUp, ChevronDown } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 type SortField = 'sales_invoice_no' | 'brand' | 'franchisee_name' | 'order_date' | 'total_order_value' | 'settlement_status'
 type SortDirection = 'asc' | 'desc'
@@ -52,6 +53,47 @@ export default function PaymentsTable({
 }: PaymentsTableProps) {
   const [sortField, setSortField] = useState<SortField>('order_date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [loadingInvoices, setLoadingInvoices] = useState<string | null>(null)
+
+  const handleViewInvoices = async (salesInvoiceNo: string) => {
+    setLoadingInvoices(salesInvoiceNo)
+    try {
+      const response = await fetch(`/api/payments/supplier-invoices?salesInvoiceNo=${encodeURIComponent(salesInvoiceNo)}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch supplier invoices')
+      }
+      const invoices: SupplierInvoice[] = await response.json()
+      
+      // Filter to only invoices with file links
+      const invoicesWithFiles = invoices.filter(
+        (inv) => inv.invoice_file_link && inv.invoice_file_link.trim()
+      )
+      
+      if (invoicesWithFiles.length === 0) {
+        toast.error('No invoice files found for this order')
+        return
+      }
+      
+      // If only one invoice, open it directly
+      if (invoicesWithFiles.length === 1) {
+        window.open(invoicesWithFiles[0].invoice_file_link, '_blank', 'noopener,noreferrer')
+        toast.success('Opening invoice file...')
+      } else {
+        // If multiple invoices, open all of them
+        invoicesWithFiles.forEach((inv) => {
+          if (inv.invoice_file_link) {
+            window.open(inv.invoice_file_link, '_blank', 'noopener,noreferrer')
+          }
+        })
+        toast.success(`Opening ${invoicesWithFiles.length} invoice file(s)...`)
+      }
+    } catch (error: any) {
+      console.error('Error fetching supplier invoices:', error)
+      toast.error(error.message || 'Failed to fetch invoice files')
+    } finally {
+      setLoadingInvoices(null)
+    }
+  }
 
   const headers = [
     { label: 'Sales Invoice', field: 'sales_invoice_no' as SortField },
@@ -186,7 +228,14 @@ export default function PaymentsTable({
                       className={`${rowColor} hover:bg-opacity-80 transition-colors`}
                     >
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {payment.sales_invoice_no}
+                        <button
+                          onClick={() => handleViewInvoices(payment.sales_invoice_no)}
+                          disabled={loadingInvoices === payment.sales_invoice_no}
+                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                          title="Click to view supplier invoice files"
+                        >
+                          {loadingInvoices === payment.sales_invoice_no ? 'Loading...' : payment.sales_invoice_no}
+                        </button>
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-700">
                         {payment.brand}
