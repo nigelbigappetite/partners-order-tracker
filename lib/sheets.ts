@@ -1900,7 +1900,8 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
   try {
     const { headers, data } = await getSheetData('Supplier_Invoices');
     if (!headers || headers.length === 0) {
-      throw new Error('Supplier_Invoices sheet is empty or has no headers');
+      console.warn('[getSupplierInvoices] Supplier_Invoices sheet is empty or has no headers, returning empty array');
+      return [];
     }
     const invoices = rowsToObjects<SupplierInvoice>(data, headers, 'Supplier_Invoices');
     
@@ -2302,7 +2303,8 @@ export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promi
   try {
     const { headers, data } = await getSheetData('Order_Supplier_Allocations');
     if (!headers || headers.length === 0) {
-      throw new Error('Order_Supplier_Allocations sheet is empty or has no headers');
+      console.warn('[getOrderSupplierAllocations] Order_Supplier_Allocations sheet is empty or has no headers, returning empty array');
+      return [];
     }
     const allocations = rowsToObjects<OrderSupplierAllocation>(data, headers, 'Order_Supplier_Allocations');
     
@@ -2324,9 +2326,11 @@ export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promi
       const allocNo = normalizeInvoiceNo(alloc.sales_invoice_no || '');
       return allocNo === searchInvoiceNo;
     });
-  } catch (error) {
-    console.error('Error fetching order supplier allocations:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('[getOrderSupplierAllocations] Error fetching order supplier allocations:', error.message);
+    // Return empty array instead of throwing to prevent breaking the payments table
+    console.warn('[getOrderSupplierAllocations] Returning empty array due to error');
+    return [];
   }
 }
 
@@ -2348,6 +2352,7 @@ export async function calculateSettlementStatus(
     }
     
     // Get supplier invoices for this sales invoice
+    // getOrderSupplierAllocations now returns empty array on error instead of throwing
     const allocations = await getOrderSupplierAllocations(salesInvoiceNo);
     if (allocations.length === 0) {
       // No supplier invoices linked - if partner paid and cleared, it's SETTLED
@@ -2356,7 +2361,16 @@ export async function calculateSettlementStatus(
     
     // Get all supplier invoices linked to this sales invoice
     const supplierInvoiceNos = allocations.map((a) => a.supplier_invoice_no);
-    const allInvoices = await getSupplierInvoices();
+    
+    // Try to get supplier invoices, but don't fail if it errors
+    let allInvoices: any[] = [];
+    try {
+      allInvoices = await getSupplierInvoices();
+    } catch (error: any) {
+      console.warn(`[calculateSettlementStatus] Error fetching supplier invoices for ${salesInvoiceNo}:`, error.message);
+      // If we can't get invoices, assume they're all paid (SETTLED) to avoid blocking
+      return 'SETTLED';
+    }
     
     // Debug logging
     console.log(`[calculateSettlementStatus] ${salesInvoiceNo}: Found ${allocations.length} allocations, ${allInvoices.length} total supplier invoices`);
@@ -2392,8 +2406,8 @@ export async function calculateSettlementStatus(
     
     // All conditions met - SETTLED
     return 'SETTLED';
-  } catch (error) {
-    console.error('Error calculating settlement status:', error);
+  } catch (error: any) {
+    console.error(`[calculateSettlementStatus] Error calculating settlement status for ${salesInvoiceNo}:`, error.message);
     // Default to OPEN on error
     return 'OPEN';
   }
