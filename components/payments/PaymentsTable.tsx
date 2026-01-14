@@ -64,13 +64,31 @@ export default function PaymentsTable({
       }
       const invoices: SupplierInvoice[] = await response.json()
       
+      console.log(`[PaymentsTable] Found ${invoices.length} supplier invoice(s) for ${salesInvoiceNo}:`, invoices)
+      
       // Filter to only invoices with file links
       const invoicesWithFiles = invoices.filter(
         (inv) => inv.invoice_file_link && inv.invoice_file_link.trim()
       )
       
+      if (invoices.length === 0) {
+        toast.error(
+          `No supplier invoices found for ${salesInvoiceNo}. Make sure invoices are linked via Order_Supplier_Allocations or have Sales Invoice No in Supplier_Invoices sheet.`,
+          { duration: 6000 }
+        )
+        return
+      }
+      
       if (invoicesWithFiles.length === 0) {
-        toast.error('No invoice files found for this order')
+        // Show helpful message about missing file links
+        const invoicesWithoutFiles = invoices.filter(
+          (inv) => !inv.invoice_file_link || !inv.invoice_file_link.trim()
+        )
+        toast.error(
+          `Found ${invoices.length} supplier invoice(s) but none have file links. Please add invoice_file_link in Supplier_Invoices sheet for: ${invoicesWithoutFiles.map(inv => inv.invoice_no || 'unknown').join(', ')}`,
+          { duration: 8000 }
+        )
+        console.log('Invoices without file links:', invoicesWithoutFiles)
         return
       }
       
