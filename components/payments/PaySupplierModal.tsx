@@ -220,6 +220,28 @@ export default function PaySupplierModal({
               The settlement status should update automatically. If it still shows "WAITING_SUPPLIERS", 
               click the button below to refresh the payment status.
             </div>
+            {allInvoices.some((inv) => inv.invoice_file_link && inv.invoice_file_link.trim()) && (
+              <div className="mt-6 space-y-2">
+                <p className="text-sm font-medium text-gray-700 mb-3">Invoice Files:</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {allInvoices.map((invoice) => (
+                    invoice.invoice_file_link && invoice.invoice_file_link.trim() ? (
+                      <a
+                        key={invoice.id}
+                        href={invoice.invoice_file_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors mx-auto max-w-md"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>{invoice.supplier} - Invoice #{invoice.invoice_no}</span>
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    ) : null
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-6">
             <div className="text-sm text-gray-500 mb-3 space-y-2">
               <div>The settlement status should automatically update to "SETTLED" when the Google Sheets formula recalculates.</div>
