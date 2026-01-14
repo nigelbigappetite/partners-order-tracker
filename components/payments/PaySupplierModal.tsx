@@ -5,6 +5,7 @@ import Modal from '@/components/Modal'
 import ActionButton from '@/components/ActionButton'
 import { SupplierInvoice } from '@/lib/types'
 import toast from 'react-hot-toast'
+import { ExternalLink, FileText } from 'lucide-react'
 
 interface PaySupplierModalProps {
   isOpen: boolean
@@ -307,15 +308,31 @@ export default function PaySupplierModal({
                   className="mt-1 h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
                 />
                 <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor={`invoice-${invoice.id}`}
-                    className="block text-sm font-medium text-gray-900 cursor-pointer"
-                  >
-                    {invoice.supplier} - Invoice #{invoice.invoice_no}
-                    {invoice.amount && (
-                      <span className="ml-2 text-gray-600">£{invoice.amount.toFixed(2)}</span>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor={`invoice-${invoice.id}`}
+                      className="block text-sm font-medium text-gray-900 cursor-pointer"
+                    >
+                      {invoice.supplier} - Invoice #{invoice.invoice_no}
+                      {invoice.amount && (
+                        <span className="ml-2 text-gray-600">£{invoice.amount.toFixed(2)}</span>
+                      )}
+                    </label>
+                    {invoice.invoice_file_link && invoice.invoice_file_link.trim() && (
+                      <a
+                        href={invoice.invoice_file_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="ml-2 flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors"
+                        title="View invoice file"
+                      >
+                        <FileText className="h-3 w-3" />
+                        <span>View Invoice</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     )}
-                  </label>
+                  </div>
                   
                   {selectedInvoices.has(invoice.id || '') && (
                     <div className="mt-3 space-y-2 pl-7">

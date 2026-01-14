@@ -140,6 +140,7 @@ export interface SupplierInvoice {
   paid: boolean;
   paid_date?: string;
   payment_reference?: string;
+  invoice_file_link?: string;
   [key: string]: any;
 }
 

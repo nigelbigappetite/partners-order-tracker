@@ -371,6 +371,10 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Payment Reference': 'payment_reference',
     'payment_reference': 'payment_reference',
     'Payment Ref': 'payment_reference',
+    'Invoice File Link': 'invoice_file_link',
+    'invoice_file_link': 'invoice_file_link',
+    'File Link': 'invoice_file_link',
+    'Drive Link': 'invoice_file_link',
   },
   'Order_Supplier_Allocations': {
     'Sales Invoice No': 'sales_invoice_no',
@@ -1918,6 +1922,7 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
       paid: inv.paid ?? inv['Paid?'] ?? inv.Paid ?? false,
       paid_date: (inv.paid_date || inv['Paid Date'] || '').toString().trim() || undefined,
       payment_reference: (inv.payment_reference || inv['Payment Reference'] || inv['Payment Ref'] || '').toString().trim() || undefined,
+      invoice_file_link: (inv.invoice_file_link || inv['Invoice File Link'] || inv['File Link'] || inv['Drive Link'] || '').toString().trim() || undefined,
     }));
     
     // Filter by sales invoice if provided (but keep original row numbers)
