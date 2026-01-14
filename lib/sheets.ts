@@ -1931,9 +1931,11 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
     }
     
     return normalizedInvoices;
-  } catch (error) {
-    console.error('Error fetching supplier invoices:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('[getSupplierInvoices] Error fetching supplier invoices:', error.message);
+    // Return empty array instead of throwing to prevent breaking the payments table
+    console.warn('[getSupplierInvoices] Returning empty array due to error');
+    return [];
   }
 }
 
