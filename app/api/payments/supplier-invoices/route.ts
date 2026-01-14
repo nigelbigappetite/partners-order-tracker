@@ -58,19 +58,47 @@ export async function GET(request: Request) {
     }
     
     // Match supplier invoices by invoice number from allocations
+    const normalizeInvoiceNo = (inv: string): string => {
+      return String(inv).replace(/#/g, '').trim().toLowerCase()
+    }
+    
+    console.log('[GET /api/payments/supplier-invoices] Attempting to match invoices...')
+    console.log('[GET /api/payments/supplier-invoices] Supplier invoice numbers from allocations:', supplierInvoiceNos)
+    console.log('[GET /api/payments/supplier-invoices] Total supplier invoices available:', allInvoices.length)
+    console.log('[GET /api/payments/supplier-invoices] Sample supplier invoice numbers:', allInvoices.slice(0, 5).map(inv => ({
+      invoice_no: inv.invoice_no,
+      has_file_link: !!inv.invoice_file_link
+    })))
+    
     const linkedInvoices = allInvoices.filter((inv) => {
-      const normalizeInvoiceNo = (inv: string): string => {
-        return String(inv).replace(/#/g, '').trim().toLowerCase()
+      const invNo = normalizeInvoiceNo(inv.invoice_no || '')
+      const matches = supplierInvoiceNos.some((allocNo) => {
+        const normalizedAllocNo = normalizeInvoiceNo(allocNo)
+        return normalizedAllocNo === invNo
+      })
+      
+      if (!matches && supplierInvoiceNos.length > 0) {
+        // Log why it didn't match for debugging
+        console.log(`[GET /api/payments/supplier-invoices] Invoice "${inv.invoice_no}" (normalized: "${invNo}") didn't match any allocation numbers`)
       }
       
-      const invNo = normalizeInvoiceNo(inv.invoice_no || '')
-      return supplierInvoiceNos.some((allocNo) => 
-        normalizeInvoiceNo(allocNo) === invNo
-      )
+      return matches
     })
     
     console.log('[GET /api/payments/supplier-invoices] Matched linked invoices:', linkedInvoices.length)
     console.log('[GET /api/payments/supplier-invoices] Linked invoice numbers:', linkedInvoices.map(inv => inv.invoice_no))
+    console.log('[GET /api/payments/supplier-invoices] Linked invoices with file links:', linkedInvoices.filter(inv => inv.invoice_file_link && inv.invoice_file_link.trim()).length)
+    
+    if (linkedInvoices.length > 0) {
+      linkedInvoices.forEach((inv, idx) => {
+        console.log(`[GET /api/payments/supplier-invoices] Linked invoice ${idx + 1}:`, {
+          invoice_no: inv.invoice_no,
+          supplier: inv.supplier,
+          has_file_link: !!inv.invoice_file_link,
+          file_link_length: inv.invoice_file_link ? inv.invoice_file_link.length : 0
+        })
+      })
+    }
     
     return NextResponse.json(linkedInvoices)
   } catch (error: any) {
