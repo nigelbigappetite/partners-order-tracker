@@ -8,6 +8,7 @@ import {
   ALLOWED_PAYMENT_METHODS,
   ALLOWED_ORDER_STAGES,
 } from '@/lib/googleSheets'
+import { updatePartnerPayment } from '@/lib/sheets'
 
 export async function POST(request: Request) {
   try {
@@ -36,24 +37,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Find row by invoice number (column H)
-    const rowIndex = await findRowIndexByValue(
-      'Orders_Header',
-      ORDERS_HEADER_COLUMNS.INVOICE_NO,
-      sales_invoice_no
-    )
-
-    if (rowIndex === -1) {
-      return NextResponse.json(
-        { error: `Sales invoice ${sales_invoice_no} not found in Orders_Header` },
-        { status: 404 }
-      )
-    }
-
     console.log('[POST /api/admin/orders/update] Processing action:', {
       sales_invoice_no,
       action,
-      rowIndex,
     })
 
     // Handle different actions
@@ -74,6 +60,20 @@ export async function POST(request: Request) {
             error: `Invalid stage: ${stage}. Allowed stages: ${ALLOWED_ORDER_STAGES.join(', ')}` 
           },
           { status: 400 }
+        )
+      }
+
+      // Find row by invoice number (column H) for stage updates (legacy path)
+      const rowIndex = await findRowIndexByValue(
+        'Orders_Header',
+        ORDERS_HEADER_COLUMNS.INVOICE_NO,
+        sales_invoice_no
+      )
+
+      if (rowIndex === -1) {
+        return NextResponse.json(
+          { error: `Sales invoice ${sales_invoice_no} not found in Orders_Header` },
+          { status: 404 }
         )
       }
 
@@ -113,26 +113,16 @@ export async function POST(request: Request) {
         }
       }
 
-      // Build updates
-      const updates: Array<{ col: string; value: any }> = [
-        { col: ORDERS_HEADER_COLUMNS.PARTNER_PAID, value: 'YES' },
-      ]
-
-      if (paid_date) {
-        updates.push({ col: ORDERS_HEADER_COLUMNS.PARTNER_PAID_DATE, value: paid_date })
-      }
-
-      if (payment_method) {
-        updates.push({ col: ORDERS_HEADER_COLUMNS.PARTNER_PAYMENT_METHOD, value: payment_method })
-      }
-
-      if (payment_ref) {
-        // Only add if column exists (optional column)
-        updates.push({ col: ORDERS_HEADER_COLUMNS.PARTNER_PAYMENT_REF, value: payment_ref })
-      }
-
-      // Update partner payment fields
-      await updateRowCells('Orders_Header', rowIndex, updates)
+      // IMPORTANT:
+      // Use header-based updates (lib/sheets.ts) instead of hardcoded column letters.
+      // This fixes cases where Orders_Header column order changed, causing paid updates
+      // to write to the wrong column (order appears "not paid" in dashboard).
+      await updatePartnerPayment(sales_invoice_no, {
+        partnerPaid: true,
+        partnerPaidDate: paid_date || undefined,
+        partnerPaymentMethod: payment_method || undefined,
+        partnerPaymentRef: payment_ref || undefined,
+      })
 
       console.log('[POST /api/admin/orders/update] Partner payment marked successfully:', {
         sales_invoice_no,
