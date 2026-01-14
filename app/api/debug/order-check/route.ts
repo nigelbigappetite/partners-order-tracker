@@ -1,8 +1,42 @@
 import { NextResponse } from 'next/server'
-import { getPaymentsTracker, getOrders, getOrderSupplierAllocations, getSupplierInvoices } from '@/lib/sheets'
+import {
+  getPaymentsTracker,
+  getOrders,
+  getOrderSupplierAllocations,
+  getSupplierInvoices,
+} from '@/lib/sheets'
+
+function safeDecodeRepeatedly(value: string): string {
+  // Handles cases like:
+  // - "#1014WS" (no encoding)
+  // - "%231014WS" (encoded)
+  // - "%25231014WS" (double-encoded -> decodes to "%231014WS" then "#1014WS")
+  let current = String(value)
+  for (let i = 0; i < 3; i++) {
+    try {
+      const decoded = decodeURIComponent(current)
+      if (decoded === current) break
+      current = decoded
+    } catch {
+      break
+    }
+  }
+  return current
+}
 
 function normalizeInvoiceNo(inv: string): string {
-  return String(inv).replace(/#/g, '').trim().toLowerCase()
+  const decoded = safeDecodeRepeatedly(inv)
+  return String(decoded)
+    .replace(/%23/gi, '') // in case a literal "%23" sneaks through
+    .replace(/#/g, '')
+    .replace(/\u00A0/g, ' ') // non-breaking spaces
+    .trim()
+    .toLowerCase()
+}
+
+function normalizeLoose(inv: string): string {
+  // "1014WS", "#1014 ws", "%231014WS" -> "1014ws"
+  return normalizeInvoiceNo(inv).replace(/[^a-z0-9]/g, '')
 }
 
 export async function GET(request: Request) {
@@ -21,7 +55,9 @@ export async function GET(request: Request) {
     }
 
     const salesInvoiceNo = salesInvoiceNoRaw
+    const decodedSalesInvoiceNo = safeDecodeRepeatedly(salesInvoiceNo)
     const search = normalizeInvoiceNo(salesInvoiceNo)
+    const searchLoose = normalizeLoose(salesInvoiceNo)
 
     // Orders_Header view via getOrders()
     const orders = await getOrders()
@@ -41,19 +77,39 @@ export async function GET(request: Request) {
       allocInvoiceNos.some((aNo) => normalizeInvoiceNo(aNo) === normalizeInvoiceNo(inv.invoice_no || ''))
     )
 
+    // If we didn't find it, provide "closest matches" to help diagnose sheet contents
+    const closestOrders = orders
+      .filter((o) => normalizeLoose(o.invoiceNo || '').includes(searchLoose))
+      .slice(0, 15)
+      .map((o) => ({ invoiceNo: o.invoiceNo, orderId: o.orderId, orderDate: o.orderDate }))
+
+    const closestPayments = payments
+      .filter((p) => normalizeLoose(p.sales_invoice_no || '').includes(searchLoose))
+      .slice(0, 15)
+      .map((p) => ({
+        sales_invoice_no: p.sales_invoice_no,
+        settlement_status: p.settlement_status,
+        partner_paid: p.partner_paid,
+        funds_cleared: p.funds_cleared,
+      }))
+
     return NextResponse.json(
       {
         query: {
           sales_invoice_no: salesInvoiceNo,
+          decoded: decodedSalesInvoiceNo,
           normalized: search,
+          normalized_loose: searchLoose,
         },
         orders_header: {
           found: !!orderMatch,
           order: orderMatch || null,
+          closest_matches: closestOrders,
         },
         payments_tracker_view: {
           found: !!paymentMatch,
           row: paymentMatch || null,
+          closest_matches: closestPayments,
         },
         supplier_linkage: {
           allocation_count: allocations.length,
