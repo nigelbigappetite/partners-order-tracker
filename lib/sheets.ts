@@ -1901,7 +1901,7 @@ export async function updatePartnerPayment(
   }
 }
 
-// Get supplier invoices
+// Get supplier invoices with hyperlink extraction
 export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<SupplierInvoice[]> {
   try {
     const { headers, data } = await getSheetData('Supplier_Invoices');
@@ -1909,21 +1909,66 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
       console.warn('[getSupplierInvoices] Supplier_Invoices sheet is empty or has no headers, returning empty array');
       return [];
     }
+    
+    // Get hyperlinks for the invoice_file_link column
+    const invoiceFileLinkColumnIndex = headers.findIndex((h: string) => 
+      h && (h.toLowerCase().includes('invoice_file_link') || 
+           h.toLowerCase().includes('invoice file link') ||
+           h.toLowerCase().includes('file link') ||
+           h.toLowerCase().includes('drive link'))
+    );
+    
+    // Fetch hyperlinks if the column exists
+    let hyperlinks: Map<number, string> = new Map();
+    if (invoiceFileLinkColumnIndex >= 0) {
+      try {
+        const sheets = await getSheetsClient();
+        const spreadsheet = await sheets.spreadsheets.get({
+          spreadsheetId: SPREADSHEET_ID,
+          ranges: [`Supplier_Invoices!${String.fromCharCode(65 + invoiceFileLinkColumnIndex)}:${String.fromCharCode(65 + invoiceFileLinkColumnIndex)}`],
+          includeGridData: true,
+        });
+        
+        const sheet = spreadsheet.data.sheets?.[0];
+        if (sheet?.data?.[0]?.rowData) {
+          sheet.data[0].rowData.forEach((row: any, rowIndex: number) => {
+            if (rowIndex === 0) return; // Skip header row
+            const cell = row.values?.[0];
+            if (cell?.userEnteredFormat?.link?.uri) {
+              hyperlinks.set(rowIndex, cell.userEnteredFormat.link.uri);
+            } else if (cell?.effectiveFormat?.link?.uri) {
+              hyperlinks.set(rowIndex, cell.effectiveFormat.link.uri);
+            }
+          });
+        }
+        console.log(`[getSupplierInvoices] Extracted ${hyperlinks.size} hyperlinks from Supplier_Invoices`);
+      } catch (error: any) {
+        console.warn('[getSupplierInvoices] Error extracting hyperlinks, will use display text:', error.message);
+      }
+    }
+    
     const invoices = rowsToObjects<SupplierInvoice>(data, headers, 'Supplier_Invoices');
     
     // Normalize supplier invoices - preserve actual row number for updates
-    let normalizedInvoices = invoices.map((inv: any, index: number) => ({
-      ...inv,
-      id: String(index + 2), // Row number in sheet (1-based header + 1-based index)
-      invoice_no: (inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
-      sales_invoice_no: (inv.sales_invoice_no || inv['Sales Invoice No'] || '').toString().trim(),
-      supplier: (inv.supplier || inv.Supplier || '').toString().trim(),
-      amount: Number(inv.amount || inv.Amount || 0),
-      paid: inv.paid ?? inv['Paid?'] ?? inv.Paid ?? false,
-      paid_date: (inv.paid_date || inv['Paid Date'] || '').toString().trim() || undefined,
-      payment_reference: (inv.payment_reference || inv['Payment Reference'] || inv['Payment Ref'] || '').toString().trim() || undefined,
-      invoice_file_link: (inv.invoice_file_link || inv['Invoice File Link'] || inv['File Link'] || inv['Drive Link'] || '').toString().trim() || undefined,
-    }));
+    let normalizedInvoices = invoices.map((inv: any, index: number) => {
+      // Get hyperlink URL if available, otherwise use display text
+      const rowIndex = index + 1; // +1 because data array excludes header
+      const hyperlinkUrl = hyperlinks.get(rowIndex);
+      const displayText = (inv.invoice_file_link || inv['Invoice File Link'] || inv['File Link'] || inv['Drive Link'] || '').toString().trim();
+      
+      return {
+        ...inv,
+        id: String(index + 2), // Row number in sheet (1-based header + 1-based index)
+        invoice_no: (inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
+        sales_invoice_no: (inv.sales_invoice_no || inv['Sales Invoice No'] || '').toString().trim(),
+        supplier: (inv.supplier || inv.Supplier || '').toString().trim(),
+        amount: Number(inv.amount || inv.Amount || 0),
+        paid: inv.paid ?? inv['Paid?'] ?? inv.Paid ?? false,
+        paid_date: (inv.paid_date || inv['Paid Date'] || '').toString().trim() || undefined,
+        payment_reference: (inv.payment_reference || inv['Payment Reference'] || inv['Payment Ref'] || '').toString().trim() || undefined,
+        invoice_file_link: hyperlinkUrl || displayText || undefined,
+      };
+    });
     
     // Filter by sales invoice if provided (but keep original row numbers)
     if (salesInvoiceNo) {
