@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, FileText, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, FileText, Menu, X, TrendingUp } from 'lucide-react'
 import { getBrandLogo, getBrandLogoAlt } from '@/lib/brandLogos'
 
 interface BrandNavigationProps {
@@ -24,10 +24,14 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
       { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
     ]
     
-    // SMSH BN only gets Dashboard and Products (orders are on dashboard)
+    // SMSH BN gets Sales, Product Orders, and Products (in that order)
     const brandSlugLower = brandSlug.toLowerCase()
     if (brandSlugLower === 'smsh-bn' || brandSlugLower === 'smsh bn') {
-      return baseItems
+      return [
+        { href: `/brands/${brandSlug}/sales`, label: 'Sales', icon: TrendingUp },
+        { href: `/brands/${brandSlug}/dashboard`, label: 'Product Orders', icon: LayoutDashboard },
+        { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
+      ]
     }
     
     // All other brands get all pages
@@ -46,7 +50,12 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-6">
-            <Link href={`/brands/${brandSlug}/dashboard`} className="flex items-center space-x-3 group">
+            <Link 
+              href={brandSlug.toLowerCase() === 'smsh-bn' || brandSlug.toLowerCase() === 'smsh bn' 
+                ? `/brands/${brandSlug}/sales` 
+                : `/brands/${brandSlug}/dashboard`} 
+              className="flex items-center space-x-3 group"
+            >
               {!logoError ? (
                 <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20 group-hover:ring-brand-primary/40 transition-all">
                   <Image

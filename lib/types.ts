@@ -151,3 +151,36 @@ export interface OrderSupplierAllocation {
   [key: string]: any;
 }
 
+// Sales dashboard types
+export interface KitchenSales {
+  date: string; // YYYY-MM-DD format
+  location: string; // Full location string from Deliverect
+  revenue: number; // Net revenue
+  grossSales: number; // Gross sales before deductions
+  count: number; // Order count
+  franchiseCode?: string; // Mapped from Kitchen_Mapping
+  averageOrderValue?: number; // Calculated: revenue / count
+  importDate: string; // When imported
+  importSource: 'CSV' | 'WEBHOOK';
+  // Optional parsed fields
+  brandName?: string;
+  city?: string;
+  country?: string;
+}
+
+export interface DeliverectCSVRow {
+  Date: string;
+  Revenue: number;
+  GrossSales: number;
+  Count: number;
+  Location: string;
+}
+
+export interface KitchenMapping {
+  location: string;
+  franchiseCode: string;
+  franchiseName?: string;
+  active: boolean;
+  notes?: string;
+}
+

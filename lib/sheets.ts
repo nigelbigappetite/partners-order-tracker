@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { Order, OrderLine, SKU, Franchise, Supplier, Brand, PaymentTrackerRow, SupplierInvoice, OrderSupplierAllocation } from './types';
+import { Order, OrderLine, SKU, Franchise, Supplier, Brand, PaymentTrackerRow, SupplierInvoice, OrderSupplierAllocation, KitchenSales, DeliverectCSVRow, KitchenMapping } from './types';
 
 // Initialize Google Sheets API client
 let sheetsClient: any = null;
@@ -384,6 +384,47 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Allocated Amount': 'allocated_amount',
     'allocated_amount': 'allocated_amount',
     'Amount': 'allocated_amount',
+  },
+  'Kitchen_Sales': {
+    'Date': 'date',
+    'date': 'date',
+    'Location': 'location',
+    'location': 'location',
+    'Revenue': 'revenue',
+    'revenue': 'revenue',
+    'GrossSales': 'grossSales',
+    'grossSales': 'grossSales',
+    'Gross Sales': 'grossSales',
+    'Count': 'count',
+    'count': 'count',
+    'Order Count': 'count',
+    'Franchise Code': 'franchiseCode',
+    'franchiseCode': 'franchiseCode',
+    'Average Order Value': 'averageOrderValue',
+    'averageOrderValue': 'averageOrderValue',
+    'Import Date': 'importDate',
+    'importDate': 'importDate',
+    'Import Source': 'importSource',
+    'importSource': 'importSource',
+    'Brand Name': 'brandName',
+    'brandName': 'brandName',
+    'City': 'city',
+    'city': 'city',
+    'Country': 'country',
+    'country': 'country',
+  },
+  'Kitchen_Mapping': {
+    'Location': 'location',
+    'location': 'location',
+    'CSV Kitchen Name': 'location', // Alias for backward compatibility
+    'Franchise Code': 'franchiseCode',
+    'franchiseCode': 'franchiseCode',
+    'Franchise Name': 'franchiseName',
+    'franchiseName': 'franchiseName',
+    'Active': 'active',
+    'active': 'active',
+    'Notes': 'notes',
+    'notes': 'notes',
   },
 };
 
@@ -2464,6 +2505,258 @@ export async function calculateSettlementStatus(
     console.error(`[calculateSettlementStatus] Error calculating settlement status for ${salesInvoiceNo}:`, error.message);
     // Default to OPEN on error
     return 'OPEN';
+  }
+}
+
+// KITCHEN_SALES operations
+export async function getKitchenSales(
+  startDate?: string,
+  endDate?: string,
+  franchiseCode?: string
+): Promise<KitchenSales[]> {
+  try {
+    const { headers, data } = await getSheetData('Kitchen_Sales');
+    if (!headers || headers.length === 0) {
+      console.warn('[getKitchenSales] Kitchen_Sales sheet is empty or has no headers, returning empty array');
+      return [];
+    }
+    
+    const sales = rowsToObjects<KitchenSales>(data, headers, 'Kitchen_Sales');
+    
+    // Normalize and validate
+    const normalizedSales = sales
+      .map((sale: any) => {
+        const date = (sale.date || sale.Date || '').toString().trim();
+        const location = (sale.location || sale.Location || '').toString().trim();
+        const revenue = Number(sale.revenue || sale.Revenue || 0);
+        const grossSales = Number(sale.grossSales || sale.GrossSales || sale['Gross Sales'] || 0);
+        const count = Number(sale.count || sale.Count || sale['Order Count'] || 0);
+        const franchiseCode = (sale.franchiseCode || sale['Franchise Code'] || '').toString().trim();
+        const averageOrderValue = Number(sale.averageOrderValue || sale['Average Order Value'] || (count > 0 ? revenue / count : 0));
+        
+        return {
+          date,
+          location,
+          revenue,
+          grossSales,
+          count,
+          franchiseCode: franchiseCode || undefined,
+          averageOrderValue: isNaN(averageOrderValue) ? undefined : averageOrderValue,
+          importDate: (sale.importDate || sale['Import Date'] || '').toString().trim(),
+          importSource: (sale.importSource || sale['Import Source'] || 'CSV') as 'CSV' | 'WEBHOOK',
+          brandName: (sale.brandName || sale['Brand Name'] || '').toString().trim() || undefined,
+          city: (sale.city || sale.City || '').toString().trim() || undefined,
+          country: (sale.country || sale.Country || '').toString().trim() || undefined,
+        };
+      })
+      .filter((sale) => sale.date && sale.location); // Only include valid sales
+    
+    // Apply filters
+    let filtered = normalizedSales;
+    
+    if (startDate) {
+      filtered = filtered.filter((sale) => sale.date >= startDate);
+    }
+    
+    if (endDate) {
+      filtered = filtered.filter((sale) => sale.date <= endDate);
+    }
+    
+    if (franchiseCode) {
+      const normalizedFranchiseCode = franchiseCode.trim().toUpperCase();
+      filtered = filtered.filter((sale) => 
+        sale.franchiseCode?.trim().toUpperCase() === normalizedFranchiseCode
+      );
+    }
+    
+    return filtered;
+  } catch (error: any) {
+    console.error('[getKitchenSales] Error fetching kitchen sales:', error.message);
+    return [];
+  }
+}
+
+// KITCHEN_MAPPING operations
+export async function getKitchenMappings(): Promise<KitchenMapping[]> {
+  try {
+    const { headers, data } = await getSheetData('Kitchen_Mapping');
+    if (!headers || headers.length === 0) {
+      console.warn('[getKitchenMappings] Kitchen_Mapping sheet is empty or has no headers, returning empty array');
+      return [];
+    }
+    
+    const mappings = rowsToObjects<KitchenMapping>(data, headers, 'Kitchen_Mapping');
+    
+    // Normalize and validate
+    const normalizedMappings = mappings
+      .map((mapping: any) => {
+        const location = (mapping.location || mapping.Location || '').toString().trim();
+        const franchiseCode = (mapping.franchiseCode || mapping['Franchise Code'] || '').toString().trim();
+        const franchiseName = (mapping.franchiseName || mapping['Franchise Name'] || '').toString().trim();
+        const active = mapping.active !== undefined 
+          ? (mapping.active === true || mapping.active === 'YES' || mapping.active === 'Yes' || mapping.active === 'yes' || mapping.active === 'Y' || mapping.active === 'y')
+          : true; // Default to active if not specified
+        
+        return {
+          location,
+          franchiseCode,
+          franchiseName: franchiseName || undefined,
+          active,
+          notes: (mapping.notes || mapping.Notes || '').toString().trim() || undefined,
+        };
+      })
+      .filter((mapping) => mapping.location && mapping.franchiseCode); // Only include valid mappings
+    
+    return normalizedMappings;
+  } catch (error: any) {
+    console.error('[getKitchenMappings] Error fetching kitchen mappings:', error.message);
+    return [];
+  }
+}
+
+// Helper to match Location string to Franchise Code
+export async function matchLocationToFranchise(location: string): Promise<string | null> {
+  try {
+    const mappings = await getKitchenMappings();
+    const normalizedLocation = location.trim();
+    
+    // Try exact match first
+    const exactMatch = mappings.find((m) => 
+      m.active && m.location.trim() === normalizedLocation
+    );
+    
+    if (exactMatch) {
+      return exactMatch.franchiseCode;
+    }
+    
+    // Try case-insensitive match
+    const caseInsensitiveMatch = mappings.find((m) => 
+      m.active && m.location.trim().toLowerCase() === normalizedLocation.toLowerCase()
+    );
+    
+    if (caseInsensitiveMatch) {
+      return caseInsensitiveMatch.franchiseCode;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('[matchLocationToFranchise] Error matching location:', error.message);
+    return null;
+  }
+}
+
+// Import kitchen sales from Deliverect CSV
+export async function importKitchenSalesFromDeliverectCSV(
+  csvRows: DeliverectCSVRow[]
+): Promise<{ imported: number; skipped: number; errors: string[]; unmappedLocations: string[] }> {
+  try {
+    const sheets = await getSheetsClient();
+    const { headers, data: existingData } = await getSheetData('Kitchen_Sales');
+    
+    if (!headers || headers.length === 0) {
+      throw new Error('Kitchen_Sales sheet is empty or has no headers');
+    }
+    
+    // Get existing sales to check for duplicates
+    const existingSales = await getKitchenSales();
+    const existingKeys = new Set(
+      existingSales.map((s) => `${s.date}|${s.location}`)
+    );
+    
+    // Get mappings
+    const mappings = await getKitchenMappings();
+    const mappingMap = new Map<string, string>();
+    mappings.forEach((m) => {
+      if (m.active) {
+        mappingMap.set(m.location.trim().toLowerCase(), m.franchiseCode);
+      }
+    });
+    
+    const errors: string[] = [];
+    const unmappedLocations: string[] = [];
+    const rowsToImport: any[][] = [];
+    let skipped = 0;
+    
+    const importDate = new Date().toISOString();
+    
+    for (const row of csvRows) {
+      try {
+        // Validate required fields
+        if (!row.Date || !row.Location || row.Revenue === undefined || row.Count === undefined) {
+          errors.push(`Missing required fields: ${JSON.stringify(row)}`);
+          continue;
+        }
+        
+        // Check for duplicates
+        const key = `${row.Date}|${row.Location}`;
+        if (existingKeys.has(key)) {
+          skipped++;
+          continue;
+        }
+        
+        // Match location to franchise code
+        const normalizedLocation = row.Location.trim().toLowerCase();
+        const franchiseCode = mappingMap.get(normalizedLocation) || 
+                              mappingMap.get(row.Location.trim()) ||
+                              await matchLocationToFranchise(row.Location);
+        
+        if (!franchiseCode) {
+          unmappedLocations.push(row.Location);
+        }
+        
+        // Calculate average order value
+        const averageOrderValue = row.Count > 0 ? row.Revenue / row.Count : 0;
+        
+        // Prepare row data matching sheet columns
+        // Write franchise code directly from lookup (more reliable than formulas)
+        const rowData = [
+          row.Date,                    // Date (A)
+          row.Location,                // Location (B)
+          row.Revenue,                 // Revenue (C)
+          row.GrossSales || row.Revenue, // GrossSales (D)
+          row.Count,                   // Count (E)
+          franchiseCode || '',         // Franchise Code (F) - Write directly from lookup
+          averageOrderValue,           // Average Order Value (G) - Calculate and write directly
+          importDate,                  // Import Date (H)
+          'CSV',                       // Import Source (I)
+          '',                          // Brand Name (J) - Leave empty for formula to populate
+          '',                          // City (K) - Leave empty for formula to populate
+          '',                          // Country (L) - Leave empty for formula to populate
+        ];
+        
+        rowsToImport.push(rowData);
+        existingKeys.add(key); // Track as imported to avoid duplicates in same batch
+      } catch (error: any) {
+        errors.push(`Error processing row ${JSON.stringify(row)}: ${error.message}`);
+      }
+    }
+    
+    // Write to sheet if there are rows to import
+    if (rowsToImport.length > 0) {
+      const lastRow = existingData.length + 1; // +1 for header
+      const range = `Kitchen_Sales!A${lastRow + 1}:L${lastRow + rowsToImport.length}`;
+      
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: rowsToImport,
+        },
+      });
+      
+      console.log(`[importKitchenSalesFromDeliverectCSV] Imported ${rowsToImport.length} rows to Kitchen_Sales`);
+    }
+    
+    return {
+      imported: rowsToImport.length,
+      skipped,
+      errors,
+      unmappedLocations: unmappedLocations.filter((loc, index, arr) => arr.indexOf(loc) === index), // Remove duplicates
+    };
+  } catch (error: any) {
+    console.error('[importKitchenSalesFromDeliverectCSV] Error importing sales:', error.message);
+    throw error;
   }
 }
 

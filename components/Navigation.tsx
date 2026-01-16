@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard, Receipt } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard, Receipt, TrendingUp } from 'lucide-react'
 
 const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/suppliers', label: 'Suppliers', icon: Store },
   { href: '/locations', label: 'Locations', icon: MapPin },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { href: '/admin/sales', label: 'Sales', icon: TrendingUp },
 ]
 
 export default function Navigation() {
@@ -52,7 +53,8 @@ export default function Navigation() {
                 const Icon = item.icon
                 const isActive = pathname === item.href || 
                   (item.href === '/brands/admin/dashboard' && pathname === '/') ||
-                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments'))
+                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link
                     key={item.href}
@@ -97,7 +99,8 @@ export default function Navigation() {
                 const Icon = item.icon
                 const isActive = pathname === item.href || 
                   (item.href === '/brands/admin/dashboard' && pathname === '/') ||
-                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments'))
+                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link
                     key={item.href}
