@@ -6,6 +6,8 @@ import {
   getSupplierInvoices,
 } from '@/lib/sheets'
 
+export const dynamic = 'force-dynamic'
+
 function safeDecodeRepeatedly(value: string): string {
   // Handles cases like:
   // - "#1014WS" (no encoding)

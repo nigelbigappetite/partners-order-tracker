@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
+export const dynamic = 'force-dynamic'
+
 async function getSheetsClient() {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
     throw new Error('Google Sheets API credentials not configured')
