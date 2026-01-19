@@ -65,6 +65,7 @@ export async function GET(request: Request) {
           console.log(`[Payments API] ${withSalesInv.length} supplier invoices have sales_invoice_no`)
           if (withSalesInv.length > 0) {
             console.log(`[Payments API] Sample supplier invoice:`, {
+              supplier_invoice_no: withSalesInv[0].supplier_invoice_no || withSalesInv[0].invoice_no,
               invoice_no: withSalesInv[0].invoice_no,
               sales_invoice_no: withSalesInv[0].sales_invoice_no,
             })
@@ -98,12 +99,14 @@ export async function GET(request: Request) {
       
       const supplierInvoicesBySalesInvoice = new Map<string, Set<string>>()
       allSupplierInvoices.forEach((inv) => {
-        if (inv.sales_invoice_no && inv.invoice_no) {
+        // Use supplier_invoice_no if available, fallback to invoice_no
+        const supplierInvNo = inv.supplier_invoice_no || inv.invoice_no
+        if (inv.sales_invoice_no && supplierInvNo) {
           const salesInv = normalizeInvoiceNo(inv.sales_invoice_no)
           if (!supplierInvoicesBySalesInvoice.has(salesInv)) {
             supplierInvoicesBySalesInvoice.set(salesInv, new Set())
           }
-          supplierInvoicesBySalesInvoice.get(salesInv)!.add(inv.invoice_no.trim())
+          supplierInvoicesBySalesInvoice.get(salesInv)!.add(supplierInvNo.toString().trim())
         }
       })
       console.log(`[Payments API] Created supplier invoices lookup map with ${supplierInvoicesBySalesInvoice.size} sales invoices`)

@@ -357,6 +357,8 @@ const columnMapping: Record<string, Record<string, string>> = {
     'Invoice No': 'invoice_no',
     'invoice_no': 'invoice_no',
     'Invoice Number': 'invoice_no',
+    'Supplier Invoice No': 'supplier_invoice_no',
+    'supplier_invoice_no': 'supplier_invoice_no',
     'Sales Invoice No': 'sales_invoice_no',
     'sales_invoice_no': 'sales_invoice_no',
     'Supplier': 'supplier',
@@ -2000,7 +2002,8 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
       return {
         ...inv,
         id: String(index + 2), // Row number in sheet (1-based header + 1-based index)
-        invoice_no: (inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
+        invoice_no: (inv.supplier_invoice_no || inv['Supplier Invoice No'] || inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
+        supplier_invoice_no: (inv.supplier_invoice_no || inv['Supplier Invoice No'] || inv.invoice_no || inv['Invoice No'] || inv['Invoice Number'] || '').toString().trim(),
         sales_invoice_no: (inv.sales_invoice_no || inv['Sales Invoice No'] || '').toString().trim(),
         supplier: (inv.supplier || inv.Supplier || '').toString().trim(),
         amount: Number(inv.amount || inv.Amount || 0),
