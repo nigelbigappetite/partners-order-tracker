@@ -480,7 +480,7 @@ function findColumnIndex(headers: string[], targetName: string): number {
 }
 
 // Helper to convert rows to objects
-function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string): T[] {
+export function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string): T[] {
   if (!rows || rows.length === 0) return [];
   
   const mapping = sheetName ? columnMapping[sheetName] || {} : {};
@@ -557,7 +557,7 @@ function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string):
 }
 
 // Helper to get headers and data rows
-async function getSheetData(sheetName: string) {
+export async function getSheetData(sheetName: string) {
   const sheets = await getSheetsClient();
   
   // Clean sheet name - remove any existing range notation
@@ -2736,16 +2736,26 @@ export async function importKitchenSalesFromDeliverectCSV(
       const lastRow = existingData.length + 1; // +1 for header
       const range = `Kitchen_Sales!A${lastRow + 1}:L${lastRow + rowsToImport.length}`;
       
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: rowsToImport,
-        },
-      });
-      
-      console.log(`[importKitchenSalesFromDeliverectCSV] Imported ${rowsToImport.length} rows to Kitchen_Sales`);
+      try {
+        console.log(`[importKitchenSalesFromDeliverectCSV] Writing ${rowsToImport.length} rows to range ${range}`);
+        const writeResponse = await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: rowsToImport,
+          },
+        });
+        
+        console.log(`[importKitchenSalesFromDeliverectCSV] Successfully wrote ${rowsToImport.length} rows to Kitchen_Sales. Updated cells: ${writeResponse.data.updatedCells || 'N/A'}`);
+      } catch (writeError: any) {
+        console.error(`[importKitchenSalesFromDeliverectCSV] Error writing to Google Sheets:`, writeError.message);
+        console.error(`[importKitchenSalesFromDeliverectCSV] Range: ${range}, Rows to import: ${rowsToImport.length}`);
+        errors.push(`Failed to write to Google Sheets: ${writeError.message}`);
+        throw writeError; // Re-throw to be caught by outer try-catch
+      }
+    } else {
+      console.log(`[importKitchenSalesFromDeliverectCSV] No rows to import (all skipped as duplicates or invalid)`);
     }
     
     return {
@@ -2759,4 +2769,3 @@ export async function importKitchenSalesFromDeliverectCSV(
     throw error;
   }
 }
-

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getPaymentsTracker, getOrderSupplierAllocations, getSupplierInvoices } from '@/lib/sheets'
+import { getPaymentsTracker, getSupplierInvoices, getSheetData, rowsToObjects } from '@/lib/sheets'
 
 export async function GET(request: Request) {
   try {
@@ -14,41 +14,81 @@ export async function GET(request: Request) {
     // Get all data from Payments_Tracker_View (source of truth)
     const payments = await getPaymentsTracker()
     
-    // Enrich payments with supplier invoice numbers
-    const enrichedPayments = await Promise.all(
-      payments.map(async (payment) => {
-        const supplierInvoiceNumbers = new Set<string>()
-        
-        try {
-          // Primary source: Order_Supplier_Allocations
-          const allocations = await getOrderSupplierAllocations(payment.sales_invoice_no)
-          allocations.forEach((alloc) => {
-            if (alloc.supplier_invoice_no && alloc.supplier_invoice_no.trim()) {
-              supplierInvoiceNumbers.add(alloc.supplier_invoice_no.trim())
-            }
-          })
-        } catch (error) {
-          console.warn(`[Payments API] Error fetching allocations for ${payment.sales_invoice_no}:`, error)
+    // Fetch all allocations and supplier invoices once (more efficient than per-payment calls)
+    let allAllocations: any[] = []
+    let allSupplierInvoices: any[] = []
+    
+    try {
+      // Get all allocations from Order_Supplier_Allocations sheet
+      const { headers: allocHeaders, data: allocData } = await getSheetData('Order_Supplier_Allocations')
+      if (allocHeaders && allocHeaders.length > 0) {
+        const allocations = rowsToObjects<any>(allocData, allocHeaders, 'Order_Supplier_Allocations')
+        allAllocations = allocations.map((alloc: any) => ({
+          sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || '').toString().trim(),
+          supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || '').toString().trim(),
+        }))
+      }
+    } catch (error) {
+      console.warn('[Payments API] Error fetching all allocations:', error)
+    }
+    
+    try {
+      // Get all supplier invoices from Supplier_Invoices sheet
+      allSupplierInvoices = await getSupplierInvoices()
+    } catch (error) {
+      console.warn('[Payments API] Error fetching all supplier invoices:', error)
+    }
+    
+    // Helper to normalize invoice numbers for matching
+    const normalizeInvoiceNo = (inv: string): string => {
+      return String(inv).replace(/#/g, '').trim().toLowerCase()
+    }
+    
+    // Create lookup maps for efficient matching
+    const allocationsBySalesInvoice = new Map<string, Set<string>>()
+    allAllocations.forEach((alloc) => {
+      if (alloc.sales_invoice_no && alloc.supplier_invoice_no) {
+        const salesInv = normalizeInvoiceNo(alloc.sales_invoice_no)
+        if (!allocationsBySalesInvoice.has(salesInv)) {
+          allocationsBySalesInvoice.set(salesInv, new Set())
         }
-        
-        try {
-          // Fallback: Supplier_Invoices (match by sales_invoice_no)
-          const supplierInvoices = await getSupplierInvoices(payment.sales_invoice_no)
-          supplierInvoices.forEach((inv) => {
-            if (inv.invoice_no && inv.invoice_no.trim()) {
-              supplierInvoiceNumbers.add(inv.invoice_no.trim())
-            }
-          })
-        } catch (error) {
-          console.warn(`[Payments API] Error fetching supplier invoices for ${payment.sales_invoice_no}:`, error)
+        allocationsBySalesInvoice.get(salesInv)!.add(alloc.supplier_invoice_no.trim())
+      }
+    })
+    
+    const supplierInvoicesBySalesInvoice = new Map<string, Set<string>>()
+    allSupplierInvoices.forEach((inv) => {
+      if (inv.sales_invoice_no && inv.invoice_no) {
+        const salesInv = normalizeInvoiceNo(inv.sales_invoice_no)
+        if (!supplierInvoicesBySalesInvoice.has(salesInv)) {
+          supplierInvoicesBySalesInvoice.set(salesInv, new Set())
         }
-        
-        return {
-          ...payment,
-          supplier_invoice_numbers: Array.from(supplierInvoiceNumbers).sort(),
-        }
-      })
-    )
+        supplierInvoicesBySalesInvoice.get(salesInv)!.add(inv.invoice_no.trim())
+      }
+    })
+    
+    // Enrich payments with supplier invoice numbers using in-memory lookups
+    const enrichedPayments = payments.map((payment) => {
+      const supplierInvoiceNumbers = new Set<string>()
+      const normalizedSalesInv = normalizeInvoiceNo(payment.sales_invoice_no)
+      
+      // Primary source: Order_Supplier_Allocations
+      const allocations = allocationsBySalesInvoice.get(normalizedSalesInv)
+      if (allocations) {
+        allocations.forEach((invNo) => supplierInvoiceNumbers.add(invNo))
+      }
+      
+      // Fallback: Supplier_Invoices (match by sales_invoice_no)
+      const supplierInvs = supplierInvoicesBySalesInvoice.get(normalizedSalesInv)
+      if (supplierInvs) {
+        supplierInvs.forEach((invNo) => supplierInvoiceNumbers.add(invNo))
+      }
+      
+      return {
+        ...payment,
+        supplier_invoice_numbers: Array.from(supplierInvoiceNumbers).sort(),
+      }
+    })
     
     // Apply filters
     let filtered = enrichedPayments
