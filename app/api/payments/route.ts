@@ -42,6 +42,15 @@ export async function GET(request: Request) {
             sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || '').toString().trim(),
             supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || '').toString().trim(),
           }))
+          console.log(`[Payments API] Fetched ${allAllocations.length} allocations from Order_Supplier_Allocations`)
+          if (allAllocations.length > 0) {
+            console.log(`[Payments API] Sample allocation:`, {
+              sales_invoice_no: allAllocations[0].sales_invoice_no,
+              supplier_invoice_no: allAllocations[0].supplier_invoice_no,
+            })
+          }
+        } else {
+          console.warn('[Payments API] Order_Supplier_Allocations sheet has no headers')
         }
       } catch (error: any) {
         console.warn('[Payments API] Error fetching all allocations:', error?.message || error)
@@ -50,6 +59,17 @@ export async function GET(request: Request) {
       try {
         // Get all supplier invoices from Supplier_Invoices sheet
         allSupplierInvoices = await getSupplierInvoices()
+        console.log(`[Payments API] Fetched ${allSupplierInvoices.length} supplier invoices`)
+        if (allSupplierInvoices.length > 0) {
+          const withSalesInv = allSupplierInvoices.filter(inv => inv.sales_invoice_no)
+          console.log(`[Payments API] ${withSalesInv.length} supplier invoices have sales_invoice_no`)
+          if (withSalesInv.length > 0) {
+            console.log(`[Payments API] Sample supplier invoice:`, {
+              invoice_no: withSalesInv[0].invoice_no,
+              sales_invoice_no: withSalesInv[0].sales_invoice_no,
+            })
+          }
+        }
       } catch (error: any) {
         console.warn('[Payments API] Error fetching all supplier invoices:', error?.message || error)
       }
@@ -70,6 +90,11 @@ export async function GET(request: Request) {
           allocationsBySalesInvoice.get(salesInv)!.add(alloc.supplier_invoice_no.trim())
         }
       })
+      console.log(`[Payments API] Created allocations lookup map with ${allocationsBySalesInvoice.size} sales invoices`)
+      if (allocationsBySalesInvoice.size > 0) {
+        const firstKey = Array.from(allocationsBySalesInvoice.keys())[0]
+        console.log(`[Payments API] Sample allocation key: "${firstKey}" -> ${Array.from(allocationsBySalesInvoice.get(firstKey)!).join(', ')}`)
+      }
       
       const supplierInvoicesBySalesInvoice = new Map<string, Set<string>>()
       allSupplierInvoices.forEach((inv) => {
@@ -81,8 +106,14 @@ export async function GET(request: Request) {
           supplierInvoicesBySalesInvoice.get(salesInv)!.add(inv.invoice_no.trim())
         }
       })
+      console.log(`[Payments API] Created supplier invoices lookup map with ${supplierInvoicesBySalesInvoice.size} sales invoices`)
+      if (supplierInvoicesBySalesInvoice.size > 0) {
+        const firstKey = Array.from(supplierInvoicesBySalesInvoice.keys())[0]
+        console.log(`[Payments API] Sample supplier invoice key: "${firstKey}" -> ${Array.from(supplierInvoicesBySalesInvoice.get(firstKey)!).join(', ')}`)
+      }
       
       // Enrich payments with supplier invoice numbers using in-memory lookups
+      let matchedCount = 0
       enrichedPayments = payments.map((payment) => {
         const supplierInvoiceNumbers = new Set<string>()
         const normalizedSalesInv = normalizeInvoiceNo(payment.sales_invoice_no)
@@ -91,12 +122,19 @@ export async function GET(request: Request) {
         const allocations = allocationsBySalesInvoice.get(normalizedSalesInv)
         if (allocations) {
           allocations.forEach((invNo) => supplierInvoiceNumbers.add(invNo))
+          matchedCount++
         }
         
         // Fallback: Supplier_Invoices (match by sales_invoice_no)
         const supplierInvs = supplierInvoicesBySalesInvoice.get(normalizedSalesInv)
         if (supplierInvs) {
           supplierInvs.forEach((invNo) => supplierInvoiceNumbers.add(invNo))
+          if (!allocations) matchedCount++
+        }
+        
+        // Debug first few payments
+        if (payments.indexOf(payment) < 3) {
+          console.log(`[Payments API] Payment ${payment.sales_invoice_no} (normalized: "${normalizedSalesInv}"): found ${supplierInvoiceNumbers.size} supplier invoices`)
         }
         
         return {
@@ -104,6 +142,7 @@ export async function GET(request: Request) {
           supplier_invoice_numbers: Array.from(supplierInvoiceNumbers).sort(),
         }
       })
+      console.log(`[Payments API] Matched supplier invoices for ${matchedCount} out of ${payments.length} payments`)
     } catch (error: any) {
       // If enrichment fails, log but continue with unenriched payments
       console.error('[Payments API] Error enriching payments with supplier invoice numbers:', error?.message || error)
