@@ -36,18 +36,19 @@ export async function GET(request: Request) {
       try {
         // Get all allocations from Order_Supplier_Allocations sheet
         const { headers: allocHeaders, data: allocData } = await getSheetData('Order_Supplier_Allocations')
+        console.log(`[Payments API] Order_Supplier_Allocations headers:`, allocHeaders)
         if (allocHeaders && allocHeaders.length > 0) {
           const allocations = rowsToObjects<any>(allocData, allocHeaders, 'Order_Supplier_Allocations')
+          console.log(`[Payments API] Parsed ${allocations.length} allocations, sample raw:`, allocations[0])
           allAllocations = allocations.map((alloc: any) => ({
             sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || '').toString().trim(),
             supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || '').toString().trim(),
           }))
           console.log(`[Payments API] Fetched ${allAllocations.length} allocations from Order_Supplier_Allocations`)
-          if (allAllocations.length > 0) {
-            console.log(`[Payments API] Sample allocation:`, {
-              sales_invoice_no: allAllocations[0].sales_invoice_no,
-              supplier_invoice_no: allAllocations[0].supplier_invoice_no,
-            })
+          const withData = allAllocations.filter(a => a.sales_invoice_no && a.supplier_invoice_no)
+          console.log(`[Payments API] ${withData.length} allocations have both sales_invoice_no and supplier_invoice_no`)
+          if (withData.length > 0) {
+            console.log(`[Payments API] Sample allocation:`, withData[0])
           }
         } else {
           console.warn('[Payments API] Order_Supplier_Allocations sheet has no headers')
@@ -61,13 +62,23 @@ export async function GET(request: Request) {
         allSupplierInvoices = await getSupplierInvoices()
         console.log(`[Payments API] Fetched ${allSupplierInvoices.length} supplier invoices`)
         if (allSupplierInvoices.length > 0) {
-          const withSalesInv = allSupplierInvoices.filter(inv => inv.sales_invoice_no)
-          console.log(`[Payments API] ${withSalesInv.length} supplier invoices have sales_invoice_no`)
+          const withSupplierInvNo = allSupplierInvoices.filter(inv => inv.supplier_invoice_no || inv.invoice_no)
+          console.log(`[Payments API] ${withSupplierInvNo.length} supplier invoices have supplier_invoice_no or invoice_no`)
+          const withSalesInv = allSupplierInvoices.filter(inv => inv.sales_invoice_no && (inv.supplier_invoice_no || inv.invoice_no))
+          console.log(`[Payments API] ${withSalesInv.length} supplier invoices have both sales_invoice_no and supplier invoice number`)
           if (withSalesInv.length > 0) {
             console.log(`[Payments API] Sample supplier invoice:`, {
-              supplier_invoice_no: withSalesInv[0].supplier_invoice_no || withSalesInv[0].invoice_no,
+              supplier_invoice_no: withSalesInv[0].supplier_invoice_no,
               invoice_no: withSalesInv[0].invoice_no,
               sales_invoice_no: withSalesInv[0].sales_invoice_no,
+              raw_keys: Object.keys(withSalesInv[0]),
+            })
+          } else if (withSupplierInvNo.length > 0) {
+            console.log(`[Payments API] Sample supplier invoice (no sales_invoice_no):`, {
+              supplier_invoice_no: withSupplierInvNo[0].supplier_invoice_no,
+              invoice_no: withSupplierInvNo[0].invoice_no,
+              sales_invoice_no: withSupplierInvNo[0].sales_invoice_no,
+              raw_keys: Object.keys(withSupplierInvNo[0]),
             })
           }
         }
@@ -136,8 +147,17 @@ export async function GET(request: Request) {
         }
         
         // Debug first few payments
-        if (payments.indexOf(payment) < 3) {
-          console.log(`[Payments API] Payment ${payment.sales_invoice_no} (normalized: "${normalizedSalesInv}"): found ${supplierInvoiceNumbers.size} supplier invoices`)
+        if (payments.indexOf(payment) < 5) {
+          const hasAlloc = !!allocationsBySalesInvoice.get(normalizedSalesInv)
+          const hasSupplierInv = !!supplierInvoicesBySalesInvoice.get(normalizedSalesInv)
+          console.log(`[Payments API] Payment ${payment.sales_invoice_no} (normalized: "${normalizedSalesInv}"): found ${supplierInvoiceNumbers.size} supplier invoices (hasAlloc: ${hasAlloc}, hasSupplierInv: ${hasSupplierInv})`)
+          if (supplierInvoiceNumbers.size === 0) {
+            // Show what keys exist in the maps
+            const allocKeys = Array.from(allocationsBySalesInvoice.keys()).slice(0, 5)
+            const supplierKeys = Array.from(supplierInvoicesBySalesInvoice.keys()).slice(0, 5)
+            console.log(`[Payments API] Available allocation keys (sample):`, allocKeys)
+            console.log(`[Payments API] Available supplier invoice keys (sample):`, supplierKeys)
+          }
         }
         
         return {
