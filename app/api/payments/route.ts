@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getPaymentsTracker } from '@/lib/sheets'
+import { getPaymentsTracker, getOrderSupplierAllocations, getSupplierInvoices } from '@/lib/sheets'
 
 export async function GET(request: Request) {
   try {
@@ -14,8 +14,44 @@ export async function GET(request: Request) {
     // Get all data from Payments_Tracker_View (source of truth)
     const payments = await getPaymentsTracker()
     
+    // Enrich payments with supplier invoice numbers
+    const enrichedPayments = await Promise.all(
+      payments.map(async (payment) => {
+        const supplierInvoiceNumbers = new Set<string>()
+        
+        try {
+          // Primary source: Order_Supplier_Allocations
+          const allocations = await getOrderSupplierAllocations(payment.sales_invoice_no)
+          allocations.forEach((alloc) => {
+            if (alloc.supplier_invoice_no && alloc.supplier_invoice_no.trim()) {
+              supplierInvoiceNumbers.add(alloc.supplier_invoice_no.trim())
+            }
+          })
+        } catch (error) {
+          console.warn(`[Payments API] Error fetching allocations for ${payment.sales_invoice_no}:`, error)
+        }
+        
+        try {
+          // Fallback: Supplier_Invoices (match by sales_invoice_no)
+          const supplierInvoices = await getSupplierInvoices(payment.sales_invoice_no)
+          supplierInvoices.forEach((inv) => {
+            if (inv.invoice_no && inv.invoice_no.trim()) {
+              supplierInvoiceNumbers.add(inv.invoice_no.trim())
+            }
+          })
+        } catch (error) {
+          console.warn(`[Payments API] Error fetching supplier invoices for ${payment.sales_invoice_no}:`, error)
+        }
+        
+        return {
+          ...payment,
+          supplier_invoice_numbers: Array.from(supplierInvoiceNumbers).sort(),
+        }
+      })
+    )
+    
     // Apply filters
-    let filtered = payments
+    let filtered = enrichedPayments
     
     // Exclude SETTLED orders if requested (for live tracker)
     // Also exclude paid invoices - only show unpaid sales invoices

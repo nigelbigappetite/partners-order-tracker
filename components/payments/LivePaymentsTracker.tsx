@@ -208,6 +208,7 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
     { field: 'franchisee_name' as SortField, label: 'Franchisee' },
     { field: 'order_date' as SortField, label: 'Order Date' },
     { field: 'total_order_value' as SortField, label: 'Order Value' },
+    { label: 'Supplier Invoice' },
     { field: 'settlement_status' as SortField, label: 'Status', showInfo: true },
   ]
 
@@ -310,11 +311,13 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {headers.map((header) => (
+                {headers.map((header, index) => (
                   <th
-                    key={header.field}
-                    onClick={() => handleSort(header.field)}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap cursor-pointer hover:bg-gray-100 group"
+                    key={header.field || `header-${index}`}
+                    onClick={() => header.field && handleSort(header.field)}
+                    className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap ${
+                      header.field ? 'cursor-pointer hover:bg-gray-100 group' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-1">
                       {header.label}
@@ -334,7 +337,7 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                             </div>
                           </div>
                       )}
-                      <SortIcon field={header.field} />
+                      {header.field && <SortIcon field={header.field} />}
                     </div>
                   </th>
                 ))}
@@ -366,6 +369,11 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                       {formatCurrencyNoDecimals(payment.total_order_value)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                      {payment.supplier_invoice_numbers && payment.supplier_invoice_numbers.length > 0
+                        ? payment.supplier_invoice_numbers.join(', ')
+                        : '-'}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="relative inline-flex group/status">

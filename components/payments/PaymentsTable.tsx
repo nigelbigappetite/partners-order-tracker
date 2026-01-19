@@ -119,6 +119,7 @@ export default function PaymentsTable({
     { label: 'Franchisee', field: 'franchisee_name' as SortField },
     { label: 'Order Date', field: 'order_date' as SortField },
     { label: 'Order Value', field: 'total_order_value' as SortField },
+    { label: 'Supplier Invoice' },
     { label: 'Settlement Status', showInfo: true, field: 'settlement_status' as SortField },
     { label: 'Unpaid Suppliers' },
     { label: 'Actions' },
@@ -266,6 +267,11 @@ export default function PaymentsTable({
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(payment.total_order_value)}
+                      </td>
+                      <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {payment.supplier_invoice_numbers && payment.supplier_invoice_numbers.length > 0
+                          ? payment.supplier_invoice_numbers.join(', ')
+                          : '-'}
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap">
                         <div className="relative inline-flex group/status">

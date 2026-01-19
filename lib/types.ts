@@ -128,6 +128,7 @@ export interface PaymentTrackerRow {
   supplier_side_paid: boolean;
   supplier_payment_ready: boolean;
   settlement_status: 'OPEN' | 'PAID_NOT_CLEARED' | 'WAITING_SUPPLIERS' | 'SETTLED';
+  supplier_invoice_numbers?: string[];
   [key: string]: any;
 }
 
@@ -183,4 +184,3 @@ export interface KitchenMapping {
   active: boolean;
   notes?: string;
 }
-
