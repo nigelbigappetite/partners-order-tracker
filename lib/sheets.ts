@@ -1336,90 +1336,27 @@ export async function createFranchiseEntry(franchiseData: {
   try {
     const sheets = await getSheetsClient();
 
-    // Get sheet ID for Franchisee_Master
-    const spreadsheet = await sheets.spreadsheets.get({
-      spreadsheetId: SPREADSHEET_ID,
-    });
-    const franchiseSheet = spreadsheet.data.sheets?.find(
-      (sheet: any) => sheet.properties?.title === 'Franchisee_Master'
-    );
-    if (!franchiseSheet?.properties?.sheetId) {
-      throw new Error('Franchisee_Master sheet not found');
-    }
-    const sheetId = franchiseSheet.properties.sheetId;
+    // Use values.append so we don't depend on the exact sheetId/title
+    const values = [[
+      franchiseData.code,
+      franchiseData.name,
+      franchiseData.city || '',
+      franchiseData.country || 'ENG',
+      franchiseData.status || 'ACTIVE',
+      franchiseData.activeBrands || '',
+    ]];
 
-    // Get current last row (column A assumed to always have data for existing rows)
-    const currentData = await sheets.spreadsheets.values.get({
+    await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Franchisee_Master!A:A',
-    });
-
-    const numExistingRows = currentData.data.values ? currentData.data.values.length : 1;
-    const insertStartRow1Indexed = numExistingRows + 1;
-
-    // Step 1: Insert a new row at the bottom
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
+      range: 'Franchisee_Master!A:F',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
       requestBody: {
-        requests: [
-          {
-            insertDimension: {
-              range: {
-                sheetId,
-                dimension: 'ROWS',
-                startIndex: numExistingRows,
-                endIndex: numExistingRows + 1,
-              },
-            },
-          },
-        ],
+        values,
       },
     });
 
-    // Step 2: Write data to the standard Franchisee_Master columns
-    // Column A: Franchisee Code
-    // Column B: Franchisee Name
-    // Column C: City
-    // Column D: Country
-    // Column E: Status
-    // Column F: Active Brands
-    const dataUpdates: any[] = [];
-
-    dataUpdates.push({
-      range: `Franchisee_Master!A${insertStartRow1Indexed}:A${insertStartRow1Indexed}`,
-      values: [[franchiseData.code]],
-    });
-    dataUpdates.push({
-      range: `Franchisee_Master!B${insertStartRow1Indexed}:B${insertStartRow1Indexed}`,
-      values: [[franchiseData.name]],
-    });
-    dataUpdates.push({
-      range: `Franchisee_Master!C${insertStartRow1Indexed}:C${insertStartRow1Indexed}`,
-      values: [[franchiseData.city || '']],
-    });
-    dataUpdates.push({
-      range: `Franchisee_Master!D${insertStartRow1Indexed}:D${insertStartRow1Indexed}`,
-      values: [[franchiseData.country || 'ENG']],
-    });
-    dataUpdates.push({
-      range: `Franchisee_Master!E${insertStartRow1Indexed}:E${insertStartRow1Indexed}`,
-      values: [[franchiseData.status || 'ACTIVE']],
-    });
-    dataUpdates.push({
-      range: `Franchisee_Master!F${insertStartRow1Indexed}:F${insertStartRow1Indexed}`,
-      values: [[franchiseData.activeBrands || '']],
-    });
-
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        valueInputOption: 'USER_ENTERED',
-        data: dataUpdates,
-      },
-    });
-
-    console.log('[createFranchiseEntry] Created new franchise entry in Franchisee_Master:', {
-      row: insertStartRow1Indexed,
+    console.log('[createFranchiseEntry] Appended new franchise entry to Franchisee_Master:', {
       code: franchiseData.code,
       name: franchiseData.name,
       city: franchiseData.city,
