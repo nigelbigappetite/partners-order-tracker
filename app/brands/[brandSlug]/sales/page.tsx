@@ -350,40 +350,6 @@ export default function SalesDashboard() {
           />
         </div>
 
-        {/* Today's Sales Section */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Today's Sales</h2>
-            <p className="text-sm text-gray-500">{formatDate(new Date().toISOString().split('T')[0])}</p>
-          </div>
-          {todaysSales.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
-              <p className="text-sm text-gray-500">No sales data for today</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-gray-600 mb-1">Today's Revenue</p>
-                <p className="text-2xl font-bold text-blue-700">{formatCurrency(todaysRevenue)}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-green-50 to-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-gray-600 mb-1">Today's Orders</p>
-                <p className="text-2xl font-bold text-green-700">{todaysOrders}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-purple-50 to-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-gray-600 mb-1">Today's AOV</p>
-                <p className="text-2xl font-bold text-purple-700">{formatCurrency(todaysAOV)}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-gray-600 mb-1">Top Location</p>
-                <p className="text-sm font-semibold text-amber-700 truncate">
-                  {todaysTopLocation ? getCityFromLocation(todaysTopLocation.location, todaysTopLocation.city) : '-'}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Sales Table */}
         <div className="mt-6 sm:mt-8">
           <div className="mb-4">
