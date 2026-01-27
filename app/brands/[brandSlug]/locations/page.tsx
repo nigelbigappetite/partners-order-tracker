@@ -99,8 +99,21 @@ export default function BrandLocationsPage() {
 
   const fetchOrders = async (silent = false) => {
     try {
+      // First get the brand name if we don't have it
+      let brandToUse = brandName
+      if (!brandToUse && !isAdmin) {
+        const nameResponse = await fetch(`/api/brands/${brandSlug}/name`)
+        if (nameResponse.ok) {
+          const nameData = await nameResponse.json()
+          brandToUse = nameData.brandName || brandSlug
+          setBrandName(brandToUse)
+        } else {
+          brandToUse = brandSlug
+        }
+      }
+      
       // For admin, don't filter by brand
-      const brandParam = isAdmin ? 'admin' : (brandName || brandSlug)
+      const brandParam = isAdmin ? 'admin' : brandToUse
       const response = await fetch(`/api/orders?brand=${encodeURIComponent(brandParam)}`)
       if (!response.ok) {
         throw new Error('Failed to fetch orders')
@@ -133,7 +146,18 @@ export default function BrandLocationsPage() {
       if (isAdmin) {
         setOrderLines(Array.isArray(data) ? data : [])
       } else {
-        const brandToUse = brandName || brandSlug
+        // Get the brand name if we don't have it
+        let brandToUse = brandName
+        if (!brandToUse) {
+          const nameResponse = await fetch(`/api/brands/${brandSlug}/name`)
+          if (nameResponse.ok) {
+            const nameData = await nameResponse.json()
+            brandToUse = nameData.brandName || brandSlug
+            setBrandName(brandToUse)
+          } else {
+            brandToUse = brandSlug
+          }
+        }
         const filtered = (Array.isArray(data) ? data : []).filter((line: OrderLine) => {
           const lineBrand = (line.brand || '').trim()
           return lineBrand.toLowerCase() === brandToUse.toLowerCase()
