@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getAllBrandAuth } from '@/lib/sheets'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Check environment variables first
@@ -39,7 +41,11 @@ export async function GET() {
     
     // Don't return passwords in the response
     const brandsWithoutPasswords = brands.map(({ password, ...rest }) => rest)
-    return NextResponse.json(brandsWithoutPasswords)
+    return NextResponse.json(brandsWithoutPasswords, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      },
+    })
   } catch (error: any) {
     console.error('[API /brands/auth] Error:', error)
     console.error('[API /brands/auth] Error stack:', error.stack)
