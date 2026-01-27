@@ -20,6 +20,7 @@ export function getBrandLogo(brandSlug: string, brandName?: string): string {
     'eggs-n-stuff': '/Eggs n Stuff logo.png',
     'eggs n stuff': '/Eggs n Stuff logo.png',
     'eggsnstuff': '/Eggs n Stuff logo.png',
+    'eggs-nstuff': '/Eggs n Stuff logo.png',
     'admin': '/Hungry Tum Logo.jpeg',
   }
 
