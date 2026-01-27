@@ -68,20 +68,27 @@ export default function CSVUpload({ onImportComplete }: CSVUploadProps) {
       const result = await response.json()
 
       if (!response.ok) {
+        console.error('Import API error:', result)
         throw new Error(result.error || 'Import failed')
       }
 
-      if (result.errors && result.errors.length > 0) {
-        console.warn('Import completed with errors:', result.errors)
-      }
-
-      if (result.unmappedLocations && result.unmappedLocations.length > 0) {
-        toast(
-          `Imported ${result.imported} rows. ${result.unmappedLocations.length} locations need mapping.`,
-          { duration: 5000 }
-        )
+      // Check if import actually wrote to Google Sheets
+      if (result.imported === 0 && result.skipped > 0) {
+        toast(`All ${result.skipped} rows were skipped (likely duplicates). No new data imported.`, { icon: '⚠️' })
+      } else if (result.imported === 0) {
+        toast.error('No rows were imported. Check for errors or validation issues.')
       } else {
-        toast.success(`Successfully imported ${result.imported} rows`)
+        if (result.errors && result.errors.length > 0) {
+          console.warn('Import completed with errors:', result.errors)
+          toast(`Imported ${result.imported} rows with ${result.errors.length} errors. Check console for details.`, { icon: '⚠️' })
+        } else if (result.unmappedLocations && result.unmappedLocations.length > 0) {
+          toast(
+            `Imported ${result.imported} rows to Google Sheets. ${result.unmappedLocations.length} locations need mapping.`,
+            { duration: 5000 }
+          )
+        } else {
+          toast.success(`Successfully imported ${result.imported} rows to Google Sheets`)
+        }
       }
 
       // Reset form
