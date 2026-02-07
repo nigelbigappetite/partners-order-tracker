@@ -26,7 +26,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { code, name, city, country, status, activeBrands } = body || {}    if (!code || !name) {
+    const { code, name, city, country, status, activeBrands } = body || {}
+    if (!code || !name) {
       return NextResponse.json(
         { error: 'Franchisee Code and Franchisee Name are required' },
         { status: 400 }
