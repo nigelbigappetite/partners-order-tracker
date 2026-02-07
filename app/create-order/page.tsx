@@ -26,6 +26,7 @@ export default function CreateOrderPage() {
   const [quantity, setQuantity] = useState(1)
   const [orderNumber, setOrderNumber] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [productDropdownOpen, setProductDropdownOpen] = useState(false)
@@ -220,7 +221,7 @@ export default function CreateOrderPage() {
         franchisee: franchiseeName,
         franchiseeCode: selectedFranchise.code || '',
         city: city,
-        orderDate: new Date().toISOString().split('T')[0],
+        orderDate: orderDate,
         orderStage: 'New',
         orderTotal: total,
         orderLines: orderLines.map((line) => ({
@@ -582,6 +583,18 @@ export default function CreateOrderPage() {
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder:text-gray-500 focus:border-gray-900 focus:outline-none"
                   required
                 />
+              </div>
+
+              {/* Date created – defaults to today, change for backdating */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Date created</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-gray-900 focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-gray-500">Defaults to today. Change for backdating orders.</p>
               </div>
             </div>
 
