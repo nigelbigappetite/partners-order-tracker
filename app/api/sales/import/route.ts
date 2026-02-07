@@ -54,7 +54,13 @@ export async function POST(request: Request) {
     }
     
     // Import to Google Sheets
+    console.log(`[CSV Import API] Starting import of ${csvRows.length} CSV rows`);
     const result = await importKitchenSalesFromDeliverectCSV(csvRows)
+    console.log(`[CSV Import API] Import completed: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
+    
+    if (result.errors.length > 0) {
+      console.error(`[CSV Import API] Import errors:`, result.errors);
+    }
     
     return NextResponse.json({
       success: true,
@@ -62,7 +68,7 @@ export async function POST(request: Request) {
       skipped: result.skipped,
       errors: result.errors,
       unmappedLocations: result.unmappedLocations,
-      message: `Successfully imported ${result.imported} rows. ${result.skipped} duplicates skipped.`,
+      message: `Successfully imported ${result.imported} rows to Google Sheets. ${result.skipped} duplicates skipped.${result.errors.length > 0 ? ` ${result.errors.length} errors occurred.` : ''}`,
     })
   } catch (error: any) {
     console.error('[CSV Import API] Error:', error)

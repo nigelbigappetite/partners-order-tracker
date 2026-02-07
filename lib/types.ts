@@ -175,9 +175,7 @@ export interface DeliverectCSVRow {
   GrossSales: number;
   Count: number;
   Location: string;
-}
-
-export interface KitchenMapping {
+}export interface KitchenMapping {
   location: string;
   franchiseCode: string;
   franchiseName?: string;
