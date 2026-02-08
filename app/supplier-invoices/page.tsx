@@ -36,6 +36,8 @@ export default function SupplierInvoicesPage() {
   const [linkOrderSalesNo, setLinkOrderSalesNo] = useState('')
   const [linkOrderAmount, setLinkOrderAmount] = useState('')
   const [linkOrderSubmitting, setLinkOrderSubmitting] = useState(false)
+  const [linkOrderDropdownOpen, setLinkOrderDropdownOpen] = useState(false)
+  const linkOrderDropdownRef = useRef<HTMLDivElement>(null)
 
   const [attachInvoiceId, setAttachInvoiceId] = useState<string | null>(null)
   const [attachSubmitting, setAttachSubmitting] = useState(false)
@@ -453,7 +455,7 @@ export default function SupplierInvoicesPage() {
                     <tr key={inv.id ?? inv.invoice_no} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                         {inv.sales_invoice_no ? (
-                          inv.sales_invoice_no
+                          <span>{inv.sales_invoice_no.startsWith('#') ? inv.sales_invoice_no : `#${inv.sales_invoice_no}`}</span>
                         ) : inv.id ? (
                           <button
                             type="button"
@@ -556,19 +558,44 @@ export default function SupplierInvoicesPage() {
             <p className="text-sm text-gray-600">
               {linkOrderInvoice.supplier} – {linkOrderInvoice.invoice_no}
             </p>
-            <div>
+            <div ref={linkOrderDropdownRef} className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Sales invoice (order) *</label>
-              <select
+              <input
+                type="text"
                 value={linkOrderSalesNo}
-                onChange={(e) => setLinkOrderSalesNo(e.target.value)}
+                onChange={(e) => {
+                  setLinkOrderSalesNo(e.target.value)
+                  setLinkOrderDropdownOpen(true)
+                }}
+                onFocus={() => setLinkOrderDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setLinkOrderDropdownOpen(false), 150)}
+                placeholder="Type to search or select..."
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900"
-              >
-                <option value="">Select order</option>
-                {salesInvoiceNos.map((no) => (
-                  <option key={no} value={no}>{no}</option>
-                ))}
-              </select>
+              />
+              {linkOrderDropdownOpen && (
+                <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg max-h-56 overflow-y-auto">
+                  {salesInvoiceNos
+                    .filter((no) => String(no).toLowerCase().includes(linkOrderSalesNo.trim().toLowerCase()))
+                    .map((no) => (
+                      <button
+                        key={no}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setLinkOrderSalesNo(no)
+                          setLinkOrderDropdownOpen(false)
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                      >
+                        {no}
+                      </button>
+                    ))}
+                  {salesInvoiceNos.filter((no) => String(no).toLowerCase().includes(linkOrderSalesNo.trim().toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-500">No matching orders</div>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount (optional – updates invoice amount)</label>
