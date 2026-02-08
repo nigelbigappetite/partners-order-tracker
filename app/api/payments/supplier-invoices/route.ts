@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     if (allocations.length === 0 || supplierInvoiceNos.length === 0) {
       console.log('[GET /api/payments/supplier-invoices] No allocations found, trying direct lookup by sales invoice number')
       const normalizeInvoiceNo = (inv: string): string => {
-        return String(inv).replace(/#/g, '').trim().toLowerCase()
+        return String(inv).replace(/#/g, '').replace(/\s/g, '').trim().toLowerCase()
       }
       const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo)
       console.log('[GET /api/payments/supplier-invoices] Searching for sales invoice:', searchInvoiceNo)
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     
     // Match supplier invoices by invoice number from allocations
     const normalizeInvoiceNo = (inv: string): string => {
-      return String(inv).replace(/#/g, '').trim().toLowerCase()
+      return String(inv).replace(/#/g, '').replace(/\s/g, '').trim().toLowerCase()
     }
     
     console.log('[GET /api/payments/supplier-invoices] Attempting to match invoices...')

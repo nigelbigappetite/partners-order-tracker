@@ -386,8 +386,15 @@ const columnMapping: Record<string, Record<string, string>> = {
   },
   'Order_Supplier_Allocations': {
     'Sales Invoice No': 'sales_invoice_no',
+    'Sales Invoice Number': 'sales_invoice_no',
+    'Sales Invoice': 'sales_invoice_no',
     'sales_invoice_no': 'sales_invoice_no',
+    'Order': 'sales_invoice_no',
+    'Linked Order': 'sales_invoice_no',
+    'Invoice No': 'sales_invoice_no',
+    'Invoice Number': 'sales_invoice_no',
     'Supplier Invoice No': 'supplier_invoice_no',
+    'Supplier Invoice': 'supplier_invoice_no',
     'supplier_invoice_no': 'supplier_invoice_no',
     'Allocated Amount': 'allocated_amount',
     'allocated_amount': 'allocated_amount',
@@ -856,16 +863,17 @@ export async function updateOrderStatus(
       return result;
     };
 
-    // Build update values
+    // Build update values. Partner Paid column uses YES/NO in the sheet.
     const updateValues: any[] = [];
     Object.entries(updates).forEach(([tsKey, value]) => {
       const sheetColumn = reverseMapping[tsKey] || tsKey;
       const colIndex = findColumnIndex(headers, sheetColumn);
       if (colIndex !== -1) {
         const colLetter = getColumnLetter(colIndex);
+        const writeValue = tsKey === 'partnerPaid' ? (value === true ? 'YES' : 'NO') : value;
         updateValues.push({
           range: `Orders_Header!${colLetter}${rowIndex + 2}`,
-          values: [[value]],
+          values: [[writeValue]],
         });
         console.log('[updateOrderStatus] Adding update:', {
           property: tsKey,
@@ -874,7 +882,7 @@ export async function updateOrderStatus(
           columnLetter: colLetter,
           sheetRow: rowIndex + 2,
           range: `Orders_Header!${colLetter}${rowIndex + 2}`,
-          value,
+          value: writeValue,
         });
       } else {
         console.warn('[updateOrderStatus] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
@@ -1953,7 +1961,7 @@ export async function updatePartnerPayment(
       return result;
     };
 
-    // Build update values - only allow specific fields
+    // Build update values - only allow specific fields. Partner Paid column uses YES/NO.
     const updateValues: any[] = [];
     Object.entries(updates).forEach(([tsKey, value]) => {
       if (!allowedFields[tsKey]) {
@@ -1965,9 +1973,10 @@ export async function updatePartnerPayment(
       const colIndex = findColumnIndex(headers, sheetColumn);
       if (colIndex !== -1) {
         const colLetter = getColumnLetter(colIndex);
+        const writeValue = tsKey === 'partnerPaid' ? (value === true ? 'YES' : 'NO') : value;
         updateValues.push({
           range: `Orders_Header!${colLetter}${rowIndex + 2}`,
-          values: [[value]],
+          values: [[writeValue]],
         });
         console.log('[updatePartnerPayment] Adding update:', {
           property: tsKey,
@@ -1976,7 +1985,7 @@ export async function updatePartnerPayment(
           columnLetter: colLetter,
           sheetRow: rowIndex + 2,
           range: `Orders_Header!${colLetter}${rowIndex + 2}`,
-          value,
+          value: writeValue,
         });
       } else {
         console.warn('[updatePartnerPayment] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
@@ -2533,14 +2542,15 @@ export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promi
       allocated_amount: Number(alloc.allocated_amount || alloc['Allocated Amount'] || alloc.Amount || 0),
     }));
     
-    // Filter by sales invoice
+    // Filter by sales invoice (normalize: remove #, spaces, trim, lowercase)
     const normalizeInvoiceNo = (inv: string): string => {
-      return String(inv).replace(/#/g, '').trim().toLowerCase();
+      return String(inv).replace(/#/g, '').replace(/\s/g, '').trim().toLowerCase();
     };
     const searchInvoiceNo = normalizeInvoiceNo(salesInvoiceNo);
     
     return normalizedAllocations.filter((alloc) => {
-      const allocNo = normalizeInvoiceNo(alloc.sales_invoice_no || '');
+      const allocSalesNo = alloc.sales_invoice_no || alloc['Sales Invoice No'] || alloc['Order'] || alloc['Linked Order'] || '';
+      const allocNo = normalizeInvoiceNo(allocSalesNo);
       return allocNo === searchInvoiceNo;
     });
   } catch (error: any) {

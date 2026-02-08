@@ -43,11 +43,11 @@ export async function GET(request: Request) {
           const allocations = rowsToObjects<any>(allocData, allocHeaders, 'Order_Supplier_Allocations')
           console.log(`[Payments API] Parsed ${allocations.length} allocations, sample raw:`, allocations[0])
           allAllocations = allocations.map((alloc: any) => ({
-            sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || '').toString().trim(),
-            supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || '').toString().trim(),
+            sales_invoice_no: (alloc.sales_invoice_no || alloc['Sales Invoice No'] || alloc['Sales_Invoice_No'] || alloc['Sales Invoice'] || alloc['Order'] || alloc['Linked Order'] || '').toString().trim(),
+            supplier_invoice_no: (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || alloc['Supplier_Invoice_No'] || alloc['Supplier Invoice'] || '').toString().trim(),
           }))
           console.log(`[Payments API] Fetched ${allAllocations.length} allocations from Order_Supplier_Allocations`)
-          const withData = allAllocations.filter(a => a.sales_invoice_no && a.supplier_invoice_no)
+          const withData = allAllocations.filter((a: any) => a.sales_invoice_no && a.supplier_invoice_no)
           console.log(`[Payments API] ${withData.length} allocations have both sales_invoice_no and supplier_invoice_no`)
           if (withData.length > 0) {
             console.log(`[Payments API] Sample allocation:`, withData[0])
@@ -88,20 +88,28 @@ export async function GET(request: Request) {
         console.warn('[Payments API] Error fetching all supplier invoices:', error?.message || error)
       }
       
-      // Helper to normalize invoice numbers for matching
+      // Helper to normalize invoice numbers for matching (remove #, spaces, trim, lowercase)
       const normalizeInvoiceNo = (inv: string): string => {
-        return String(inv).replace(/#/g, '').trim().toLowerCase()
+        return String(inv).replace(/#/g, '').replace(/\s/g, '').trim().toLowerCase()
       }
-      
-      // Create lookup maps for efficient matching
+
+      // Extract sales/supplier invoice from allocation row (handle various sheet column names)
+      const getSalesInvoiceNo = (alloc: any): string =>
+        (alloc.sales_invoice_no || alloc['Sales Invoice No'] || alloc['Sales_Invoice_No'] || alloc['Sales Invoice'] || alloc['Order'] || alloc['Linked Order'] || '').toString().trim()
+      const getSupplierInvoiceNo = (alloc: any): string =>
+        (alloc.supplier_invoice_no || alloc['Supplier Invoice No'] || alloc['Supplier_Invoice_No'] || alloc['Supplier Invoice'] || '').toString().trim()
+
+      // Create lookup maps for efficient matching (primary source: Order_Supplier_Allocations)
       const allocationsBySalesInvoice = new Map<string, Set<string>>()
       allAllocations.forEach((alloc) => {
-        if (alloc.sales_invoice_no && alloc.supplier_invoice_no) {
-          const salesInv = normalizeInvoiceNo(alloc.sales_invoice_no)
+        const salesNo = getSalesInvoiceNo(alloc)
+        const supplierNo = getSupplierInvoiceNo(alloc)
+        if (salesNo && supplierNo) {
+          const salesInv = normalizeInvoiceNo(salesNo)
           if (!allocationsBySalesInvoice.has(salesInv)) {
             allocationsBySalesInvoice.set(salesInv, new Set())
           }
-          allocationsBySalesInvoice.get(salesInv)!.add(alloc.supplier_invoice_no.trim())
+          allocationsBySalesInvoice.get(salesInv)!.add(supplierNo.trim())
         }
       })
       console.log(`[Payments API] Created allocations lookup map with ${allocationsBySalesInvoice.size} sales invoices`)
@@ -131,12 +139,14 @@ export async function GET(request: Request) {
       // Build linked supplier invoices per sales invoice (for recon: amounts and paid status)
       const allocSupplierNosBySalesInv = new Map<string, Set<string>>()
       allAllocations.forEach((alloc: any) => {
-        if (alloc.sales_invoice_no && alloc.supplier_invoice_no) {
-          const salesInv = normalizeInvoiceNo(alloc.sales_invoice_no)
+        const salesNo = getSalesInvoiceNo(alloc)
+        const supplierNo = getSupplierInvoiceNo(alloc)
+        if (salesNo && supplierNo) {
+          const salesInv = normalizeInvoiceNo(salesNo)
           if (!allocSupplierNosBySalesInv.has(salesInv)) {
             allocSupplierNosBySalesInv.set(salesInv, new Set())
           }
-          allocSupplierNosBySalesInv.get(salesInv)!.add(normalizeInvoiceNo(alloc.supplier_invoice_no))
+          allocSupplierNosBySalesInv.get(salesInv)!.add(normalizeInvoiceNo(supplierNo))
         }
       })
       const linkedInvoicesBySalesInv = new Map<string, { amount: number; paid: boolean }[]>()
