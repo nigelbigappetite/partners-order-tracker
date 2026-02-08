@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { PaymentTrackerRow } from '@/lib/types'
 import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/utils'
 import { Search, ChevronUp, ChevronDown, RefreshCw, Info } from 'lucide-react'
@@ -354,7 +355,13 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                     className={`${rowColor} hover:bg-opacity-80 transition-colors`}
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                      {payment.sales_invoice_no}
+                      <Link
+                        href={`/order/${encodeURIComponent(payment.sales_invoice_no)}`}
+                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                        title="View order details"
+                      >
+                        {payment.sales_invoice_no}
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                       {payment.brand}
@@ -373,9 +380,19 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                         const linked = payment.supplier_invoices_linked_count ?? 0
                         const paid = payment.supplier_invoices_paid_count ?? 0
                         const unpaid = payment.supplier_invoices_unpaid_count ?? payment.supplier_unpaid_count ?? 0
-                        if (linked === 0) return <span className="text-gray-400">-</span>
+                        if (linked === 0) {
+                          return (
+                            <span
+                              className="text-gray-400"
+                              title="Link via Order_Supplier_Allocations or Create Invoice for this order."
+                            >
+                              No invoices linked
+                            </span>
+                          )
+                        }
+                        const invoiceNos = (payment.supplier_invoice_numbers || []).join(', ') || '—'
                         return (
-                          <span title={(payment.supplier_invoice_numbers || []).join(', ') || undefined}>
+                          <span title={`Linked: ${linked}, Paid: ${paid}, Unpaid: ${unpaid}. Invoice nos: ${invoiceNos}`}>
                             {linked} linked, {paid} paid, {unpaid} unpaid
                           </span>
                         )

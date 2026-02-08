@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { PaymentTrackerRow, SupplierInvoice } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
-import ActionButton from '@/components/ActionButton'
 import { Info, ChevronUp, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -51,6 +51,7 @@ export default function PaymentsTable({
   onPaySupplier,
   onCreateSupplierInvoice,
 }: PaymentsTableProps) {
+  // Default sort: order date, most recent first
   const [sortField, setSortField] = useState<SortField>('order_date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [loadingInvoices, setLoadingInvoices] = useState<string | null>(null)
@@ -247,14 +248,13 @@ export default function PaymentsTable({
                       className={`${rowColor} hover:bg-opacity-80 transition-colors`}
                     >
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <button
-                          onClick={() => handleViewInvoices(payment.sales_invoice_no)}
-                          disabled={loadingInvoices === payment.sales_invoice_no}
-                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-wait"
-                          title="Click to view supplier invoice files"
+                        <Link
+                          href={`/order/${encodeURIComponent(payment.sales_invoice_no)}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                          title="View order details"
                         >
-                          {loadingInvoices === payment.sales_invoice_no ? 'Loading...' : payment.sales_invoice_no}
-                        </button>
+                          {payment.sales_invoice_no}
+                        </Link>
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-700">
                         {payment.brand}
@@ -273,10 +273,34 @@ export default function PaymentsTable({
                           const linked = payment.supplier_invoices_linked_count ?? 0
                           const paid = payment.supplier_invoices_paid_count ?? 0
                           const unpaid = payment.supplier_invoices_unpaid_count ?? payment.supplier_unpaid_count ?? 0
-                          if (linked === 0) return <span className="text-gray-400">-</span>
+                          if (linked === 0) {
+                            return (
+                              <span
+                                className="text-gray-400"
+                                title="Link via Order_Supplier_Allocations or Create Invoice for this order."
+                              >
+                                No invoices linked
+                              </span>
+                            )
+                          }
+                          const invoiceNos = (payment.supplier_invoice_numbers || []).join(', ') || '—'
                           return (
-                            <span title={`Linked: ${linked}, Paid: ${paid}, Unpaid: ${unpaid}. Invoice nos: ${(payment.supplier_invoice_numbers || []).join(', ') || '—'}`}>
-                              {linked} linked, {paid} paid, {unpaid} unpaid
+                            <span className="flex items-center gap-2 flex-wrap">
+                              <span title={`Linked: ${linked}, Paid: ${paid}, Unpaid: ${unpaid}. Invoice nos: ${invoiceNos}`}>
+                                {linked} linked, {paid} paid, {unpaid} unpaid
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  handleViewInvoices(payment.sales_invoice_no)
+                                }}
+                                disabled={loadingInvoices === payment.sales_invoice_no}
+                                className="text-blue-600 hover:text-blue-800 hover:underline text-xs disabled:opacity-50 disabled:cursor-wait"
+                                title="Open supplier invoice files"
+                              >
+                                {loadingInvoices === payment.sales_invoice_no ? 'Loading...' : 'View files'}
+                              </button>
                             </span>
                           )
                         })()}
