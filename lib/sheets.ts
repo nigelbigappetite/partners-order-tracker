@@ -481,6 +481,15 @@ function findColumnIndex(headers: string[], targetName: string): number {
   return partial;
 }
 
+// Find column by trying multiple possible header names (for sheets with varying column names)
+function findColumnIndexByAlternates(headers: string[], possibleNames: string[]): number {
+  for (const name of possibleNames) {
+    const idx = findColumnIndex(headers, name);
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
 // Helper to convert column index to A1 notation
 function getColumnLetter(colIndex: number): string {
   let result = '';
@@ -2132,20 +2141,21 @@ export async function updateSupplierInvoice(
     
     console.log('[updateSupplierInvoice] Invoice found at row index:', rowIndex, '(sheet row:', rowIndex + 2, ')');
     
-    // Allowed fields for write-back (TS key -> sheet header)
-    const allowedFields: Record<string, string> = {
+    // Allowed fields: single header or list of alternate headers (sheet column names vary)
+    const allowedFields: Record<string, string | string[]> = {
       paid: 'Paid?',
       paid_date: 'Paid Date',
       payment_reference: 'Payment Reference',
-      sales_invoice_no: 'Sales Invoice No',
-      amount: 'Amount',
+      sales_invoice_no: ['Sales Invoice No', 'Sales Invoice Number', 'Linked Order', 'Order', 'sales_invoice_no'],
+      amount: ['Amount', 'Invoice Total', 'Total', 'amount', 'invoice_total'],
     };
 
     // Build update values - only allow specific fields, skip undefined
     const updateValues: any[] = [];
     Object.entries(updates).forEach(([tsKey, value]) => {
       if (value === undefined) return;
-      if (!allowedFields[tsKey]) {
+      const fieldSpec = allowedFields[tsKey];
+      if (!fieldSpec) {
         console.warn('[updateSupplierInvoice] Attempted to write to protected field:', tsKey);
         return;
       }
@@ -2155,8 +2165,8 @@ export async function updateSupplierInvoice(
         : tsKey === 'amount'
           ? (typeof value === 'number' ? value : Number(value) || 0)
           : value;
-      const sheetColumn = allowedFields[tsKey];
-      const colIndex = findColumnIndex(headers, sheetColumn);
+      const possibleNames = Array.isArray(fieldSpec) ? fieldSpec : [fieldSpec];
+      const colIndex = findColumnIndexByAlternates(headers, possibleNames);
       if (colIndex !== -1) {
         const colLetter = getColumnLetter(colIndex);
         updateValues.push({
@@ -2165,7 +2175,7 @@ export async function updateSupplierInvoice(
         });
         console.log('[updateSupplierInvoice] Adding update:', {
           property: tsKey,
-          sheetColumn,
+          header: headers[colIndex],
           columnIndex: colIndex,
           columnLetter: colLetter,
           sheetRow: rowIndex + 2,
@@ -2173,7 +2183,7 @@ export async function updateSupplierInvoice(
           value: displayValue,
         });
       } else {
-        console.warn('[updateSupplierInvoice] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
+        console.warn('[updateSupplierInvoice] Column not found for property:', tsKey, 'tried:', possibleNames);
       }
     });
 
