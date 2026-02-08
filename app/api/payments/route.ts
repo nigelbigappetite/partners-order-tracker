@@ -154,6 +154,20 @@ export async function GET(request: Request) {
         })
       })
 
+      // Fallback: Supplier_Invoices with Sales Invoice No set but no Order_Supplier_Allocations
+      // (so rows linked only by "Sales Invoice No" column still show counts and outstanding)
+      const directSupplierInvoicesBySalesInv = new Map<string, { amount: number; paid: boolean }[]>()
+      allSupplierInvoices.forEach((inv: any) => {
+        const salesInv = normalizeInvoiceNo(inv.sales_invoice_no || inv['Sales Invoice No'] || '')
+        if (!salesInv) return
+        const amount = Number(inv.amount) || 0
+        const paid = !!inv.paid
+        if (!directSupplierInvoicesBySalesInv.has(salesInv)) {
+          directSupplierInvoicesBySalesInv.set(salesInv, [])
+        }
+        directSupplierInvoicesBySalesInv.get(salesInv)!.push({ amount, paid })
+      })
+
       // Enrich payments with supplier invoice numbers and recon summary (counts + outstanding)
       let matchedCount = 0
       enrichedPayments = payments.map((payment) => {
@@ -174,8 +188,12 @@ export async function GET(request: Request) {
           if (!allocations) matchedCount++
         }
         
-        // Recon summary: linked count, paid/unpaid count, outstanding amount
-        const linked = linkedInvoicesBySalesInv.get(normalizedSalesInv) || []
+        // Recon summary: use allocations when present, else fallback to Supplier_Invoices by Sales Invoice No
+        const fromAllocations = linkedInvoicesBySalesInv.get(normalizedSalesInv) || []
+        const linked =
+          fromAllocations.length > 0
+            ? fromAllocations
+            : directSupplierInvoicesBySalesInv.get(normalizedSalesInv) || []
         const paidCount = linked.filter((x) => x.paid).length
         const unpaidCount = linked.filter((x) => !x.paid).length
         const totalAllocated = linked.reduce((s, x) => s + x.amount, 0)

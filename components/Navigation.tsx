@@ -10,7 +10,7 @@ const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders', label: 'Orders', icon: FileText },
   { href: '/create-order', label: 'Create Order', icon: ShoppingCart },
-  { href: '/create-supplier-invoice', label: 'Create Supplier Invoice', icon: Receipt },
+  { href: '/supplier-invoices', label: 'Supplier invoices', icon: Receipt },
   { href: '/products', label: 'Products', icon: Package },
   { href: '/brands', label: 'Brands', icon: Tag },
   { href: '/suppliers', label: 'Suppliers', icon: Store },
@@ -54,7 +54,8 @@ export default function Navigation() {
                 const isActive = pathname === item.href || 
                   (item.href === '/brands/admin/dashboard' && pathname === '/') ||
                   (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
-                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales')) ||
+                  (item.href === '/supplier-invoices' && pathname.startsWith('/supplier-invoices'))
                 return (
                   <Link
                     key={item.href}
@@ -100,7 +101,8 @@ export default function Navigation() {
                 const isActive = pathname === item.href || 
                   (item.href === '/brands/admin/dashboard' && pathname === '/') ||
                   (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
-                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales')) ||
+                  (item.href === '/supplier-invoices' && pathname.startsWith('/supplier-invoices'))
                 return (
                   <Link
                     key={item.href}
