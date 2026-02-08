@@ -481,6 +481,26 @@ function findColumnIndex(headers: string[], targetName: string): number {
   return partial;
 }
 
+// Helper to convert column index to A1 notation
+function getColumnLetter(colIndex: number): string {
+  let result = '';
+  while (colIndex >= 0) {
+    result = String.fromCharCode(65 + (colIndex % 26)) + result;
+    colIndex = Math.floor(colIndex / 26) - 1;
+  }
+  return result;
+}
+
+// Helper to find Invoice File Link column index (same logic as getSupplierInvoices)
+function findInvoiceFileLinkColumnIndex(headers: string[]): number {
+  return headers.findIndex((h: string) =>
+    h && (h.toLowerCase().includes('invoice_file_link') ||
+      h.toLowerCase().includes('invoice file link') ||
+      h.toLowerCase().includes('file link') ||
+      h.toLowerCase().includes('drive link'))
+  );
+}
+
 // Helper to convert rows to objects
 export function rowsToObjects<T>(rows: any[][], headers: string[], sheetName?: string): T[] {
   if (!rows || rows.length === 0) return [];
@@ -2114,16 +2134,6 @@ export async function updateSupplierInvoice(
       paid_date: 'Paid Date',
       payment_reference: 'Payment Reference',
     };
-    
-    // Helper to convert column index to A1 notation
-    const getColumnLetter = (colIndex: number): string => {
-      let result = '';
-      while (colIndex >= 0) {
-        result = String.fromCharCode(65 + (colIndex % 26)) + result;
-        colIndex = Math.floor(colIndex / 26) - 1;
-      }
-      return result;
-    };
 
     // Build update values - only allow specific fields
     const updateValues: any[] = [];
@@ -2187,6 +2197,36 @@ export async function updateSupplierInvoice(
   }
 }
 
+// Update supplier invoice file link (for upload "attach to existing")
+export async function updateSupplierInvoiceFileLink(invoiceId: string, fileLink: string): Promise<void> {
+  try {
+    const sheets = await getSheetsClient();
+    const { headers, data } = await getSheetData('Supplier_Invoices');
+    const rowIndex = parseInt(invoiceId, 10) - 2;
+    if (rowIndex < 0 || rowIndex >= data.length) {
+      throw new Error(`Supplier invoice row ${invoiceId} not found`);
+    }
+    const colIndex = findInvoiceFileLinkColumnIndex(headers);
+    if (colIndex === -1) {
+      console.warn('[updateSupplierInvoiceFileLink] Invoice File Link column not found in Supplier_Invoices');
+      throw new Error('Invoice File Link column not found');
+    }
+    const colLetter = getColumnLetter(colIndex);
+    const sheetRow = rowIndex + 2;
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: [{ range: `Supplier_Invoices!${colLetter}${sheetRow}`, values: [[fileLink]] }],
+      },
+    });
+    console.log('[updateSupplierInvoiceFileLink] Updated row', invoiceId, 'with file link');
+  } catch (error: any) {
+    console.error('[updateSupplierInvoiceFileLink] Error:', error.message);
+    throw error;
+  }
+}
+
 // Create supplier invoice
 export async function createSupplierInvoice(invoiceData: {
   invoice_no: string;
@@ -2196,6 +2236,7 @@ export async function createSupplierInvoice(invoiceData: {
   paid?: boolean;
   paid_date?: string;
   payment_reference?: string;
+  invoice_file_link?: string;
 }): Promise<void> {
   try {
     const sheets = await getSheetsClient();
@@ -2286,6 +2327,20 @@ export async function createSupplierInvoice(invoiceData: {
         range: `Supplier_Invoices!I${insertStartRow1Indexed}:I${insertStartRow1Indexed}`,
         values: [[invoiceData.payment_reference]],
       });
+    }
+    
+    if (invoiceData.invoice_file_link && invoiceData.invoice_file_link.trim()) {
+      const { headers } = await getSheetData('Supplier_Invoices');
+      const fileLinkColIndex = findInvoiceFileLinkColumnIndex(headers);
+      if (fileLinkColIndex >= 0) {
+        const colLetter = getColumnLetter(fileLinkColIndex);
+        dataUpdates.push({
+          range: `Supplier_Invoices!${colLetter}${insertStartRow1Indexed}:${colLetter}${insertStartRow1Indexed}`,
+          values: [[invoiceData.invoice_file_link.trim()]],
+        });
+      } else {
+        console.warn('[createSupplierInvoice] Invoice File Link column not found, skipping file link write');
+      }
     }
     
     await sheets.spreadsheets.values.batchUpdate({
@@ -2400,6 +2455,7 @@ export async function createSupplierInvoices(invoicesData: {
     paid?: boolean;
     paid_date?: string;
     payment_reference?: string;
+    invoice_file_link?: string;
   }>;
 }): Promise<void> {
   try {
@@ -2417,6 +2473,7 @@ export async function createSupplierInvoices(invoicesData: {
           paid: invoice.paid,
           paid_date: invoice.paid_date,
           payment_reference: invoice.payment_reference,
+          invoice_file_link: invoice.invoice_file_link,
         })
       );
       
@@ -2476,6 +2533,79 @@ export async function getOrderSupplierAllocations(salesInvoiceNo: string): Promi
     console.warn('[getOrderSupplierAllocations] Returning empty array due to error');
     return [];
   }
+}
+
+// Recon summary for one sales invoice: linked supplier invoices, counts, totals, outstanding
+export async function getSupplierInvoiceReconSummary(salesInvoiceNo: string): Promise<{
+  linkedCount: number;
+  paidCount: number;
+  unpaidCount: number;
+  totalAllocated: number;
+  totalPaid: number;
+  outstanding: number;
+  linkedInvoices: { invoice_no: string; supplier?: string; amount: number; paid: boolean }[];
+}> {
+  const normalizeInvoiceNo = (inv: string): string =>
+    String(inv).replace(/#/g, '').trim().toLowerCase();
+
+  const allocations = await getOrderSupplierAllocations(salesInvoiceNo);
+  if (allocations.length === 0) {
+    return {
+      linkedCount: 0,
+      paidCount: 0,
+      unpaidCount: 0,
+      totalAllocated: 0,
+      totalPaid: 0,
+      outstanding: 0,
+      linkedInvoices: [],
+    };
+  }
+
+  const supplierInvoiceNos = new Set(allocations.map((a) => normalizeInvoiceNo(a.supplier_invoice_no)));
+  let allInvoices: any[] = [];
+  try {
+    allInvoices = await getSupplierInvoices();
+  } catch {
+    return {
+      linkedCount: 0,
+      paidCount: 0,
+      unpaidCount: 0,
+      totalAllocated: 0,
+      totalPaid: 0,
+      outstanding: 0,
+      linkedInvoices: [],
+    };
+  }
+
+  const linkedInvoices = allInvoices.filter((inv) => {
+    const invNo = normalizeInvoiceNo(inv.invoice_no || inv.supplier_invoice_no || '');
+    return supplierInvoiceNos.has(invNo);
+  });
+
+  let totalAllocated = 0;
+  let totalPaid = 0;
+  const outstandingInvoices = linkedInvoices.filter((inv) => !inv.paid);
+  const outstanding = outstandingInvoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+  linkedInvoices.forEach((inv) => {
+    const amt = Number(inv.amount) || 0;
+    totalAllocated += amt;
+    if (inv.paid) totalPaid += amt;
+  });
+
+  return {
+    linkedCount: linkedInvoices.length,
+    paidCount: linkedInvoices.filter((inv) => inv.paid).length,
+    unpaidCount: outstandingInvoices.length,
+    totalAllocated,
+    totalPaid,
+    outstanding,
+    linkedInvoices: linkedInvoices.map((inv) => ({
+      invoice_no: (inv.invoice_no || inv.supplier_invoice_no || '').toString(),
+      supplier: (inv.supplier || '').toString(),
+      amount: Number(inv.amount) || 0,
+      paid: !!inv.paid,
+    })),
+  };
 }
 
 // Calculate settlement status from Supplier_Invoices data

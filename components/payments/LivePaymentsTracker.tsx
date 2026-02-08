@@ -208,7 +208,8 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
     { field: 'franchisee_name' as SortField, label: 'Franchisee' },
     { field: 'order_date' as SortField, label: 'Order Date' },
     { field: 'total_order_value' as SortField, label: 'Order Value' },
-    { label: 'Supplier Invoice' },
+    { label: 'Supplier invoices' },
+    { label: 'Outstanding' },
     { field: 'settlement_status' as SortField, label: 'Status', showInfo: true },
   ]
 
@@ -341,9 +342,6 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                     </div>
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
-                  Unpaid Suppliers
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -371,9 +369,24 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                       {formatCurrencyNoDecimals(payment.total_order_value)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                      {payment.supplier_invoice_numbers && payment.supplier_invoice_numbers.length > 0
-                        ? payment.supplier_invoice_numbers.join(', ')
-                        : '-'}
+                      {(() => {
+                        const linked = payment.supplier_invoices_linked_count ?? 0
+                        const paid = payment.supplier_invoices_paid_count ?? 0
+                        const unpaid = payment.supplier_invoices_unpaid_count ?? payment.supplier_unpaid_count ?? 0
+                        if (linked === 0) return <span className="text-gray-400">-</span>
+                        return (
+                          <span title={(payment.supplier_invoice_numbers || []).join(', ') || undefined}>
+                            {linked} linked, {paid} paid, {unpaid} unpaid
+                          </span>
+                        )
+                      })()}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
+                      {(payment.supplier_outstanding_amount ?? 0) > 0 ? (
+                        <span className="text-red-700">{formatCurrency(payment.supplier_outstanding_amount ?? 0)}</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="relative inline-flex group/status">
@@ -408,15 +421,6 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                         <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800">
                           Funds Not Cleared
                         </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                      {payment.supplier_unpaid_count > 0 ? (
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800">
-                          {payment.supplier_unpaid_count} unpaid
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                   </tr>

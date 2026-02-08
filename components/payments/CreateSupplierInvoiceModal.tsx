@@ -5,6 +5,7 @@ import Modal from '@/components/Modal'
 import { OrderLine } from '@/lib/types'
 import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
+import { Upload, FileText, X } from 'lucide-react'
 
 interface CreateSupplierInvoiceModalProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ interface SupplierGroup {
   lineCount: number
   included: boolean
   supplierInvoiceNo: string
+  file?: File
 }
 
 export default function CreateSupplierInvoiceModal({
@@ -124,6 +126,16 @@ export default function CreateSupplierInvoiceModal({
     setSupplierGroups(updated)
   }
 
+  const handleFileChange = (index: number, file: File | null) => {
+    const updated = [...supplierGroups]
+    if (file) {
+      updated[index].file = file
+    } else {
+      delete updated[index].file
+    }
+    setSupplierGroups(updated)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -155,14 +167,37 @@ export default function CreateSupplierInvoiceModal({
     setSubmitting(true)
     
     try {
-      const invoices = includedGroups.map((group) => ({
+      // 1. Upload files for included groups that have a file (same order as includedGroups)
+      const uploadUrls: (string | undefined)[] = []
+      for (const group of includedGroups) {
+        if (group.file) {
+          const formData = new FormData()
+          formData.append('file', group.file)
+          const uploadRes = await fetch('/api/supplier-invoices/upload', {
+            method: 'POST',
+            body: formData,
+          })
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json().catch(() => ({}))
+            throw new Error(errData.error || `Failed to upload file for ${group.supplier}`)
+          }
+          const { url } = await uploadRes.json()
+          uploadUrls.push(url)
+        } else {
+          uploadUrls.push(undefined)
+        }
+      }
+
+      // 2. Build invoices with invoice_file_link from upload URLs
+      const invoices = includedGroups.map((group, i) => ({
         supplier_invoice_no: group.supplierInvoiceNo.trim(),
         supplier: group.supplier,
         amount: group.totalAmount,
-        allocated_amount: group.totalAmount, // Use same amount for allocation
+        allocated_amount: group.totalAmount,
         paid: paidStatus,
         paid_date: paidDate || undefined,
         payment_reference: paymentReference.trim() || undefined,
+        invoice_file_link: uploadUrls[i],
       }))
       
       const response = await fetch('/api/supplier-invoices/create', {
@@ -186,7 +221,7 @@ export default function CreateSupplierInvoiceModal({
       onClose()
       
       // Reset form
-      setSupplierGroups(supplierGroups.map(g => ({ ...g, supplierInvoiceNo: '' })))
+      setSupplierGroups(supplierGroups.map(g => ({ ...g, supplierInvoiceNo: '', file: undefined })))
       setPaidStatus(false)
       setPaidDate('')
       setPaymentReference('')
@@ -343,6 +378,42 @@ export default function CreateSupplierInvoiceModal({
                     <div className="text-xs text-gray-500 mt-1">
                       Calculated from {group.lineCount} line{group.lineCount !== 1 ? 's' : ''} (COGS Total)
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Attach invoice (optional)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                        <Upload className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">
+                          {group.file ? group.file.name : 'PDF or image'}
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          onChange={(e) => handleFileChange(index, e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                      {group.file && (
+                        <button
+                          type="button"
+                          onClick={() => handleFileChange(index, null)}
+                          className="p-2 text-gray-500 hover:text-red-600"
+                          title="Remove file"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {group.file && (
+                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                        <FileText className="h-3 w-3" />
+                        {group.file.name} ({(group.file.size / 1024).toFixed(1)} KB)
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

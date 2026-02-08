@@ -5,7 +5,8 @@ import Modal from '@/components/Modal'
 import ActionButton from '@/components/ActionButton'
 import { SupplierInvoice } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { ExternalLink, FileText } from 'lucide-react'
+import { ExternalLink, FileText, Upload } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 
 interface PaySupplierModalProps {
   isOpen: boolean
@@ -36,6 +37,7 @@ export default function PaySupplierModal({
   const [allInvoices, setAllInvoices] = useState<SupplierInvoice[]>([])
   const [allPaid, setAllPaid] = useState(false)
   const [allocatedTotal, setAllocatedTotal] = useState<number | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
 
   const fetchSupplierInvoices = async () => {
     setLoading(true)
@@ -121,15 +123,95 @@ export default function PaySupplierModal({
     setSelectedInvoices(newSelected)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAttachFile = async (invoiceId: string, file: File) => {
+    setUploadingId(invoiceId)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('supplier_invoice_id', invoiceId)
+      formData.append('sales_invoice_no', salesInvoiceNo)
+      const res = await fetch('/api/supplier-invoices/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Upload failed')
+      }
+      toast.success('Invoice file attached')
+      await fetchSupplierInvoices()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to attach file')
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  const handleMarkAllPaid = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const allIds = new Set(invoices.map((inv) => inv.id).filter(Boolean) as string[])
+    const dates: Record<string, string> = {}
+    const refs: Record<string, string> = {}
+    allIds.forEach((id) => {
+      dates[id] = today
+      refs[id] = ''
+    })
+    setSelectedInvoices(allIds)
+    setPaymentDates((prev) => ({ ...prev, ...dates }))
+    setPaymentRefs((prev) => ({ ...prev, ...refs }))
+  }
+
+  const runMarkPaid = async (selectedArray: string[], dates: Record<string, string>, refs: Record<string, string>) => {
+    const updatePromises = selectedArray.map(async (invoiceId) => {
+      const invoice = invoices.find((inv) => inv.id === invoiceId)
+      if (!invoice || !invoice.invoice_no) {
+        throw new Error(`Invoice ${invoiceId} not found or missing invoice number`)
+      }
+      const response = await fetch('/api/admin/supplier-invoices/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_invoice_no: invoice.invoice_no,
+          paid_date: dates[invoiceId],
+          payment_reference: refs[invoiceId] || undefined,
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update invoice')
+      }
+    })
+    await Promise.all(updatePromises)
+  }
+
+  const handleMarkAllAndSubmit = async () => {
+    if (invoices.length === 0) return
+    const today = new Date().toISOString().split('T')[0]
+    const allIds = invoices.map((inv) => inv.id).filter(Boolean) as string[]
+    const dates: Record<string, string> = {}
+    const refs: Record<string, string> = {}
+    allIds.forEach((id) => {
+      dates[id] = today
+      refs[id] = ''
+    })
+    setSubmitting(true)
+    try {
+      await runMarkPaid(allIds, dates, refs)
+      toast.success(`Marked ${allIds.length} invoice(s) as paid`)
+      onSuccess()
+      onClose()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update invoices')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     
     if (selectedInvoices.size === 0) {
       toast.error('Please select at least one invoice to mark as paid')
       return
     }
     
-    // Validate all selected invoices have dates
     const selectedArray = Array.from(selectedInvoices)
     for (const invoiceId of selectedArray) {
       if (!paymentDates[invoiceId]) {
@@ -139,41 +221,11 @@ export default function PaySupplierModal({
     }
     
     setSubmitting(true)
-    
     try {
-      // Update all selected invoices
-      const updatePromises = selectedArray.map(async (invoiceId) => {
-        // Get the invoice to find supplier_invoice_no
-        const invoice = invoices.find((inv) => inv.id === invoiceId)
-        if (!invoice || !invoice.invoice_no) {
-          throw new Error(`Invoice ${invoiceId} not found or missing invoice number`)
-        }
-
-        const response = await fetch('/api/admin/supplier-invoices/mark-paid', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            supplier_invoice_no: invoice.invoice_no,
-            paid_date: paymentDates[invoiceId],
-            payment_reference: paymentRefs[invoiceId] || undefined,
-          }),
-        })
-        
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to update invoice')
-        }
-      })
-      
-      await Promise.all(updatePromises)
-      
+      await runMarkPaid(selectedArray, paymentDates, paymentRefs)
       toast.success(`Marked ${selectedArray.length} invoice(s) as paid`)
       onSuccess()
       onClose()
-      
-      // Reset state
       setSelectedInvoices(new Set())
       const today = new Date().toISOString().split('T')[0]
       const dates: Record<string, string> = {}
@@ -301,16 +353,23 @@ export default function PaySupplierModal({
     )
   }
 
+  const outstandingAmount = invoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Mark Supplier Invoices as Paid">
+    <Modal isOpen={isOpen} onClose={onClose} title="Supplier payments – this order">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="text-sm text-gray-600 mb-4">
-          <p className="mb-2">
-            <strong>Note:</strong> This is for recording payment details after you have manually paid the supplier invoices.
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-4">
+          <p className="text-sm font-medium text-gray-900 mb-1">
+            Sales invoice: <strong>{salesInvoiceNo}</strong>
           </p>
-          <p>
-            Select supplier invoices to mark as paid for sales invoice: <strong>{salesInvoiceNo}</strong>
+          <p className="text-sm text-gray-600 mb-1">
+            Record which supplier invoices you’ve paid. View each invoice below, then tick and add paid date/reference.
           </p>
+          {outstandingAmount > 0 && (
+            <p className="text-sm font-semibold text-red-700 mt-2">
+              Outstanding (unpaid supplier invoices for this order): <strong>{formatCurrency(outstandingAmount)}</strong>
+            </p>
+          )}
         </div>
         
         <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -321,6 +380,22 @@ export default function PaySupplierModal({
                 selectedInvoices.has(invoice.id || '') ? 'border-gray-900 bg-gray-50' : 'border-gray-200'
               }`}
             >
+              {/* View invoice first so user can confirm before marking paid */}
+              {invoice.invoice_file_link && invoice.invoice_file_link.trim() && (
+                <div className="mb-3">
+                  <a
+                    href={invoice.invoice_file_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg border border-blue-700 transition-colors"
+                    title="View invoice file"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View invoice (PDF/image)
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              )}
               <div className="flex items-start space-x-3">
                 <input
                   type="checkbox"
@@ -335,24 +410,46 @@ export default function PaySupplierModal({
                       htmlFor={`invoice-${invoice.id}`}
                       className="block text-sm font-medium text-gray-900 cursor-pointer"
                     >
-                      {invoice.supplier} - Invoice #{invoice.invoice_no}
-                      {invoice.amount && (
-                        <span className="ml-2 text-gray-600">£{invoice.amount.toFixed(2)}</span>
+                      {invoice.supplier} – Supplier invoice #{invoice.invoice_no}
+                      {invoice.amount != null && (
+                        <span className="ml-2 text-gray-600">
+                          £{Number(invoice.amount).toFixed(2)}
+                          {!invoice.paid && <span className="text-red-600 ml-1">(unpaid)</span>}
+                        </span>
                       )}
                     </label>
-                    {invoice.invoice_file_link && invoice.invoice_file_link.trim() && (
-                      <a
-                        href={invoice.invoice_file_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="ml-2 flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors"
-                        title="View invoice file"
-                      >
-                        <FileText className="h-3 w-3" />
-                        <span>View Invoice</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                    {!invoice.invoice_file_link?.trim() ? (
+                      <label className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer border border-gray-300 rounded hover:bg-gray-50">
+                        <Upload className="h-3 w-3" />
+                        {uploadingId === invoice.id ? 'Uploading...' : 'Attach invoice'}
+                        <input
+                          type="file"
+                          accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          disabled={!!uploadingId}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f && invoice.id) handleAttachFile(invoice.id, f)
+                            e.target.value = ''
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <label className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 cursor-pointer">
+                        <Upload className="h-3 w-3" />
+                        {uploadingId === invoice.id ? 'Uploading...' : 'Replace file'}
+                        <input
+                          type="file"
+                          accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          disabled={!!uploadingId}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f && invoice.id) handleAttachFile(invoice.id, f)
+                            e.target.value = ''
+                          }}
+                        />
+                      </label>
                     )}
                   </div>
                   
@@ -408,7 +505,7 @@ export default function PaySupplierModal({
           ))}
         </div>
         
-        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-200">
           <button
             type="button"
             onClick={onClose}
@@ -416,6 +513,14 @@ export default function PaySupplierModal({
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleMarkAllAndSubmit}
+            disabled={submitting || invoices.length === 0}
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? '...' : `Mark all ${invoices.length} as paid (today)`}
           </button>
           <ActionButton
             type="submit"

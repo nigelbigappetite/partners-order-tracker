@@ -129,6 +129,14 @@ export interface PaymentTrackerRow {
   supplier_payment_ready: boolean;
   settlement_status: 'OPEN' | 'PAID_NOT_CLEARED' | 'WAITING_SUPPLIERS' | 'SETTLED';
   supplier_invoice_numbers?: string[];
+  /** Recon: number of supplier invoices linked to this order (from Order_Supplier_Allocations + Supplier_Invoices) */
+  supplier_invoices_linked_count?: number;
+  supplier_invoices_paid_count?: number;
+  supplier_invoices_unpaid_count?: number;
+  /** Outstanding = sum of unpaid supplier invoice amounts for this order */
+  supplier_outstanding_amount?: number;
+  supplier_total_allocated?: number;
+  supplier_total_paid?: number;
   [key: string]: any;
 }
 

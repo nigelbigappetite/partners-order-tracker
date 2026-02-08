@@ -128,7 +128,33 @@ export async function GET(request: Request) {
         console.log(`[Payments API] Sample supplier invoice key: "${firstKey}" -> ${Array.from(supplierInvoicesBySalesInvoice.get(firstKey)!).join(', ')}`)
       }
       
-      // Enrich payments with supplier invoice numbers using in-memory lookups
+      // Build linked supplier invoices per sales invoice (for recon: amounts and paid status)
+      const allocSupplierNosBySalesInv = new Map<string, Set<string>>()
+      allAllocations.forEach((alloc: any) => {
+        if (alloc.sales_invoice_no && alloc.supplier_invoice_no) {
+          const salesInv = normalizeInvoiceNo(alloc.sales_invoice_no)
+          if (!allocSupplierNosBySalesInv.has(salesInv)) {
+            allocSupplierNosBySalesInv.set(salesInv, new Set())
+          }
+          allocSupplierNosBySalesInv.get(salesInv)!.add(normalizeInvoiceNo(alloc.supplier_invoice_no))
+        }
+      })
+      const linkedInvoicesBySalesInv = new Map<string, { amount: number; paid: boolean }[]>()
+      allSupplierInvoices.forEach((inv: any) => {
+        const invNo = normalizeInvoiceNo(inv.invoice_no || inv.supplier_invoice_no || '')
+        const amount = Number(inv.amount) || 0
+        const paid = !!inv.paid
+        allocSupplierNosBySalesInv.forEach((set, salesInv) => {
+          if (set.has(invNo)) {
+            if (!linkedInvoicesBySalesInv.has(salesInv)) {
+              linkedInvoicesBySalesInv.set(salesInv, [])
+            }
+            linkedInvoicesBySalesInv.get(salesInv)!.push({ amount, paid })
+          }
+        })
+      })
+
+      // Enrich payments with supplier invoice numbers and recon summary (counts + outstanding)
       let matchedCount = 0
       enrichedPayments = payments.map((payment) => {
         const supplierInvoiceNumbers = new Set<string>()
@@ -148,23 +174,23 @@ export async function GET(request: Request) {
           if (!allocations) matchedCount++
         }
         
-        // Debug first few payments
-        if (payments.indexOf(payment) < 5) {
-          const hasAlloc = !!allocationsBySalesInvoice.get(normalizedSalesInv)
-          const hasSupplierInv = !!supplierInvoicesBySalesInvoice.get(normalizedSalesInv)
-          console.log(`[Payments API] Payment ${payment.sales_invoice_no} (normalized: "${normalizedSalesInv}"): found ${supplierInvoiceNumbers.size} supplier invoices (hasAlloc: ${hasAlloc}, hasSupplierInv: ${hasSupplierInv})`)
-          if (supplierInvoiceNumbers.size === 0) {
-            // Show what keys exist in the maps
-            const allocKeys = Array.from(allocationsBySalesInvoice.keys()).slice(0, 5)
-            const supplierKeys = Array.from(supplierInvoicesBySalesInvoice.keys()).slice(0, 5)
-            console.log(`[Payments API] Available allocation keys (sample):`, allocKeys)
-            console.log(`[Payments API] Available supplier invoice keys (sample):`, supplierKeys)
-          }
-        }
+        // Recon summary: linked count, paid/unpaid count, outstanding amount
+        const linked = linkedInvoicesBySalesInv.get(normalizedSalesInv) || []
+        const paidCount = linked.filter((x) => x.paid).length
+        const unpaidCount = linked.filter((x) => !x.paid).length
+        const totalAllocated = linked.reduce((s, x) => s + x.amount, 0)
+        const totalPaid = linked.filter((x) => x.paid).reduce((s, x) => s + x.amount, 0)
+        const outstanding = linked.filter((x) => !x.paid).reduce((s, x) => s + x.amount, 0)
         
         return {
           ...payment,
           supplier_invoice_numbers: Array.from(supplierInvoiceNumbers).sort(),
+          supplier_invoices_linked_count: linked.length,
+          supplier_invoices_paid_count: paidCount,
+          supplier_invoices_unpaid_count: unpaidCount,
+          supplier_outstanding_amount: outstanding,
+          supplier_total_allocated: totalAllocated,
+          supplier_total_paid: totalPaid,
         }
       })
       console.log(`[Payments API] Matched supplier invoices for ${matchedCount} out of ${payments.length} payments`)
