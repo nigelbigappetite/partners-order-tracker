@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Navigation from '@/components/Navigation'
 import Modal from '@/components/Modal'
 import { Supplier, SupplierInvoice } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Upload, FileText, CheckCircle } from 'lucide-react'
+import { Upload, FileText, CheckCircle, Link2, Paperclip } from 'lucide-react'
 
 type StatusFilter = 'all' | 'to_pay' | 'paid'
 
@@ -31,6 +31,15 @@ export default function SupplierInvoicesPage() {
   const [markPaidDate, setMarkPaidDate] = useState('')
   const [markPaidRef, setMarkPaidRef] = useState('')
   const [markPaidSubmitting, setMarkPaidSubmitting] = useState(false)
+
+  const [linkOrderInvoice, setLinkOrderInvoice] = useState<SupplierInvoice | null>(null)
+  const [linkOrderSalesNo, setLinkOrderSalesNo] = useState('')
+  const [linkOrderAmount, setLinkOrderAmount] = useState('')
+  const [linkOrderSubmitting, setLinkOrderSubmitting] = useState(false)
+
+  const [attachInvoiceId, setAttachInvoiceId] = useState<string | null>(null)
+  const [attachSubmitting, setAttachSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchSuppliers()
@@ -194,6 +203,72 @@ export default function SupplierInvoicesPage() {
     }
   }
 
+  const handleLinkOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!linkOrderInvoice?.id) return
+    if (!linkOrderSalesNo.trim()) {
+      toast.error('Select an order to link')
+      return
+    }
+    const amountNum = linkOrderAmount.trim() ? parseFloat(linkOrderAmount) : undefined
+    if (linkOrderAmount.trim() && (isNaN(amountNum!) || amountNum! < 0)) {
+      toast.error('Amount must be a number ≥ 0')
+      return
+    }
+    setLinkOrderSubmitting(true)
+    try {
+      const body: { sales_invoice_no: string; amount?: number } = { sales_invoice_no: linkOrderSalesNo.trim() }
+      if (amountNum !== undefined) body.amount = amountNum
+      const res = await fetch(`/api/payments/supplier-invoices/${linkOrderInvoice.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to link')
+      }
+      toast.success('Linked to order')
+      setLinkOrderInvoice(null)
+      setLinkOrderSalesNo('')
+      setLinkOrderAmount('')
+      fetchInvoices()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed')
+    } finally {
+      setLinkOrderSubmitting(false)
+    }
+  }
+
+  const handleAttachFile = (invoiceId: string) => {
+    setAttachInvoiceId(invoiceId)
+    fileInputRef.current?.click()
+  }
+
+  const handleAttachFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0]
+    if (!chosen || !attachInvoiceId) return
+    setAttachSubmitting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', chosen)
+      formData.append('supplier_invoice_id', attachInvoiceId)
+      const res = await fetch('/api/supplier-invoices/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Upload failed')
+      }
+      toast.success('File attached')
+      fetchInvoices()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed')
+    } finally {
+      setAttachSubmitting(false)
+      setAttachInvoiceId(null)
+      e.target.value = ''
+    }
+  }
+
   const filteredInvoices =
     statusFilter === 'all'
       ? invoices
@@ -205,6 +280,13 @@ export default function SupplierInvoicesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleAttachFileChange}
+      />
       <Navigation />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-gray-900">Supplier invoices</h1>
@@ -370,7 +452,23 @@ export default function SupplierInvoicesPage() {
                   {filteredInvoices.map((inv) => (
                     <tr key={inv.id ?? inv.invoice_no} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                        {inv.sales_invoice_no || '–'}
+                        {inv.sales_invoice_no ? (
+                          inv.sales_invoice_no
+                        ) : inv.id ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLinkOrderInvoice(inv)
+                              setLinkOrderSalesNo('')
+                              setLinkOrderAmount(inv.amount != null ? String(inv.amount) : '')
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                          >
+                            <Link2 className="h-3.5 w-3.5" /> Link to order
+                          </button>
+                        ) : (
+                          '–'
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{inv.supplier || '–'}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{inv.invoice_no || '–'}</td>
@@ -398,6 +496,15 @@ export default function SupplierInvoicesPage() {
                           >
                             <FileText className="h-4 w-4" /> Open
                           </a>
+                        ) : inv.id ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAttachFile(inv.id!)}
+                            disabled={attachSubmitting}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                          >
+                            <Paperclip className="h-3.5 w-3.5" /> {attachSubmitting && attachInvoiceId === inv.id ? 'Uploading...' : 'Attach file'}
+                          </button>
                         ) : (
                           <span className="text-gray-400">–</span>
                         )}
@@ -425,6 +532,63 @@ export default function SupplierInvoicesPage() {
           </div>
         </div>
       </div>
+
+      {/* Link to order modal */}
+      <Modal
+        isOpen={!!linkOrderInvoice}
+        onClose={() => { setLinkOrderInvoice(null); setLinkOrderSalesNo(''); setLinkOrderAmount('') }}
+        title="Link to order"
+      >
+        {linkOrderInvoice && (
+          <form onSubmit={handleLinkOrderSubmit} className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {linkOrderInvoice.supplier} – {linkOrderInvoice.invoice_no}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sales invoice (order) *</label>
+              <select
+                value={linkOrderSalesNo}
+                onChange={(e) => setLinkOrderSalesNo(e.target.value)}
+                required
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="">Select order</option>
+                {salesInvoiceNos.map((no) => (
+                  <option key={no} value={no}>{no}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (optional – updates invoice amount)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={linkOrderAmount}
+                onChange={(e) => setLinkOrderAmount(e.target.value)}
+                placeholder="e.g. 150.00"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setLinkOrderInvoice(null); setLinkOrderSalesNo(''); setLinkOrderAmount('') }}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={linkOrderSubmitting}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {linkOrderSubmitting ? 'Linking...' : 'Link'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* Mark as paid modal */}
       <Modal

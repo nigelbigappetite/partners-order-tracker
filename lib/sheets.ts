@@ -585,9 +585,11 @@ export async function getSheetData(sheetName: string) {
   // Clean sheet name - remove any existing range notation
   const cleanSheetName = sheetName.split('!')[0];
   
-  // Try multiple approaches in order of preference
+  // Try multiple approaches (some spreadsheets/sheet names reject unbounded A:ZZ or bare sheet name)
   const attempts = [
     { range: `${cleanSheetName}!A:ZZ`, description: 'A:ZZ range' },
+    { range: `${cleanSheetName}!A1:ZZ1000`, description: 'A1:ZZ1000 bounded' },
+    { range: `'${cleanSheetName}'!A1:ZZ1000`, description: 'quoted sheet A1:ZZ1000' },
     { range: cleanSheetName, description: 'sheet name only' },
     { range: `'${cleanSheetName}'`, description: 'quoted sheet name' },
   ];
@@ -2105,9 +2107,11 @@ export async function getSupplierInvoices(salesInvoiceNo?: string): Promise<Supp
 export async function updateSupplierInvoice(
   invoiceId: string,
   updates: {
-    paid: boolean;
+    paid?: boolean;
     paid_date?: string;
     payment_reference?: string;
+    sales_invoice_no?: string;
+    amount?: number;
   }
 ): Promise<void> {
   try {
@@ -2128,28 +2132,36 @@ export async function updateSupplierInvoice(
     
     console.log('[updateSupplierInvoice] Invoice found at row index:', rowIndex, '(sheet row:', rowIndex + 2, ')');
     
-    // Allowed fields for write-back
+    // Allowed fields for write-back (TS key -> sheet header)
     const allowedFields: Record<string, string> = {
       paid: 'Paid?',
       paid_date: 'Paid Date',
       payment_reference: 'Payment Reference',
+      sales_invoice_no: 'Sales Invoice No',
+      amount: 'Amount',
     };
 
-    // Build update values - only allow specific fields
+    // Build update values - only allow specific fields, skip undefined
     const updateValues: any[] = [];
     Object.entries(updates).forEach(([tsKey, value]) => {
+      if (value === undefined) return;
       if (!allowedFields[tsKey]) {
         console.warn('[updateSupplierInvoice] Attempted to write to protected field:', tsKey);
         return;
       }
-      
+      // Normalise for sheet: boolean -> YES/NO, amount -> number
+      const displayValue = tsKey === 'paid'
+        ? (value ? 'YES' : 'NO')
+        : tsKey === 'amount'
+          ? (typeof value === 'number' ? value : Number(value) || 0)
+          : value;
       const sheetColumn = allowedFields[tsKey];
       const colIndex = findColumnIndex(headers, sheetColumn);
       if (colIndex !== -1) {
         const colLetter = getColumnLetter(colIndex);
         updateValues.push({
           range: `Supplier_Invoices!${colLetter}${rowIndex + 2}`,
-          values: [[value]],
+          values: [[displayValue]],
         });
         console.log('[updateSupplierInvoice] Adding update:', {
           property: tsKey,
@@ -2158,7 +2170,7 @@ export async function updateSupplierInvoice(
           columnLetter: colLetter,
           sheetRow: rowIndex + 2,
           range: `Supplier_Invoices!${colLetter}${rowIndex + 2}`,
-          value,
+          value: displayValue,
         });
       } else {
         console.warn('[updateSupplierInvoice] Column not found for property:', tsKey, 'sheetColumn:', sheetColumn);
@@ -2166,7 +2178,7 @@ export async function updateSupplierInvoice(
     });
 
     if (updateValues.length === 0) {
-      throw new Error('No valid columns to update');
+      throw new Error('No valid columns to update (provide at least one of: paid, paid_date, payment_reference, sales_invoice_no, amount)');
     }
 
     console.log('[updateSupplierInvoice] Executing batch update with', updateValues.length, 'updates');
