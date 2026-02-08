@@ -7,16 +7,21 @@ import StatusPill from '@/components/StatusPill'
 import ActionButton from '@/components/ActionButton'
 import Table from '@/components/Table'
 import Timeline from '@/components/Timeline'
-import { Order, OrderLine } from '@/lib/types'
+import CreateSupplierInvoiceModal from '@/components/payments/CreateSupplierInvoiceModal'
+import { Order, OrderLine, SupplierInvoice } from '@/lib/types'
 import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { Link2, ExternalLink } from 'lucide-react'
 
 export default function OrderDetailPage() {
   const params = useParams()
   const orderId = params.id as string // Can be invoice number or order ID
   const [order, setOrder] = useState<Order | null>(null)
   const [orderLines, setOrderLines] = useState<OrderLine[]>([])
+  const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoice[]>([])
+  const [loadingSupplierInvoices, setLoadingSupplierInvoices] = useState(false)
+  const [createInvoiceModalOpen, setCreateInvoiceModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
 
@@ -32,6 +37,31 @@ export default function OrderDetailPage() {
       fetchOrderLines()
     }
   }, [order, orderId])
+
+  const salesInvoiceNo = order?.invoiceNo || orderId
+
+  // Fetch supplier invoices linked to this order
+  const fetchSupplierInvoices = async () => {
+    if (!salesInvoiceNo) return
+    setLoadingSupplierInvoices(true)
+    try {
+      const res = await fetch(`/api/payments/supplier-invoices?salesInvoiceNo=${encodeURIComponent(salesInvoiceNo)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSupplierInvoices(Array.isArray(data) ? data : [])
+      }
+    } catch {
+      setSupplierInvoices([])
+    } finally {
+      setLoadingSupplierInvoices(false)
+    }
+  }
+
+  useEffect(() => {
+    if (salesInvoiceNo) {
+      fetchSupplierInvoices()
+    }
+  }, [salesInvoiceNo])
 
   const fetchOrder = async () => {
     try {
@@ -225,7 +255,7 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Right Column */}
-          <div>
+          <div className="space-y-6">
             <div className="rounded-lg border border-gray-200 bg-white p-6">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">Order Lines</h2>
               <Table 
@@ -257,8 +287,69 @@ export default function OrderDetailPage() {
                 ))}
               </Table>
             </div>
+
+            {/* Supplier invoices linked to this order */}
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-gray-900">Supplier invoices</h2>
+                <button
+                  type="button"
+                  onClick={() => setCreateInvoiceModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  <Link2 className="h-4 w-4" />
+                  Link supplier invoice
+                </button>
+              </div>
+              {loadingSupplierInvoices ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : supplierInvoices.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No supplier invoices linked to this order. Use &quot;Link supplier invoice&quot; to create and link invoices (adds to Order_Supplier_Allocations and Supplier_Invoices).
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {supplierInvoices.map((inv, idx) => (
+                    <li
+                      key={inv.invoice_no ?? idx}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium text-gray-900">{inv.invoice_no ?? inv.supplier_invoice_no ?? '—'}</span>
+                      {inv.supplier && <span className="text-gray-600">{inv.supplier}</span>}
+                      {inv.amount != null && <span className="text-gray-700">{formatCurrency(inv.amount)}</span>}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${inv.paid ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {inv.paid ? 'Paid' : 'Unpaid'}
+                      </span>
+                      {inv.invoice_file_link && (
+                        <a
+                          href={inv.invoice_file_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          File
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
+
+        {createInvoiceModalOpen && salesInvoiceNo && (
+          <CreateSupplierInvoiceModal
+            isOpen={createInvoiceModalOpen}
+            onClose={() => setCreateInvoiceModalOpen(false)}
+            salesInvoiceNo={salesInvoiceNo}
+            onSuccess={() => {
+              fetchSupplierInvoices()
+              setCreateInvoiceModalOpen(false)
+            }}
+          />
+        )}
       </div>
     </div>
   )

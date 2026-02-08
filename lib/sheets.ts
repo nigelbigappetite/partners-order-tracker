@@ -1546,52 +1546,40 @@ export interface BrandAuthData {
 
 export async function getBrandAuth(slug: string): Promise<BrandAuthData | null> {
   try {
-    const { headers, data } = await getSheetData('Brand_Auth');
-    if (!headers || headers.length === 0) {
-      throw new Error('Brand_Auth sheet is empty or has no headers');
-    }
-    
-    const authRecords = rowsToObjects<BrandAuthData>(data, headers, 'Brand_Auth');
-    
-    // Find brand by slug
-    const brandAuth = authRecords.find((auth: any) => {
-      const authSlug = (auth.slug || auth.Slug || '').toString().trim().toLowerCase();
-      return authSlug === slug.toLowerCase();
-    });
-    
-    if (!brandAuth) {
-      return null;
-    }
-    
-    return {
-      brandName: ((brandAuth as any).brandName || (brandAuth as any)['Brand Name'] || (brandAuth as any).Brand || '').toString().trim(),
-      slug: ((brandAuth as any).slug || (brandAuth as any).Slug || '').toString().trim().toLowerCase(),
-      password: ((brandAuth as any).password || (brandAuth as any).Password || '').toString().trim(),
-    };
+    const all = await getAllBrandAuth();
+    const auth = all.find((a) => a.slug === slug.toLowerCase());
+    return auth ?? null;
   } catch (error) {
     console.error('Error fetching brand auth:', error);
     return null;
   }
 }
 
+// In-memory cache for Brand_Auth to avoid exceeding Google Sheets "Read requests per minute per user" quota
+const BRAND_AUTH_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+let brandAuthCache: { data: BrandAuthData[]; expiresAt: number } | null = null;
+
 export async function getAllBrandAuth(): Promise<BrandAuthData[]> {
+  if (brandAuthCache && Date.now() < brandAuthCache.expiresAt) {
+    return brandAuthCache.data;
+  }
   try {
     console.log('[getAllBrandAuth] Starting fetch...');
     console.log('[getAllBrandAuth] SPREADSHEET_ID:', SPREADSHEET_ID ? 'Set' : 'Missing');
     console.log('[getAllBrandAuth] Service account email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Missing');
     console.log('[getAllBrandAuth] Private key:', process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Missing');
-    
+
     const { headers, data } = await getSheetData('Brand_Auth');
     console.log('[getAllBrandAuth] Headers found:', headers?.length || 0);
     console.log('[getAllBrandAuth] Data rows:', data?.length || 0);
-    
+
     if (!headers || headers.length === 0) {
       throw new Error('Brand_Auth sheet is empty or has no headers');
     }
-    
+
     const authRecords = rowsToObjects<BrandAuthData>(data, headers, 'Brand_Auth');
     console.log('[getAllBrandAuth] Parsed records:', authRecords.length);
-    
+
     const filtered = authRecords
       .map((auth: any) => ({
         brandName: (auth.brandName || auth['Brand Name'] || auth.Brand || '').toString().trim(),
@@ -1599,8 +1587,9 @@ export async function getAllBrandAuth(): Promise<BrandAuthData[]> {
         password: (auth.password || auth.Password || '').toString().trim(),
       }))
       .filter((auth) => auth.brandName && auth.slug); // Only include valid records
-    
+
     console.log('[getAllBrandAuth] Filtered records:', filtered.length);
+    brandAuthCache = { data: filtered, expiresAt: Date.now() + BRAND_AUTH_CACHE_TTL_MS };
     return filtered;
   } catch (error: any) {
     console.error('[getAllBrandAuth] Error details:', {
@@ -1608,7 +1597,6 @@ export async function getAllBrandAuth(): Promise<BrandAuthData[]> {
       stack: error.stack,
       name: error.name
     });
-    // Re-throw the error so the API route can handle it properly
     throw new Error(`Failed to fetch brand auth: ${error.message}`);
   }
 }

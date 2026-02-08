@@ -39,11 +39,11 @@ export async function GET() {
       }, { status: 200 }) // Return 200 but with error message
     }
     
-    // Don't return passwords in the response
+    // Don't return passwords in the response. Short cache to reduce Sheets API read quota.
     const brandsWithoutPasswords = brands.map(({ password, ...rest }) => rest)
     return NextResponse.json(brandsWithoutPasswords, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
       },
     })
   } catch (error: any) {

@@ -73,9 +73,9 @@ export default function PaymentsTable({
       )
       
       if (invoices.length === 0) {
-        toast.error(
-          `No supplier invoices found for ${salesInvoiceNo}. Make sure invoices are linked via Order_Supplier_Allocations or have Sales Invoice No in Supplier_Invoices sheet.`,
-          { duration: 6000 }
+        toast(
+          `No supplier invoice files linked. Click the sales invoice number (${salesInvoiceNo}) to open order details.`,
+          { duration: 5000, icon: 'ℹ️' }
         )
         return
       }
