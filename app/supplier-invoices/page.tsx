@@ -488,14 +488,26 @@ export default function SupplierInvoicesPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm">
                         {inv.invoice_file_link ? (
-                          <a
-                            href={inv.invoice_file_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:underline"
-                          >
-                            <FileText className="h-4 w-4" /> Open
-                          </a>
+                          <span className="inline-flex items-center gap-2">
+                            <a
+                              href={inv.invoice_file_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                            >
+                              <FileText className="h-4 w-4" /> Open
+                            </a>
+                            {inv.id && (
+                              <button
+                                type="button"
+                                onClick={() => handleAttachFile(inv.id!)}
+                                disabled={attachSubmitting}
+                                className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                              >
+                                {attachSubmitting && attachInvoiceId === inv.id ? 'Uploading...' : 'Replace'}
+                              </button>
+                            )}
+                          </span>
                         ) : inv.id ? (
                           <button
                             type="button"
