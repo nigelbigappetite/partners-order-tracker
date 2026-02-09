@@ -121,7 +121,6 @@ export default function PaymentsTable({
     { label: 'Order Date', field: 'order_date' as SortField },
     { label: 'Order Value', field: 'total_order_value' as SortField },
     { label: 'Supplier invoices' },
-    { label: 'Outstanding' },
     { label: 'Settlement Status', showInfo: true, field: 'settlement_status' as SortField },
     { label: 'Actions' },
   ]
@@ -268,11 +267,13 @@ export default function PaymentsTable({
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         {formatCurrency(payment.total_order_value)}
                       </td>
-                      <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-2 xs:px-3 sm:px-6 py-3 text-sm text-gray-700">
                         {(() => {
                           const linked = payment.supplier_invoices_linked_count ?? 0
                           const paid = payment.supplier_invoices_paid_count ?? 0
                           const unpaid = payment.supplier_invoices_unpaid_count ?? payment.supplier_unpaid_count ?? 0
+                          const invoiceNos = (payment.supplier_invoice_numbers || [])
+                          const invoiceNosStr = invoiceNos.join(', ')
                           if (linked === 0) {
                             return (
                               <span
@@ -283,11 +284,10 @@ export default function PaymentsTable({
                               </span>
                             )
                           }
-                          const invoiceNos = (payment.supplier_invoice_numbers || []).join(', ') || '—'
                           return (
                             <span className="flex items-center gap-2 flex-wrap">
-                              <span title={`Linked: ${linked}, Paid: ${paid}, Unpaid: ${unpaid}. Invoice nos: ${invoiceNos}`}>
-                                {linked} linked, {paid} paid, {unpaid} unpaid
+                              <span title={`${linked} linked, ${paid} paid, ${unpaid} unpaid`}>
+                                {invoiceNosStr || `${linked} linked, ${paid} paid, ${unpaid} unpaid`}
                               </span>
                               <button
                                 type="button"
@@ -296,7 +296,7 @@ export default function PaymentsTable({
                                   handleViewInvoices(payment.sales_invoice_no)
                                 }}
                                 disabled={loadingInvoices === payment.sales_invoice_no}
-                                className="text-blue-600 hover:text-blue-800 hover:underline text-xs disabled:opacity-50 disabled:cursor-wait"
+                                className="text-blue-600 hover:text-blue-800 hover:underline text-xs shrink-0 disabled:opacity-50 disabled:cursor-wait"
                                 title="Open supplier invoice files"
                               >
                                 {loadingInvoices === payment.sales_invoice_no ? 'Loading...' : 'View files'}
@@ -304,15 +304,6 @@ export default function PaymentsTable({
                             </span>
                           )
                         })()}
-                      </td>
-                      <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium">
-                        {((payment.supplier_outstanding_amount ?? 0) > 0) ? (
-                          <span className="text-red-700" title="Unpaid supplier invoice total for this order">
-                            {formatCurrency(payment.supplier_outstanding_amount ?? 0)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
                       </td>
                       <td className="px-2 xs:px-3 sm:px-6 py-3 whitespace-nowrap">
                         <div className="relative inline-flex group/status">

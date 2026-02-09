@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { PaymentTrackerRow } from '@/lib/types'
-import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/utils'
+import { formatCurrencyNoDecimals } from '@/lib/utils'
 import { Search, ChevronUp, ChevronDown, RefreshCw, Info } from 'lucide-react'
 
 type SortField = 'sales_invoice_no' | 'brand' | 'franchisee_name' | 'order_date' | 'total_order_value' | 'settlement_status'
@@ -210,7 +210,6 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
     { field: 'order_date' as SortField, label: 'Order Date' },
     { field: 'total_order_value' as SortField, label: 'Order Value' },
     { label: 'Supplier invoices' },
-    { label: 'Outstanding' },
     { field: 'settlement_status' as SortField, label: 'Status', showInfo: true },
   ]
 
@@ -375,11 +374,12 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                       {formatCurrencyNoDecimals(payment.total_order_value)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-gray-700">
                       {(() => {
                         const linked = payment.supplier_invoices_linked_count ?? 0
                         const paid = payment.supplier_invoices_paid_count ?? 0
                         const unpaid = payment.supplier_invoices_unpaid_count ?? payment.supplier_unpaid_count ?? 0
+                        const invoiceNosStr = (payment.supplier_invoice_numbers || []).join(', ')
                         if (linked === 0) {
                           return (
                             <span
@@ -390,20 +390,12 @@ export default function LivePaymentsTracker({ refreshInterval = 12000 }: LivePay
                             </span>
                           )
                         }
-                        const invoiceNos = (payment.supplier_invoice_numbers || []).join(', ') || '—'
                         return (
-                          <span title={`Linked: ${linked}, Paid: ${paid}, Unpaid: ${unpaid}. Invoice nos: ${invoiceNos}`}>
-                            {linked} linked, {paid} paid, {unpaid} unpaid
+                          <span title={`${linked} linked, ${paid} paid, ${unpaid} unpaid`}>
+                            {invoiceNosStr || `${linked} linked, ${paid} paid, ${unpaid} unpaid`}
                           </span>
                         )
                       })()}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
-                      {(payment.supplier_outstanding_amount ?? 0) > 0 ? (
-                        <span className="text-red-700">{formatCurrency(payment.supplier_outstanding_amount ?? 0)}</span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="relative inline-flex group/status">
