@@ -45,9 +45,15 @@ export default function BrandDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [brandFilter, setBrandFilter] = useState<'all' | 'smsh-only'>('all')
+  const [brandFilter, setBrandFilter] = useState<string>('all')
   const isAdmin = brandSlug.toLowerCase() === 'admin'
   const isSmshBn = brandSlug.toLowerCase() === 'smsh-bn' || brandSlug.toLowerCase() === 'smsh bn'
+
+  // All brands present in orders (for admin filter dropdown)
+  const uniqueBrands = useMemo(
+    () => Array.from(new Set(orders.map((o) => (o.brand || '').trim()).filter(Boolean))).sort(),
+    [orders]
+  )
 
   useEffect(() => {
     fetchBrandName()
@@ -151,10 +157,10 @@ export default function BrandDashboard() {
       return orders // Show all orders
     }
     
-    // Filter to only SMSH BN orders
+    const selectedBrand = brandFilter.trim().toLowerCase()
     return orders.filter((order) => {
       const orderBrand = (order.brand || '').trim().toLowerCase()
-      return orderBrand === 'smsh bn' || orderBrand === 'smsh-bn'
+      return orderBrand === selectedBrand || (selectedBrand === 'smsh bn' && orderBrand === 'smsh-bn') || (selectedBrand === 'smsh-bn' && orderBrand === 'smsh bn')
     })
   }, [orders, brandFilter, isAdmin])
 
@@ -199,11 +205,15 @@ export default function BrandDashboard() {
             <select
               id="brand-filter"
               value={brandFilter}
-              onChange={(e) => setBrandFilter(e.target.value as 'all' | 'smsh-only')}
+              onChange={(e) => setBrandFilter(e.target.value)}
               className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all"
             >
               <option value="all">All Brands</option>
-              <option value="smsh-only">SMSH BN</option>
+              {uniqueBrands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
             </select>
           </div>
         )}
