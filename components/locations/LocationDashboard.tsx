@@ -619,6 +619,17 @@ export default function LocationDashboard({
     })),
   ]
 
+  // Active locations = unique location codes where status is not INACTIVE
+  const activeLocationsCount = (() => {
+    const activeCodes = new Set(
+      franchises
+        .filter((f) => (f.status || 'ACTIVE').toString().toUpperCase() !== 'INACTIVE')
+        .map((f) => f.code)
+        .filter(Boolean)
+    )
+    return activeCodes.size
+  })()
+
   // Get available brands for the selected franchise
   const availableBrands = isAllLocations
     ? Array.from(new Set(orders.map((o) => o.brand).filter(Boolean))).sort()
@@ -762,6 +773,11 @@ export default function LocationDashboard({
 
       {/* Content */}
       <div className="flex-1 space-y-6 p-6">
+        {/* Active Locations Card */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] max-w-xs">
+          <p className="text-sm font-medium text-gray-600">Active Locations</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{activeLocationsCount}</p>
+        </div>
         {/* Overview Cards */}
         <LocationOverviewCards metrics={locationMetrics} />
 
