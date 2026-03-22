@@ -2868,15 +2868,6 @@ export async function importKitchenSalesFromDeliverectCSV(
       existingSales.map((s) => `${s.date}|${s.location}`)
     );
     
-    // Get mappings
-    const mappings = await getKitchenMappings();
-    const mappingMap = new Map<string, string>();
-    mappings.forEach((m) => {
-      if (m.active) {
-        mappingMap.set(m.location.trim().toLowerCase(), m.franchiseCode);
-      }
-    });
-    
     const errors: string[] = [];
     const unmappedLocations: string[] = [];
     const rowsToImport: any[][] = [];
@@ -2899,29 +2890,20 @@ export async function importKitchenSalesFromDeliverectCSV(
           continue;
         }
         
-        // Match location to franchise code
-        const normalizedLocation = row.Location.trim().toLowerCase();
-        const franchiseCode = mappingMap.get(normalizedLocation) || 
-                              mappingMap.get(row.Location.trim()) ||
-                              await matchLocationToFranchise(row.Location);
-        
-        if (!franchiseCode) {
-          unmappedLocations.push(row.Location);
-        }
-        
         // Calculate average order value
         const averageOrderValue = row.Count > 0 ? row.Revenue / row.Count : 0;
-        
+
         // Prepare row data matching sheet columns
-        // Write franchise code directly from lookup (more reliable than formulas)
+        // Column F (Franchise Code) is intentionally left empty — the sheet uses an
+        // ARRAYFORMULA in F2 to populate it via VLOOKUP from Kitchen_Mapping.
         const rowData = [
           row.Date,                    // Date (A)
           row.Location,                // Location (B)
           row.Revenue,                 // Revenue (C)
           row.GrossSales || row.Revenue, // GrossSales (D)
           row.Count,                   // Count (E)
-          franchiseCode || '',         // Franchise Code (F) - Write directly from lookup
-          averageOrderValue,           // Average Order Value (G) - Calculate and write directly
+          '',                          // Franchise Code (F) - Left empty; ARRAYFORMULA handles this
+          averageOrderValue,           // Average Order Value (G)
           importDate,                  // Import Date (H)
           'CSV',                       // Import Source (I)
           '',                          // Brand Name (J) - Leave empty for formula to populate
