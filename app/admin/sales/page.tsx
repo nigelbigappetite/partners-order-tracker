@@ -37,6 +37,17 @@ interface OperatedSalesStatus {
   lastSyncedAt: string | null
 }
 
+function getPreviousDayRange() {
+  const start = new Date()
+  start.setDate(start.getDate() - 1)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setHours(23, 59, 59, 999)
+
+  return { start, end }
+}
+
 export default function AdminSalesPage() {
   const brandOptions = getCanonicalBrands()
   const [sales, setSales] = useState<KitchenSales[]>([])
@@ -52,6 +63,7 @@ export default function AdminSalesPage() {
   const [operatedSalesPreview, setOperatedSalesPreview] = useState<OperatedSalesPreview | null>(null)
   const [operatedSyncResult, setOperatedSyncResult] = useState<{ rowsWritten: number; total: number } | null>(null)
   const [operatedSalesStatus, setOperatedSalesStatus] = useState<OperatedSalesStatus | null>(null)
+  const [operatedSyncDateRange, setOperatedSyncDateRange] = useState(getPreviousDayRange)
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
@@ -105,7 +117,11 @@ export default function AdminSalesPage() {
     setIsSyncingOperatedSales(true)
 
     try {
-      const response = await fetch('/api/operated-sales/sync')
+      const params = new URLSearchParams({
+        startDate: operatedSyncDateRange.start.toISOString().split('T')[0],
+        endDate: operatedSyncDateRange.end.toISOString().split('T')[0],
+      })
+      const response = await fetch(`/api/operated-sales/sync?${params.toString()}`)
 
       const result = await response.json()
 
@@ -125,12 +141,44 @@ export default function AdminSalesPage() {
     }
   }
 
+  const refreshOperatedSalesPreview = async () => {
+    setIsSyncingOperatedSales(true)
+
+    try {
+      const params = new URLSearchParams({
+        startDate: operatedSyncDateRange.start.toISOString().split('T')[0],
+        endDate: operatedSyncDateRange.end.toISOString().split('T')[0],
+      })
+      const response = await fetch(`/api/operated-sales/sync?${params.toString()}`)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to refresh operated sales preview')
+      }
+
+      setOperatedSalesPreview(result.preview || null)
+      setOperatedSalesStatus(result.status || null)
+    } catch (error: any) {
+      console.error('Error refreshing operated sales preview:', error)
+      toast.error(error.message || 'Failed to refresh operated sales preview')
+    } finally {
+      setIsSyncingOperatedSales(false)
+    }
+  }
+
   const handleConfirmOperatedSalesSync = async () => {
     setIsSyncingOperatedSales(true)
 
     try {
       const response = await fetch('/api/operated-sales/sync', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: operatedSyncDateRange.start.toISOString().split('T')[0],
+          endDate: operatedSyncDateRange.end.toISOString().split('T')[0],
+        }),
       })
 
       const result = await response.json()
@@ -476,13 +524,33 @@ export default function AdminSalesPage() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Confirm operated sales sync</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                          This will ingest the current Combined daily sales from the mapped rev-tracker tabs into Supabase.
+                          This will ingest the selected Combined daily sales window from the mapped rev-tracker tabs into Supabase.
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="max-h-[65vh] overflow-y-auto p-6">
+                    <div className="mb-6 rounded-lg border border-gray-200 p-4">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <label className="block text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Sync Date Range
+                        </label>
+                        <button
+                          onClick={refreshOperatedSalesPreview}
+                          disabled={isSyncingOperatedSales}
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${isSyncingOperatedSales ? 'animate-spin' : ''}`} />
+                          <span>Update Preview</span>
+                        </button>
+                      </div>
+                      <DateRangePicker
+                        startDate={operatedSyncDateRange.start}
+                        endDate={operatedSyncDateRange.end}
+                        onChange={(start, end) => setOperatedSyncDateRange({ start, end })}
+                      />
+                    </div>
                     <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <div className="rounded-lg border border-gray-200 p-3">
                         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Rows</p>

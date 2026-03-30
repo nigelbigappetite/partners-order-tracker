@@ -44,6 +44,11 @@ export interface OperatedSiteSyncPreview {
   sites: OperatedSiteSyncPreviewSite[]
 }
 
+export interface OperatedSiteSyncDateRange {
+  startDate?: string
+  endDate?: string
+}
+
 export interface OperatedSiteSyncStatus {
   lastSyncedAt: string | null
 }
@@ -158,8 +163,30 @@ export async function readOperatedSiteSalesFromGoogleSheet(): Promise<OperatedSi
   return dedupeOperatedSiteSales(results.flat())
 }
 
-export async function previewOperatedSiteSalesSync(): Promise<OperatedSiteSyncPreview> {
-  const rows = await readOperatedSiteSalesFromGoogleSheet()
+function filterOperatedSiteSalesByDateRange(
+  rows: OperatedSiteDailySale[],
+  range: OperatedSiteSyncDateRange = {}
+): OperatedSiteDailySale[] {
+  const { startDate, endDate } = range
+
+  return rows.filter((row) => {
+    if (startDate && row.date < startDate) return false
+    if (endDate && row.date > endDate) return false
+    return true
+  })
+}
+
+export async function readOperatedSiteSalesFromGoogleSheet(
+  range: OperatedSiteSyncDateRange = {}
+): Promise<OperatedSiteDailySale[]> {
+  const results = await Promise.all(OPERATED_SITE_SHEETS.map((config) => readCombinedRowsFromSheet(config)))
+  return filterOperatedSiteSalesByDateRange(dedupeOperatedSiteSales(results.flat()), range)
+}
+
+export async function previewOperatedSiteSalesSync(
+  range: OperatedSiteSyncDateRange = {}
+): Promise<OperatedSiteSyncPreview> {
+  const rows = await readOperatedSiteSalesFromGoogleSheet(range)
 
   const sitesMap = new Map<string, OperatedSiteSyncPreviewSite>()
 

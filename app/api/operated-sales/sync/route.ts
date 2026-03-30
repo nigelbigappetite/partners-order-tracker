@@ -9,16 +9,26 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+function getDateRangeFromSearchParams(request: Request) {
+  const { searchParams } = new URL(request.url)
+  return {
+    startDate: searchParams.get('startDate') || undefined,
+    endDate: searchParams.get('endDate') || undefined,
+  }
+}
+
+export async function GET(request: Request) {
   try {
+    const range = getDateRangeFromSearchParams(request)
     const [preview, status] = await Promise.all([
-      previewOperatedSiteSalesSync(),
+      previewOperatedSiteSalesSync(range),
       getOperatedSiteSalesSyncStatus(),
     ])
 
     return NextResponse.json({
       success: true,
       preview,
+      range,
       status,
       sheets: getOperatedSiteSheetConfigs().map((config) => ({
         sheetName: config.sheetName,
@@ -35,15 +45,21 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const rows = await readOperatedSiteSalesFromGoogleSheet()
+    const body = await request.json().catch(() => ({}))
+    const range = {
+      startDate: body?.startDate || undefined,
+      endDate: body?.endDate || undefined,
+    }
+    const rows = await readOperatedSiteSalesFromGoogleSheet(range)
     const result = await upsertOperatedSiteSales(rows)
     const status = await getOperatedSiteSalesSyncStatus()
 
     return NextResponse.json({
       success: true,
       ...result,
+      range,
       status,
       sheets: getOperatedSiteSheetConfigs().map((config) => ({
         sheetName: config.sheetName,
