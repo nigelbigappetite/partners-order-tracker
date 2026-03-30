@@ -9,6 +9,7 @@ import {
 } from '@/lib/locationUtils'
 import { format } from 'date-fns'
 import DateRangePicker from './DateRangePicker'
+import { isAllTimeRange } from './DateRangePicker'
 import LocationOverviewCards from './LocationOverviewCards'
 import LocationBrandPerformance from './LocationBrandPerformance'
 import LocationBrandDrilldown from './LocationBrandDrilldown'
@@ -660,7 +661,7 @@ export default function LocationDashboard({
                     onSelectLocation(e.target.value)
                     onSelectBrand(null) // Reset brand when location changes
                   }}
-                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {locationOptions.map((loc) => (
                     <option key={loc.code} value={loc.code}>
@@ -678,7 +679,7 @@ export default function LocationDashboard({
                     id="brand-select"
                     value={selectedBrand || 'ALL'}
                     onChange={(e) => onSelectBrand(e.target.value === 'ALL' ? null : e.target.value)}
-                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="ALL">All Brands</option>
                     {availableBrands.map((brand) => (
@@ -698,7 +699,7 @@ export default function LocationDashboard({
                     id="brand-select"
                     value={selectedBrand || 'ALL'}
                     onChange={(e) => onSelectBrand(e.target.value === 'ALL' ? null : e.target.value)}
-                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="ALL">All Brands</option>
                     {availableBrands.map((brand) => (
@@ -736,7 +737,7 @@ export default function LocationDashboard({
             <div className="text-right">
               <div className="text-xs font-medium text-gray-500">Date Range</div>
               <div className="text-sm text-gray-700">
-                {dateRange.start.getTime() === new Date(0).getTime() && dateRange.end.getFullYear() >= 2099
+                {isAllTimeRange(dateRange.start, dateRange.end)
                   ? 'All Time'
                   : `${format(dateRange.start, 'MMM d, yyyy')} - ${format(dateRange.end, 'MMM d, yyyy')}`}
               </div>
@@ -803,4 +804,3 @@ export default function LocationDashboard({
     </div>
   )
 }
-

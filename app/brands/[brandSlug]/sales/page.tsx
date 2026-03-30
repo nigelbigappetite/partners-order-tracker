@@ -18,28 +18,21 @@ export default function SalesDashboard() {
   const [brandName, setBrandName] = useState<string>('')
   const [sales, setSales] = useState<KitchenSales[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCity, setSelectedCity] = useState<string>('all')
+  const [selectedLocation, setSelectedLocation] = useState<string>('all')
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const isAdmin = brandSlug.toLowerCase() === 'admin'
-  const isSmshBn = brandSlug.toLowerCase() === 'smsh-bn' || brandSlug.toLowerCase() === 'smsh bn'
 
-  // Date range state - default to last 30 days
-  const [dateRange, setDateRange] = useState(() => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - 30)
-    return { start, end }
-  })
+  // Date range state - default to all time
+  const [dateRange, setDateRange] = useState(() => ({
+    start: new Date(0),
+    end: new Date(),
+  }))
 
   useEffect(() => {
-    if (!isSmshBn && !isAdmin) {
-      toast.error('Sales dashboard is only available for SMSH BN')
-      return
-    }
     fetchBrandName()
     fetchSales()
-  }, [brandSlug, dateRange, selectedCity, isSmshBn, isAdmin])
+  }, [brandSlug, dateRange, selectedLocation])
 
   const fetchBrandName = async () => {
     try {
@@ -60,7 +53,7 @@ export default function SalesDashboard() {
       const startDate = dateRange.start.toISOString().split('T')[0]
       const endDate = dateRange.end.toISOString().split('T')[0]
       
-      const response = await fetch(`/api/sales?startDate=${startDate}&endDate=${endDate}`)
+      const response = await fetch(`/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(brandSlug)}`)
       if (response.ok) {
         const data = await response.json()
         setSales(data.sales || [])
@@ -78,12 +71,12 @@ export default function SalesDashboard() {
   // Helper function to extract city from location
   const getCityFromLocation = (location: string, city?: string): string => {
     if (city) return city
-    // Parse "Brand - City - Country" or "Brand-City-Country" format
-    const parts = location.split(' - ')
-    if (parts.length >= 2) {
-      return parts[parts.length - 2].trim()
+    // "Brand - City" format (space-dash-space): take the last segment
+    if (location.includes(' - ')) {
+      const parts = location.split(' - ')
+      return parts[parts.length - 1].trim()
     }
-    // Try hyphen format
+    // "Brand-City-Country" format (no spaces): take second-to-last segment
     const hyphenParts = location.split('-')
     if (hyphenParts.length >= 2) {
       return hyphenParts[hyphenParts.length - 2].trim()
@@ -101,26 +94,14 @@ export default function SalesDashboard() {
     return dateString
   }
 
-  // Get unique cities for filter
-  const uniqueCities = useMemo(() => {
-    const cities = new Set<string>()
-    sales.forEach((sale) => {
-      const city = getCityFromLocation(sale.location, sale.city)
-      if (city && city !== sale.location) {
-        cities.add(city)
-      }
-    })
-    return Array.from(cities).sort()
-  }, [sales])
+  // Get unique locations for filter
+  const uniqueLocations = useMemo(() => Array.from(new Set(sales.map((s) => s.location))).sort(), [sales])
 
-  // Filter sales by city
+  // Filter sales by location
   const filteredSales = useMemo(() => {
-    let filtered = selectedCity === 'all' 
-      ? sales 
-      : sales.filter((sale) => {
-          const city = getCityFromLocation(sale.location, sale.city)
-          return city === selectedCity
-        })
+    let filtered = selectedLocation === 'all'
+      ? sales
+      : sales.filter((sale) => sale.location === selectedLocation)
     
     // Apply sorting
     if (sortColumn) {
@@ -169,7 +150,7 @@ export default function SalesDashboard() {
     }
     
     return filtered
-  }, [sales, selectedCity, sortColumn, sortDirection])
+  }, [sales, selectedLocation, sortColumn, sortDirection])
   
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -185,7 +166,24 @@ export default function SalesDashboard() {
   const totalGrossSales = filteredSales.reduce((sum, s) => sum + s.grossSales, 0)
   const totalOrders = filteredSales.reduce((sum, s) => sum + s.count, 0)
   const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
-  const activeKitchens = new Set(filteredSales.map((s) => s.location)).size
+  const latestSalesDate = sales.reduce<Date | null>((latest, sale) => {
+    if (!sale.date) return latest
+    const saleDate = new Date(`${sale.date}T00:00:00`)
+    if (Number.isNaN(saleDate.getTime())) return latest
+    if (!latest || saleDate > latest) return saleDate
+    return latest
+  }, null)
+  const activeKitchenThreshold = latestSalesDate ? new Date(latestSalesDate) : new Date()
+  activeKitchenThreshold.setDate(activeKitchenThreshold.getDate() - 30)
+  const activeKitchens = new Set(
+    sales
+      .filter((sale) => {
+        if (!sale.date) return false
+        const saleDate = new Date(`${sale.date}T00:00:00`)
+        return !Number.isNaN(saleDate.getTime()) && saleDate >= activeKitchenThreshold
+      })
+      .map((sale) => sale.location)
+  ).size
   const grossProfit = totalRevenue * 0.039 // 3.9% of revenue
 
   // Group by date for trend
@@ -270,19 +268,19 @@ export default function SalesDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="min-h-screen bg-gray-50">
       {isAdmin ? <Navigation /> : <BrandNavigation brandSlug={brandSlug} brandName={brandName} />}
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-8">
-        <div className="mb-6 xs:mb-8 sm:mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+        <div className="mb-6 xs:mb-8 sm:mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900">
               Sales Dashboard
             </h1>
             <p className="mt-1 text-sm text-gray-500">Real-time sales analytics and insights</p>
           </div>
           <button
             onClick={exportToCSV}
-            className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 border border-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center space-x-2"
+            className="flex w-full items-center justify-center space-x-2 rounded-lg border border-blue-700 bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-700 shadow-sm hover:shadow sm:w-auto"
           >
             <Download className="h-4 w-4" />
             <span>Export</span>
@@ -290,81 +288,135 @@ export default function SalesDashboard() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 xs:mb-8 flex flex-wrap items-center gap-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center space-x-2">
+        <div className="mb-6 xs:mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center space-x-2">
             <Filter className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-semibold text-gray-700">Filters:</span>
           </div>
-          <DateRangePicker
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onChange={(start, end) => setDateRange({ start, end })}
-          />
-          {uniqueCities.length > 0 && (
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
-            >
-              <option value="all">All Cities</option>
-              {uniqueCities.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+            <div className="w-full sm:flex-1 sm:min-w-[320px]">
+              <DateRangePicker
+                startDate={dateRange.start}
+                endDate={dateRange.end}
+                onChange={(start, end) => setDateRange({ start, end })}
+              />
+            </div>
+            {uniqueLocations.length > 0 && (
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 sm:w-auto sm:min-w-[220px] sm:flex-1"
+              >
+                <option value="all">All Locations</option>
+                {uniqueLocations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         {/* KPI Cards */}
-        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-1 gap-2.5 xs:gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <KPICard
-            metric={{
-              label: 'Total Revenue',
-              value: formatCurrency(totalRevenue),
-            }}
-          />
-          <KPICard
-            metric={{
-              label: 'Total Orders',
-              value: totalOrders.toLocaleString(),
-            }}
-          />
-          <KPICard
-            metric={{
-              label: 'Average Order Value',
-              value: formatCurrency(averageOrderValue),
-            }}
-          />
-          <KPICard
-            metric={{
-              label: 'Gross Profit',
-              value: formatCurrency(grossProfit),
-            }}
-          />
-          <KPICard
-            metric={{
-              label: 'Active Kitchens',
-              value: activeKitchens.toString(),
-            }}
-          />
+        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-5">
+          <div>
+            <KPICard
+              metric={{
+                label: 'Total Revenue',
+                value: formatCurrency(totalRevenue),
+              }}
+            />
+          </div>
+          <div>
+            <KPICard
+              metric={{
+                label: 'Total Orders',
+                value: totalOrders.toLocaleString(),
+              }}
+            />
+          </div>
+          <div>
+            <KPICard
+              metric={{
+                label: 'Average Order Value',
+                value: formatCurrency(averageOrderValue),
+              }}
+            />
+          </div>
+          <div>
+            <KPICard
+              metric={{
+                label: 'Gross Profit',
+                value: formatCurrency(grossProfit),
+              }}
+            />
+          </div>
+          <div className="col-span-2 mx-auto w-full max-w-[15rem] lg:col-span-1 lg:mx-0 lg:max-w-none">
+            <KPICard
+              metric={{
+                label: 'Active Kitchens (30d)',
+                value: activeKitchens.toString(),
+              }}
+            />
+          </div>
         </div>
 
         {/* Sales Table */}
         <div className="mt-6 sm:mt-8">
-          <div className="mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Daily Sales</h2>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Daily Sales</h2>
+            </div>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-lg">
-            <Table
+          <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-sm">
+            <div className="space-y-3 md:hidden">
+              {filteredSales.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
+                  No sales data found for the selected period
+                </div>
+              ) : (
+                <div className="max-h-[35rem] space-y-3 overflow-y-auto pr-1">
+                {filteredSales.map((sale, index) => (
+                  <div key={`${sale.date}-${sale.location}-${index}`} className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{formatDate(sale.date)}</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">{sale.location}</p>
+                      <p className="text-xs text-gray-500">{getCityFromLocation(sale.location, sale.city)}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Revenue</p>
+                        <p className="font-semibold text-gray-900">{formatCurrency(sale.revenue)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Gross</p>
+                        <p className="font-medium text-gray-700">{formatCurrency(sale.grossSales)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Orders</p>
+                        <p className="font-medium text-gray-900">{sale.count}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">AOV</p>
+                        <p className="font-medium text-gray-900">{sale.averageOrderValue ? formatCurrency(sale.averageOrderValue) : '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block">
+              <Table
               headers={['Date', 'Location', 'City', 'Revenue', 'Gross Sales', 'Orders', 'Avg Order Value']}
-              maxHeight="calc(100vh - 500px)"
+              maxHeight="520px"
               stickyHeader={true}
               sortable={true}
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
-            >
+              >
               {filteredSales.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 sm:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-400">
@@ -396,9 +448,10 @@ export default function SalesDashboard() {
                         {sale.averageOrderValue ? formatCurrency(sale.averageOrderValue) : '-'}
                       </td>
                     </tr>
-                  ))
+                ))
               )}
-            </Table>
+              </Table>
+            </div>
           </div>
         </div>
 
@@ -408,7 +461,7 @@ export default function SalesDashboard() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Revenue by Location</h2>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-lg">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-sm">
               <Table
                 headers={['Location', 'City', 'Revenue', 'Orders', 'Avg Order Value']}
                 maxHeight="400px"

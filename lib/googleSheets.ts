@@ -50,12 +50,6 @@ async function getSheetsClient() {
     );
   }
 
-  if (!SPREADSHEET_ID) {
-    throw new Error(
-      'Google Sheets Spreadsheet ID not configured. Please set GOOGLE_SHEETS_SPREADSHEET_ID in your .env.local file.'
-    );
-  }
-
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -68,17 +62,15 @@ async function getSheetsClient() {
   return sheetsClient;
 }
 
-/**
- * Get sheet values for a given range
- */
-export async function getSheetValues(
+export async function getSpreadsheetValues(
+  spreadsheetId: string,
   sheetName: string,
   range: string
 ): Promise<any[][]> {
   try {
     const sheets = await getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: `${sheetName}!${range}`,
     });
 
@@ -87,6 +79,22 @@ export async function getSheetValues(
     console.error(`[getSheetValues] Error reading ${sheetName}!${range}:`, error);
     throw error;
   }
+}
+
+/**
+ * Get sheet values for a given range from the default spreadsheet
+ */
+export async function getSheetValues(
+  sheetName: string,
+  range: string
+): Promise<any[][]> {
+  if (!SPREADSHEET_ID) {
+    throw new Error(
+      'Google Sheets Spreadsheet ID not configured. Please set GOOGLE_SHEETS_SPREADSHEET_ID in your .env.local file.'
+    );
+  }
+
+  return getSpreadsheetValues(SPREADSHEET_ID, sheetName, range);
 }
 
 /**
@@ -195,4 +203,3 @@ export function validateOrderStage(stage: string): boolean {
 export function validatePaymentMethod(method: string): boolean {
   return ALLOWED_PAYMENT_METHODS.includes(method as any);
 }
-

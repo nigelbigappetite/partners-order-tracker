@@ -3,17 +3,24 @@
 import { useEffect, useState, useMemo } from 'react'
 import BrandNavigation from '@/components/BrandNavigation'
 import Navigation from '@/components/Navigation'
+import KPICard from '@/components/KPICard'
 import Table from '@/components/Table'
 import OrderModal from '@/components/OrderModal'
 import StatusPill from '@/components/StatusPill'
 import { Order } from '@/lib/types'
-import { formatCurrencyNoDecimals, formatOrderId } from '@/lib/utils'
+import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import { Search } from 'lucide-react'
 
-type SortField = 'orderId' | 'orderDate' | 'franchisee' | 'orderStage' | 'orderTotal' | 'daysOpen'
+type SortField = 'orderId' | 'orderDate' | 'franchisee' | 'orderStage' | 'orderTotal'
 type SortDirection = 'asc' | 'desc'
+
+function formatCompactOrderReference(orderId?: string, invoiceNo?: string): string {
+  const reference = (invoiceNo || orderId || '').replace('#', '')
+  if (reference.length <= 8) return reference
+  return `${reference.slice(0, 4)}...${reference.slice(-4)}`
+}
 
 export default function BrandOrdersPage() {
   const params = useParams()
@@ -22,6 +29,7 @@ export default function BrandOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<SortField>('orderDate')
@@ -126,9 +134,6 @@ export default function BrandOrdersPage() {
       } else if (sortField === 'orderTotal') {
         aValue = Number(aValue) || 0
         bValue = Number(bValue) || 0
-      } else if (sortField === 'daysOpen') {
-        aValue = Number(aValue) || 0
-        bValue = Number(bValue) || 0
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
@@ -148,6 +153,52 @@ export default function BrandOrdersPage() {
     }
   }
 
+  const totalOrders = filteredAndSortedOrders.length
+  const totalRevenue = filteredAndSortedOrders.reduce((sum, order) => sum + (Number(order.orderTotal) || 0), 0)
+  const totalCOGS = filteredAndSortedOrders.reduce((sum, order) => sum + (Number(order.totalCOGS) || 0), 0)
+  const grossProfit = totalRevenue - totalCOGS
+  const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
+  const locationPerformance = useMemo(() => {
+    const locationMap = new Map<
+      string,
+      { orders: number; revenue: number; cogs: number; lastOrderDate: string }
+    >()
+
+    orders.forEach((order) => {
+      const locationName = (order.franchisee || 'Unknown Location').trim() || 'Unknown Location'
+      const existing = locationMap.get(locationName) || {
+        orders: 0,
+        revenue: 0,
+        cogs: 0,
+        lastOrderDate: '',
+      }
+
+      existing.orders += 1
+      existing.revenue += Number(order.orderTotal) || 0
+      existing.cogs += Number(order.totalCOGS) || 0
+      if (order.orderDate && order.orderDate > existing.lastOrderDate) {
+        existing.lastOrderDate = order.orderDate
+      }
+
+      locationMap.set(locationName, existing)
+    })
+
+    return Array.from(locationMap.entries())
+      .map(([location, data]) => {
+        const gp = data.revenue - data.cogs
+        return {
+          location,
+          orders: data.orders,
+          revenue: data.revenue,
+          aov: data.orders > 0 ? data.revenue / data.orders : 0,
+          grossProfit: gp,
+          grossMargin: data.revenue > 0 ? (gp / data.revenue) * 100 : 0,
+          lastOrderDate: data.lastOrderDate,
+        }
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+  }, [orders])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -162,10 +213,41 @@ export default function BrandOrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {isAdmin ? <Navigation /> : <BrandNavigation brandSlug={brandSlug} brandName={brandName} />}
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{isAdmin ? 'All Orders' : `${brandName} Orders`}</h1>
+          <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900">
+            {isAdmin ? 'All Orders' : `${brandName} Supply Orders`}
+          </h1>
         </div>
+
+        {!isAdmin && (
+          <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-4">
+            <KPICard
+              metric={{
+                label: 'Total Orders',
+                value: totalOrders.toLocaleString(),
+              }}
+            />
+            <KPICard
+              metric={{
+                label: 'Total Revenue',
+                value: formatCurrencyNoDecimals(totalRevenue),
+              }}
+            />
+            <KPICard
+              metric={{
+                label: 'Gross Profit',
+                value: formatCurrencyNoDecimals(grossProfit),
+              }}
+            />
+            <KPICard
+              metric={{
+                label: 'Gross Margin %',
+                value: `${grossMargin.toFixed(1)}%`,
+              }}
+            />
+          </div>
+        )}
 
         <div className="mb-6">
           <div className="relative">
@@ -175,50 +257,114 @@ export default function BrandOrdersPage() {
               placeholder="Search orders..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm text-white placeholder:text-white/70 focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
             />
           </div>
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <Table
-            headers={['Order ID', 'Date', 'Franchisee', 'Stage', 'Total', 'Days Open']}
+            headers={['Order', 'Date', 'Franchisee', 'Stage', 'Total']}
             maxHeight="calc(100vh - 300px)"
             stickyHeader={true}
           >
-            {                  filteredAndSortedOrders.map((order) => (
-                    <tr
-                      key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => {
-                        // Use invoice number as primary identifier (unique across brands)
-                        const identifier = order.invoiceNo || order.orderId
-                        setSelectedOrderId(identifier)
-                        setIsModalOpen(true)
-                      }}
-                    >
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                        {order.invoiceNo ? formatOrderId(order.invoiceNo) : formatOrderId(order.orderId)}
-                      </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {order.orderDate}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {order.franchisee}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  <StatusPill status={order.orderStage} />
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                  {formatCurrencyNoDecimals(order.orderTotal)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {order.daysOpen}
+            {filteredAndSortedOrders.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">
+                  No orders found
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredAndSortedOrders.map((order) => (
+                <tr
+                  key={order.invoiceNo || `${order.orderId}-${order.brand || ''}`}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    const identifier = order.invoiceNo || order.orderId
+                    setSelectedOrderId(identifier)
+                    setSelectedOrder(order)
+                    setIsModalOpen(true)
+                  }}
+                >
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                    {formatCompactOrderReference(order.orderId, order.invoiceNo)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {order.orderDate}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {order.franchisee}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    <StatusPill status={order.orderStage} />
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                    {formatCurrencyNoDecimals(order.orderTotal)}
+                  </td>
+                </tr>
+              ))
+            )}
           </Table>
         </div>
+
+        {!isAdmin && (
+          <div className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Location Performance</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Supply-order performance by franchise location.
+              </p>
+            </div>
+
+            <Table
+              headers={['Location', 'Orders', 'Revenue', 'AOV', 'GP', 'GP %', 'Last Order']}
+              maxHeight="420px"
+              stickyHeader={true}
+            >
+              {locationPerformance.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
+                    No location data found
+                  </td>
+                </tr>
+              ) : (
+                locationPerformance.map((locationRow) => (
+                  <tr key={locationRow.location} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {locationRow.location}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      {locationRow.orders.toLocaleString()}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      {formatCurrencyNoDecimals(locationRow.revenue)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      {formatCurrencyNoDecimals(locationRow.aov)}
+                    </td>
+                    <td
+                      className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
+                        locationRow.grossProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {formatCurrencyNoDecimals(locationRow.grossProfit)}
+                    </td>
+                    <td
+                      className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
+                        locationRow.grossMargin >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {locationRow.grossMargin.toFixed(1)}%
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      {locationRow.lastOrderDate || '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </Table>
+          </div>
+        )}
 
         {isModalOpen && selectedOrderId && (
           <OrderModal
@@ -226,8 +372,10 @@ export default function BrandOrdersPage() {
             onClose={() => {
               setIsModalOpen(false)
               setSelectedOrderId(null)
+              setSelectedOrder(null)
             }}
             orderId={selectedOrderId}
+            initialOrder={selectedOrder}
             brandSlug={brandSlug}
           />
         )}
@@ -235,4 +383,3 @@ export default function BrandOrdersPage() {
     </div>
   )
 }
-

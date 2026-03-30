@@ -17,6 +17,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   
   // Filter states
@@ -234,6 +235,7 @@ export default function OrdersPage() {
     // Use invoice number as primary identifier (unique across brands)
     const identifier = order.invoiceNo || order.orderId
     setSelectedOrderId(identifier)
+    setSelectedOrder(order)
     setIsModalOpen(true)
   }
 
@@ -588,12 +590,13 @@ export default function OrdersPage() {
           onClose={() => {
             setIsModalOpen(false)
             setSelectedOrderId(null)
+            setSelectedOrder(null)
           }}
           orderId={selectedOrderId}
+          initialOrder={selectedOrder}
           onUpdate={fetchOrders}
         />
       )}
     </div>
   )
 }
-

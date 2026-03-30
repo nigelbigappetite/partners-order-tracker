@@ -1,5 +1,6 @@
 'use client'
 
+import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { KPIMetric } from '@/lib/types'
 
 interface KPICardProps {
@@ -7,17 +8,37 @@ interface KPICardProps {
 }
 
 export default function KPICard({ metric }: KPICardProps) {
+  const TrendIcon =
+    metric.trendDirection === 'up'
+      ? ArrowUpRight
+      : metric.trendDirection === 'down'
+        ? ArrowDownRight
+        : Minus
+
+  const trendClassName =
+    metric.trendDirection === 'up'
+      ? 'text-green-600'
+      : metric.trendDirection === 'down'
+        ? 'text-red-600'
+        : 'text-gray-500'
+
   return (
     <button
       onClick={metric.onClick}
-      className="w-full rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-6 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-blue-200 hover:from-blue-50 hover:to-white shadow-md"
+      className="w-full min-h-[112px] rounded-2xl border border-gray-200 bg-white p-4 text-left transition-all duration-300 shadow-sm hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-md sm:min-h-0 sm:rounded-xl sm:p-6 sm:hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{metric.label}</p>
-          <p className="mt-2 text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          <p className="mt-1.5 break-words text-xl font-bold text-gray-900 xs:text-2xl sm:mt-2 sm:text-3xl">
             {metric.value}
           </p>
+          {metric.trendLabel && (
+            <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${trendClassName}`}>
+              <TrendIcon className="h-3.5 w-3.5" />
+              <span>{metric.trendLabel}</span>
+            </div>
+          )}
           {metric.subtitle && (
             <p className="mt-1 text-xs text-gray-500">{metric.subtitle}</p>
           )}
@@ -26,4 +47,3 @@ export default function KPICard({ metric }: KPICardProps) {
     </button>
   )
 }
-

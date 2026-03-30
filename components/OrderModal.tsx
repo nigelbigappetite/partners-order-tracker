@@ -15,11 +15,12 @@ interface OrderModalProps {
   isOpen: boolean
   onClose: () => void
   orderId: string
+  initialOrder?: Order | null
   onUpdate?: () => void
   brandSlug?: string
 }
 
-export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSlug }: OrderModalProps) {
+export default function OrderModal({ isOpen, onClose, orderId, initialOrder, onUpdate, brandSlug }: OrderModalProps) {
   const [order, setOrder] = useState<Order | null>(null)
   const [orderLines, setOrderLines] = useState<OrderLine[]>([])
   const [loading, setLoading] = useState(false)
@@ -27,9 +28,12 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
 
   useEffect(() => {
     if (isOpen && orderId) {
+      if (initialOrder) {
+        setOrder(initialOrder)
+      }
       fetchOrder()
     }
-  }, [isOpen, orderId])
+  }, [isOpen, orderId, initialOrder])
 
   // Fetch order lines after order is loaded (so we have invoice number)
   useEffect(() => {
@@ -50,11 +54,15 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
         console.log('Order fetched:', { orderId: data.orderId, invoiceNo: data.invoiceNo, brand: data.brand })
       } else {
         const errorData = await response.json().catch(() => ({}))
-        toast.error(errorData.error || 'Failed to load order')
+        if (!initialOrder) {
+          toast.error(errorData.error || 'Failed to load order')
+        }
       }
     } catch (error) {
       console.error('Error fetching order:', error)
-      toast.error('Failed to load order')
+      if (!initialOrder) {
+        toast.error('Failed to load order')
+      }
     } finally {
       setLoading(false)
     }
@@ -231,6 +239,7 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
   }
 
   const isSmshBn = brandSlug?.toLowerCase() === 'smsh-bn' || brandSlug?.toLowerCase() === 'smsh bn'
+  const isBrandReportingView = Boolean(brandSlug && brandSlug.toLowerCase() !== 'admin')
   
   const timelineEvents = order
     ? [
@@ -249,6 +258,16 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
           : []),
       ]
     : []
+
+  const grossProfit = order
+    ? typeof order.grossProfit === 'number'
+      ? order.grossProfit
+      : (Number(order.orderTotal) || 0) - (Number(order.totalCOGS) || 0)
+    : 0
+
+  const grossMargin = order && Number(order.orderTotal) > 0
+    ? (grossProfit / Number(order.orderTotal)) * 100
+    : 0
 
   return (
     <Modal
@@ -269,6 +288,14 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
                 <StatusPill status={order.orderStage} />
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Order ID:</span>
+                  <p className="font-medium text-gray-900">{order.orderId}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Invoice No:</span>
+                  <p className="font-medium text-gray-900">{order.invoiceNo || '-'}</p>
+                </div>
                 <div>
                   <span className="text-gray-600">Franchise:</span>
                   <p className="font-medium text-gray-900">{order.franchisee}</p>
@@ -314,6 +341,18 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
                   <span className="text-gray-600">Order Total:</span>
                   <p className="text-lg font-semibold text-gray-900">
                     {formatCurrencyNoDecimals(order.orderTotal)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Gross Profit:</span>
+                  <p className={`font-medium ${grossProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {formatCurrencyNoDecimals(grossProfit)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-600">GP %:</span>
+                  <p className={`font-medium ${grossMargin >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {grossMargin.toFixed(1)}%
                   </p>
                 </div>
                 {order.nextAction && (
@@ -376,66 +415,65 @@ export default function OrderModal({ isOpen, onClose, orderId, onUpdate, brandSl
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-              {/* Order Stage Buttons */}
-              {order.orderStage !== 'Ordered with Supplier' && order.orderStage !== 'In Transit' && order.orderStage !== 'Delivered' && order.orderStage !== 'Completed' && order.orderStage !== 'Cancelled' && (
-                <ActionButton
-                  variant="primary"
-                  onClick={handleMarkOrdered}
-                  loading={updating}
-                >
-                  Mark Ordered with Supplier
-                </ActionButton>
-              )}
-              {order.orderStage === 'New' || order.orderStage === 'Ordered with Supplier' ? (
-                <ActionButton
-                  variant="primary"
-                  onClick={handleMarkShipped}
-                  loading={updating}
-                >
-                  Mark Shipped
-                </ActionButton>
-              ) : null}
-              {order.orderStage === 'In Transit' && (
-                <ActionButton
-                  variant="primary"
-                  onClick={handleMarkDelivered}
-                  loading={updating}
-                >
-                  Mark Delivered
-                </ActionButton>
-              )}
-              {order.orderStage === 'Delivered' && (
-                <ActionButton
-                  variant="primary"
-                  onClick={handleMarkCompleted}
-                  loading={updating}
-                >
-                  Mark Completed
-                </ActionButton>
-              )}
-              {order.orderStage !== 'Cancelled' && order.orderStage !== 'Completed' && (
+            {!isBrandReportingView && (
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+                {order.orderStage !== 'Ordered with Supplier' && order.orderStage !== 'In Transit' && order.orderStage !== 'Delivered' && order.orderStage !== 'Completed' && order.orderStage !== 'Cancelled' && (
+                  <ActionButton
+                    variant="primary"
+                    onClick={handleMarkOrdered}
+                    loading={updating}
+                  >
+                    Mark Ordered with Supplier
+                  </ActionButton>
+                )}
+                {order.orderStage === 'New' || order.orderStage === 'Ordered with Supplier' ? (
+                  <ActionButton
+                    variant="primary"
+                    onClick={handleMarkShipped}
+                    loading={updating}
+                  >
+                    Mark Shipped
+                  </ActionButton>
+                ) : null}
+                {order.orderStage === 'In Transit' && (
+                  <ActionButton
+                    variant="primary"
+                    onClick={handleMarkDelivered}
+                    loading={updating}
+                  >
+                    Mark Delivered
+                  </ActionButton>
+                )}
+                {order.orderStage === 'Delivered' && (
+                  <ActionButton
+                    variant="primary"
+                    onClick={handleMarkCompleted}
+                    loading={updating}
+                  >
+                    Mark Completed
+                  </ActionButton>
+                )}
+                {order.orderStage !== 'Cancelled' && order.orderStage !== 'Completed' && (
+                  <ActionButton
+                    variant="danger"
+                    onClick={handleCancelOrder}
+                    loading={updating}
+                  >
+                    Cancel Order
+                  </ActionButton>
+                )}
                 <ActionButton
                   variant="danger"
-                  onClick={handleCancelOrder}
+                  onClick={handleDelete}
                   loading={updating}
                 >
-                  Cancel Order
+                  Delete Order
                 </ActionButton>
-              )}
-              <ActionButton
-                variant="danger"
-                onClick={handleDelete}
-                loading={updating}
-              >
-                Delete Order
-              </ActionButton>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </Modal>
   )
 }
-

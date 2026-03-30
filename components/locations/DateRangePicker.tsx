@@ -8,6 +8,16 @@ interface DateRangePickerProps {
   onChange: (start: Date, end: Date) => void
 }
 
+export function isAllTimeRange(startDate: Date, endDate: Date): boolean {
+  if (startDate.getTime() !== new Date(0).getTime()) return false
+
+  const now = new Date()
+  const isNearNow = Math.abs(endDate.getTime() - now.getTime()) < 24 * 60 * 60 * 1000
+  const isFarFuture = endDate.getFullYear() >= 2099
+
+  return isNearNow || isFarFuture
+}
+
 export default function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps) {
   const [showCustom, setShowCustom] = useState(false)
 
@@ -15,30 +25,29 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     return date.toISOString().split('T')[0]
   }
 
+  const toDateOnlyValue = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  }
+
   // Determine which preset is active
   const activePreset = useMemo(() => {
+    if (isAllTimeRange(startDate, endDate)) return 'all'
+
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
-    
-    // Check if end date is today (within 1 second tolerance)
-    const isEndToday = Math.abs(endDate.getTime() - endOfToday.getTime()) < 1000
-    
-    if (!isEndToday) {
-      // Check if it's "All time" (start is epoch, end is far future)
-      const isAllTime = startDate.getTime() === new Date(0).getTime() && endDate.getFullYear() >= 2099
-      return isAllTime ? 'all' : 'custom'
-    }
-    
-    // Calculate days difference
-    const daysDiff = Math.round((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000))
-    
+
+    const selectedEnd = toDateOnlyValue(endDate)
+    const todayValue = toDateOnlyValue(today)
+
+    if (selectedEnd !== todayValue) return 'custom'
+
+    const msPerDay = 24 * 60 * 60 * 1000
+    const selectedStart = toDateOnlyValue(startDate)
+    const daysDiff = Math.round((todayValue - selectedStart) / msPerDay)
+
     if (daysDiff === 7) return '7'
     if (daysDiff === 30) return '30'
     if (daysDiff === 90) return '90'
-    
-    // Check if it's all time (start is epoch)
-    if (startDate.getTime() === new Date(0).getTime()) return 'all'
     
     return 'custom'
   }, [startDate, endDate])
@@ -63,7 +72,9 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   }
 
   const getButtonClass = (preset: string) => {
-    const isActive = activePreset === preset
+    const isActive = preset === 'custom'
+      ? showCustom || activePreset === 'custom'
+      : activePreset === preset
     return `rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
       isActive
         ? 'border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100'
@@ -72,57 +83,56 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-2">
+    <div className="flex w-full flex-wrap items-start gap-2">
+      <div className="flex flex-1 flex-wrap gap-2">
         <button
           onClick={() => handlePreset(7)}
-          className={getButtonClass('7')}
+          className={`${getButtonClass('7')} flex-1 min-w-[88px]`}
         >
           Last 7 days
         </button>
         <button
           onClick={() => handlePreset(30)}
-          className={getButtonClass('30')}
+          className={`${getButtonClass('30')} flex-1 min-w-[88px]`}
         >
           Last 30 days
         </button>
         <button
           onClick={() => handlePreset(90)}
-          className={getButtonClass('90')}
+          className={`${getButtonClass('90')} flex-1 min-w-[88px]`}
         >
           Last 90 days
         </button>
         <button
           onClick={() => handlePreset(null)}
-          className={getButtonClass('all')}
+          className={`${getButtonClass('all')} flex-1 min-w-[88px]`}
         >
           All time
         </button>
       </div>
       <button
         onClick={() => setShowCustom(!showCustom)}
-        className={getButtonClass('custom')}
+        className={`${getButtonClass('custom')} w-full sm:w-auto`}
       >
         Custom ▾
       </button>
       {showCustom && (
-        <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white p-2">
+        <div className="flex w-full flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 sm:w-auto sm:flex-row sm:items-center">
           <input
             type="date"
             value={formatDateForInput(startDate)}
             onChange={(e) => handleCustomStart(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-xs text-white focus:border-gray-900 focus:outline-none"
+            className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
           />
-          <span className="text-xs text-gray-500">to</span>
+          <span className="hidden text-xs text-gray-500 sm:block">to</span>
           <input
             type="date"
             value={formatDateForInput(endDate)}
             onChange={(e) => handleCustomEnd(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-xs text-white focus:border-gray-900 focus:outline-none"
+            className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
           />
         </div>
       )}
     </div>
   )
 }
-

@@ -4,8 +4,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, FileText, Menu, X, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, FileText, Menu, X, TrendingUp } from 'lucide-react'
 import { getBrandLogo, getBrandLogoAlt } from '@/lib/brandLogos'
+import { getCanonicalBrandSlug } from '@/lib/brands'
 
 interface BrandNavigationProps {
   brandSlug: string
@@ -19,41 +20,33 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
 
   // Define which pages each brand can access
   const getNavItems = () => {
-    const baseItems = [
-      { href: `/brands/${brandSlug}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
-      { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
-    ]
-    
-    // SMSH BN gets Sales, Product Orders, and Products (in that order)
-    const brandSlugLower = brandSlug.toLowerCase()
-    if (brandSlugLower === 'smsh-bn' || brandSlugLower === 'smsh bn') {
-      return [
-        { href: `/brands/${brandSlug}/sales`, label: 'Sales', icon: TrendingUp },
-        { href: `/brands/${brandSlug}/dashboard`, label: 'Product Orders', icon: LayoutDashboard },
-        { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
-      ]
-    }
-    
-    // All other brands get all pages
+    const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug)
+    const useSupplyOrdersLabel =
+      canonicalBrandSlug === 'wing-shack-co' ||
+      canonicalBrandSlug === 'eggs-nstuff' ||
+      canonicalBrandSlug === 'smsh-bn'
+    const useOrderLocationsLabel = useSupplyOrdersLabel
+
     return [
-      ...baseItems,
-      { href: `/brands/${brandSlug}/orders`, label: 'Orders', icon: FileText },
-      { href: `/brands/${brandSlug}/suppliers`, label: 'Suppliers', icon: Store },
-      { href: `/brands/${brandSlug}/locations`, label: 'Locations', icon: MapPin },
+      { href: `/brands/${brandSlug}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
+      { href: `/brands/${brandSlug}/sales`, label: 'Sales', icon: TrendingUp },
+      { href: `/brands/${brandSlug}/orders`, label: useSupplyOrdersLabel ? 'Supply Orders' : 'Orders', icon: FileText },
+      { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
+      ...(useOrderLocationsLabel
+        ? []
+        : [{ href: `/brands/${brandSlug}/locations`, label: 'Locations', icon: MapPin }]),
     ]
   }
   
   const navItems = getNavItems()
 
   return (
-    <nav className="border-b border-brand-light bg-white shadow-sm">
+    <nav className="border-b border-brand-light bg-white">
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-6">
-            <Link 
-              href={brandSlug.toLowerCase() === 'smsh-bn' || brandSlug.toLowerCase() === 'smsh bn' 
-                ? `/brands/${brandSlug}/sales` 
-                : `/brands/${brandSlug}/dashboard`} 
+            <Link
+              href={`/brands/${brandSlug}/dashboard`}
               className="flex items-center space-x-3 group"
             >
               {!logoError ? (
@@ -68,7 +61,7 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
                   />
                 </div>
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white font-bold text-lg flex-shrink-0 shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white font-bold text-lg flex-shrink-0 shadow-sm">
                   {brandName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -87,7 +80,7 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
                     href={item.href}
                     className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-brand-primary text-white shadow-md'
+                        ? 'bg-brand-primary text-white shadow-sm'
                         : 'text-brand-text hover:bg-brand-light hover:text-brand-primary'
                     }`}
                   >
@@ -133,7 +126,7 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center space-x-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-brand-primary text-white shadow-md'
+                        ? 'bg-brand-primary text-white shadow-sm'
                         : 'text-brand-text hover:bg-brand-light hover:text-brand-primary'
                     }`}
                   >
@@ -156,4 +149,3 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
     </nav>
   )
 }
-

@@ -3,6 +3,7 @@
  */
 
 import { cookies } from 'next/headers';
+import { getCanonicalBrandSlug, getBrandDisplayName } from './brands';
 
 const BRAND_AUTH_COOKIE_PREFIX = 'brand-auth-';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -73,16 +74,14 @@ export async function verifyBrandPassword(
 export async function getBrandNameFromSlug(slug: string): Promise<string | null> {
   try {
     // Admin always returns "Admin" as brand name
-    if (slug.toLowerCase() === 'admin') {
-      return 'Admin';
-    }
+    const canonicalSlug = getCanonicalBrandSlug(slug)
+    if (canonicalSlug === 'admin') return 'Admin'
     
     const { getBrandAuth } = await import('./sheets');
     const brandAuth = await getBrandAuth(slug);
-    return brandAuth?.brandName || null;
+    return brandAuth?.brandName || getBrandDisplayName(slug) || null;
   } catch (error) {
     console.error('Error getting brand name from slug:', error);
     return null;
   }
 }
-

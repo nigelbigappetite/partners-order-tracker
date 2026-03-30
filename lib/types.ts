@@ -76,6 +76,8 @@ export interface KPIMetric {
   label: string;
   value: string | number;
   subtitle?: string;
+  trendLabel?: string;
+  trendDirection?: 'up' | 'down' | 'neutral';
   onClick?: () => void;
 }
 
@@ -162,6 +164,9 @@ export interface OrderSupplierAllocation {
 
 // Sales dashboard types
 export interface KitchenSales {
+  id?: string; // Supabase row ID (for delete)
+  brandSlug?: string;
+  brandName?: string;
   date: string; // YYYY-MM-DD format
   location: string; // Full location string from Deliverect
   revenue: number; // Net revenue
@@ -170,9 +175,8 @@ export interface KitchenSales {
   franchiseCode?: string; // Mapped from Kitchen_Mapping
   averageOrderValue?: number; // Calculated: revenue / count
   importDate: string; // When imported
-  importSource: 'CSV' | 'WEBHOOK';
+  importSource: 'CSV' | 'WEBHOOK' | 'GOOGLE_SHEETS';
   // Optional parsed fields
-  brandName?: string;
   city?: string;
   country?: string;
 }

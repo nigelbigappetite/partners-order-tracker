@@ -4,18 +4,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, Tag, RefreshCw, Menu, X, CreditCard, Receipt, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, RefreshCw, Menu, X, TrendingUp } from 'lucide-react'
 
 const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/orders', label: 'Orders', icon: FileText },
   { href: '/create-order', label: 'Create Order', icon: ShoppingCart },
-  { href: '/supplier-invoices', label: 'Supplier invoices', icon: Receipt },
   { href: '/products', label: 'Products', icon: Package },
-  { href: '/brands', label: 'Brands', icon: Tag },
   { href: '/suppliers', label: 'Suppliers', icon: Store },
-  { href: '/locations', label: 'Locations', icon: MapPin },
-  { href: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { href: '/locations', label: 'Supply Orders', icon: MapPin },
   { href: '/admin/sales', label: 'Sales', icon: TrendingUp },
 ]
 
@@ -25,7 +21,7 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <nav className="border-b border-brand-light bg-white shadow-sm">
+    <nav className="border-b border-brand-light bg-white">
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-3 xs:space-x-4 sm:space-x-8">
@@ -42,7 +38,7 @@ export default function Navigation() {
                   />
                 </div>
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white font-bold text-lg flex-shrink-0 shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary text-white font-bold text-lg flex-shrink-0 shadow-sm">
                   HT
                 </div>
               )}
@@ -51,18 +47,16 @@ export default function Navigation() {
             <div className="hidden lg:flex space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href || 
-                  (item.href === '/brands/admin/dashboard' && pathname === '/') ||
-                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
-                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales')) ||
-                  (item.href === '/supplier-invoices' && pathname.startsWith('/supplier-invoices'))
+                const isActive = pathname === item.href ||
+                  (item.href === '/brands/admin/dashboard' && (pathname === '/' || pathname === '/brands/admin/dashboard')) ||
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-brand-primary text-white shadow-md'
+                        ? 'bg-brand-primary text-white shadow-sm'
                         : 'text-brand-text hover:bg-brand-light hover:text-brand-primary'
                     }`}
                   >
@@ -98,11 +92,9 @@ export default function Navigation() {
             <div className="space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href || 
-                  (item.href === '/brands/admin/dashboard' && pathname === '/') ||
-                  (item.href === '/admin/payments' && pathname.startsWith('/admin/payments')) ||
-                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales')) ||
-                  (item.href === '/supplier-invoices' && pathname.startsWith('/supplier-invoices'))
+                const isActive = pathname === item.href ||
+                  (item.href === '/brands/admin/dashboard' && (pathname === '/' || pathname === '/brands/admin/dashboard')) ||
+                  (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link
                     key={item.href}
@@ -110,7 +102,7 @@ export default function Navigation() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center space-x-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-brand-primary text-white shadow-md'
+                        ? 'bg-brand-primary text-white shadow-sm'
                         : 'text-brand-text hover:bg-brand-light hover:text-brand-primary'
                     }`}
                   >
@@ -134,4 +126,3 @@ export default function Navigation() {
     </nav>
   )
 }
-

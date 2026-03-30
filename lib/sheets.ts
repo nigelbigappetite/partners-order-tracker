@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { getCanonicalBrandSlug } from './brands';
 import { Order, OrderLine, SKU, Franchise, Supplier, Brand, PaymentTrackerRow, SupplierInvoice, OrderSupplierAllocation, KitchenSales, DeliverectCSVRow, KitchenMapping } from './types';
 
 // Initialize Google Sheets API client
@@ -1555,7 +1556,11 @@ export interface BrandAuthData {
 export async function getBrandAuth(slug: string): Promise<BrandAuthData | null> {
   try {
     const all = await getAllBrandAuth();
-    const auth = all.find((a) => a.slug === slug.toLowerCase());
+    const canonicalSlug = getCanonicalBrandSlug(slug) ?? slug.toLowerCase()
+    const auth = all.find((a) => {
+      const authSlug = getCanonicalBrandSlug(a.slug) ?? a.slug
+      return authSlug === canonicalSlug
+    });
     return auth ?? null;
   } catch (error) {
     console.error('Error fetching brand auth:', error);

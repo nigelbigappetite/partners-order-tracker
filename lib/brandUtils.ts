@@ -1,6 +1,7 @@
 /**
  * Brand utility functions for slug conversion and validation
  */
+import { getCanonicalBrandSlug, getBrandDisplayName } from './brands'
 
 /**
  * Convert brand name to URL-friendly slug
@@ -8,12 +9,12 @@
  */
 export function createBrandSlug(brandName: string): string {
   if (!brandName) return '';
-  
-  return brandName
+
+  return getCanonicalBrandSlug(brandName) || brandName
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 /**
@@ -23,7 +24,9 @@ export function createBrandSlug(brandName: string): string {
  */
 export function slugToBrandName(slug: string): string {
   if (!slug) return '';
-  
+  const displayName = getBrandDisplayName(slug)
+  if (displayName) return displayName
+
   return slug
     .split('-')
     .map(word => word.toUpperCase())
@@ -37,4 +40,3 @@ export function isValidBrandSlug(slug: string): boolean {
   if (!slug) return false;
   return /^[a-z0-9-]+$/.test(slug) && slug.length > 0;
 }
-
