@@ -12,6 +12,19 @@ import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import { Download, Filter } from 'lucide-react'
 
+function formatDateForSubtitle(date: Date): string {
+  const day = `${date.getDate()}`.padStart(2, '0')
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}-${month}-${year}`
+}
+
+function getSalesPeriodLabel(start: Date, end: Date): string {
+  const startLabel = formatDateForSubtitle(start)
+  const endLabel = formatDateForSubtitle(end)
+  return startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`
+}
+
 export default function SalesDashboard() {
   const params = useParams()
   const brandSlug = params.brandSlug as string
@@ -184,6 +197,8 @@ export default function SalesDashboard() {
       })
       .map((sale) => sale.location)
   ).size
+  const selectedPeriodLabel = getSalesPeriodLabel(dateRange.start, dateRange.end)
+  const activeKitchenPeriodLabel = `Last 30 days to ${formatDateForSubtitle(latestSalesDate ?? new Date())}`
   const grossProfit = totalRevenue * 0.039 // 3.9% of revenue
 
   // Group by date for trend
@@ -325,6 +340,7 @@ export default function SalesDashboard() {
               metric={{
                 label: 'Total Revenue',
                 value: formatCurrency(totalRevenue),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -333,6 +349,7 @@ export default function SalesDashboard() {
               metric={{
                 label: 'Total Orders',
                 value: totalOrders.toLocaleString(),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -341,6 +358,7 @@ export default function SalesDashboard() {
               metric={{
                 label: 'Average Order Value',
                 value: formatCurrency(averageOrderValue),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -349,6 +367,7 @@ export default function SalesDashboard() {
               metric={{
                 label: 'Gross Profit',
                 value: formatCurrency(grossProfit),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -357,6 +376,7 @@ export default function SalesDashboard() {
               metric={{
                 label: 'Active Kitchens (30d)',
                 value: activeKitchens.toString(),
+                subtitle: activeKitchenPeriodLabel,
               }}
             />
           </div>

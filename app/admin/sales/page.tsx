@@ -48,6 +48,19 @@ function getPreviousDayRange() {
   return { start, end }
 }
 
+function formatDateForSubtitle(date: Date): string {
+  const day = `${date.getDate()}`.padStart(2, '0')
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}-${month}-${year}`
+}
+
+function getSalesPeriodLabel(start: Date, end: Date): string {
+  const startLabel = formatDateForSubtitle(start)
+  const endLabel = formatDateForSubtitle(end)
+  return startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`
+}
+
 export default function AdminSalesPage() {
   const brandOptions = getCanonicalBrands()
   const [sales, setSales] = useState<KitchenSales[]>([])
@@ -360,6 +373,8 @@ export default function AdminSalesPage() {
       })
       .map((sale) => sale.location)
   ).size
+  const selectedPeriodLabel = getSalesPeriodLabel(dateRange.start, dateRange.end)
+  const activeKitchenPeriodLabel = `Last 30 days to ${formatDateForSubtitle(latestSalesDate ?? new Date())}`
 
   // Group by location for location breakdown
   const locationBreakdown = Array.from(
@@ -675,6 +690,7 @@ export default function AdminSalesPage() {
               metric={{
                 label: 'Total Revenue',
                 value: formatCurrency(totalRevenue),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -683,6 +699,7 @@ export default function AdminSalesPage() {
               metric={{
                 label: 'Total Orders',
                 value: totalOrders.toLocaleString(),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -691,6 +708,7 @@ export default function AdminSalesPage() {
               metric={{
                 label: 'Average Order Value',
                 value: formatCurrency(averageOrderValue),
+                subtitle: selectedPeriodLabel,
               }}
             />
           </div>
@@ -699,6 +717,7 @@ export default function AdminSalesPage() {
               metric={{
                 label: 'Active Kitchens (30d)',
                 value: activeKitchens.toString(),
+                subtitle: activeKitchenPeriodLabel,
               }}
             />
           </div>
