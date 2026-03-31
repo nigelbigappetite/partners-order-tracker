@@ -17,11 +17,25 @@ interface SupplyOrder {
   received_at: string
 }
 
-// Temporary exclusion for a known bad row in sales.supply_orders.
-// The dashboard shows order 4791AA8 with mismatched revenue/cogs, while the
-// underlying order detail shows a positive margin, so we omit it until the
-// upstream settlement data is corrected.
-const EXCLUDED_SUPPLY_ORDER_IDS = new Set(['4791AA8'])
+// Temporary exclusion for a known bad Bethnal Green row in sales.supply_orders.
+// The partner dashboard shows a settled supply order on 2026-01-30 with
+// revenue 165.00 and cogs 337.50, which does not match the underlying order
+// detail and drags the brand into a false negative GP position.
+function isExcludedSupplyOrder(row: SupplyOrder): boolean {
+  const orderDate = row.order_created_at?.split('T')[0] ?? row.settled_at?.split('T')[0] ?? ''
+  const siteName = (row.site_name ?? '').trim().toLowerCase()
+  const brandSlug = row.brand_slug.trim().toLowerCase()
+  const total = Number(row.total)
+  const totalCogs = row.total_cogs != null ? Number(row.total_cogs) : null
+
+  return (
+    brandSlug === 'smsh-bn' &&
+    siteName === 'hungry tum- bethnal green' &&
+    orderDate === '2026-01-30' &&
+    total === 165 &&
+    totalCogs === 337.5
+  )
+}
 
 export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
   const isAdmin = !brandParam || brandParam.toLowerCase() === 'admin'
@@ -45,7 +59,7 @@ export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
 
   const rows: SupplyOrder[] = await res.json()
   const filteredRows = rows.filter((row) => {
-    if (EXCLUDED_SUPPLY_ORDER_IDS.has(row.id)) {
+    if (isExcludedSupplyOrder(row)) {
       return false
     }
 
