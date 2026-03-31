@@ -6,7 +6,7 @@ import BrandNavigation from '@/components/BrandNavigation'
 import Navigation from '@/components/Navigation'
 import KPICard from '@/components/KPICard'
 import DateRangePicker from '@/components/locations/DateRangePicker'
-import { Order, KPIMetric, KitchenSales } from '@/lib/types'
+import { Order, KPIMetric, KitchenSales, OrderLine } from '@/lib/types'
 import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
@@ -14,6 +14,7 @@ import BrandLogoCell from '@/components/BrandLogoCell'
 import { ArrowRight, ChevronUp, ChevronDown, Package, TrendingUp } from 'lucide-react'
 import { getCanonicalBrandSlug, getBrandDisplayName } from '@/lib/brands'
 import { isAllTimeRange } from '@/components/locations/DateRangePicker'
+import { applyOrderLineOverrides } from '@/lib/order-line-overrides'
 
 type BrandSortField = 'name' | 'ordersCount' | 'totalRevenue' | 'grossProfit' | 'grossMargin' | 'lastOrderDate'
 
@@ -29,6 +30,7 @@ export default function BrandDashboard() {
   const brandSlug = params.brandSlug as string
   const [brandName, setBrandName] = useState<string>('')
   const [orders, setOrders] = useState<Order[]>([])
+  const [orderLines, setOrderLines] = useState<OrderLine[]>([])
   const [sales, setSales] = useState<KitchenSales[]>([])
   const [previousSales, setPreviousSales] = useState<KitchenSales[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -53,6 +55,12 @@ export default function BrandDashboard() {
     fetchBrandName()
     fetchOrders()
   }, [brandSlug, brandFilter, dateRange])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      fetchOrderLines()
+    }
+  }, [isAdmin])
 
   useEffect(() => {
     fetchSales()
@@ -203,9 +211,28 @@ export default function BrandDashboard() {
     }
   }
 
+  const fetchOrderLines = async () => {
+    try {
+      const response = await fetch('/api/order-lines')
+      if (!response.ok) {
+        throw new Error('Failed to load order lines')
+      }
+
+      const data = await response.json()
+      setOrderLines(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching order lines:', error)
+    }
+  }
+
+  const correctedOrders = useMemo(
+    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines)),
+    [isAdmin, orders, orderLines]
+  )
+
   // Filter orders — brand + date range (admin only for brand/date; non-admin already pre-filtered)
     const filteredOrders = useMemo(() => {
-    let result = orders
+    let result = correctedOrders
 
     if (isAdmin) {
       const startDate = dateRange.start.toISOString().split('T')[0]
@@ -218,7 +245,7 @@ export default function BrandDashboard() {
     }
 
     return result
-  }, [orders, dateRange, isAdmin])
+  }, [correctedOrders, dateRange, isAdmin])
 
   // Per-brand summary table (admin only)
   const brandSummaries = useMemo(() => {
@@ -355,7 +382,7 @@ export default function BrandDashboard() {
   const previousStartDateOnly = new Date(previousEndDateOnly)
   previousStartDateOnly.setDate(previousStartDateOnly.getDate() - (periodDays - 1))
   const previousOrders = hasComparablePeriod
-    ? orders.filter((o) => o.orderDate >= previousStartDateOnly.toISOString().split('T')[0] && o.orderDate <= previousEndDateOnly.toISOString().split('T')[0])
+    ? correctedOrders.filter((o) => o.orderDate >= previousStartDateOnly.toISOString().split('T')[0] && o.orderDate <= previousEndDateOnly.toISOString().split('T')[0])
     : []
   const previousProductRevenue = previousOrders.reduce((sum, o) => sum + (Number(o.orderTotal) || 0), 0)
   const previousProductCOGS = previousOrders.reduce((sum, o) => sum + (Number(o.totalCOGS) || 0), 0)

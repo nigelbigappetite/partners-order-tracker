@@ -7,11 +7,12 @@ import KPICard from '@/components/KPICard'
 import Table from '@/components/Table'
 import OrderModal from '@/components/OrderModal'
 import StatusPill from '@/components/StatusPill'
-import { Order } from '@/lib/types'
+import { Order, OrderLine } from '@/lib/types'
 import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import { Search } from 'lucide-react'
+import { applyOrderLineOverrides } from '@/lib/order-line-overrides'
 
 type SortField = 'orderId' | 'orderDate' | 'franchisee' | 'orderStage' | 'orderTotal'
 type SortDirection = 'asc' | 'desc'
@@ -27,6 +28,7 @@ export default function BrandOrdersPage() {
   const brandSlug = params.brandSlug as string
   const [brandName, setBrandName] = useState<string>('')
   const [orders, setOrders] = useState<Order[]>([])
+  const [orderLines, setOrderLines] = useState<OrderLine[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -39,6 +41,9 @@ export default function BrandOrdersPage() {
   useEffect(() => {
     fetchBrandName()
     fetchOrders()
+    if (!isAdmin) {
+      fetchOrderLines()
+    }
   }, [brandSlug])
 
   const fetchBrandName = async () => {
@@ -106,8 +111,27 @@ export default function BrandOrdersPage() {
     }
   }
 
+  const fetchOrderLines = async () => {
+    try {
+      const response = await fetch('/api/order-lines')
+      if (!response.ok) {
+        throw new Error('Failed to load order lines')
+      }
+
+      const data = await response.json()
+      setOrderLines(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching order lines:', error)
+    }
+  }
+
+  const correctedOrders = useMemo(
+    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines)),
+    [isAdmin, orders, orderLines]
+  )
+
   const filteredAndSortedOrders = useMemo(() => {
-    let filtered = [...orders]
+    let filtered = [...correctedOrders]
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase().trim()
@@ -142,7 +166,7 @@ export default function BrandOrdersPage() {
     })
 
     return filtered
-  }, [orders, searchTerm, sortField, sortDirection])
+  }, [correctedOrders, searchTerm, sortField, sortDirection])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -164,7 +188,7 @@ export default function BrandOrdersPage() {
       { orders: number; revenue: number; cogs: number; lastOrderDate: string }
     >()
 
-    orders.forEach((order) => {
+    correctedOrders.forEach((order) => {
       const locationName = (order.franchisee || 'Unknown Location').trim() || 'Unknown Location'
       const existing = locationMap.get(locationName) || {
         orders: 0,
@@ -197,7 +221,7 @@ export default function BrandOrdersPage() {
         }
       })
       .sort((a, b) => b.revenue - a.revenue)
-  }, [orders])
+  }, [correctedOrders])
 
   if (loading) {
     return (
