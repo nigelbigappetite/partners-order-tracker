@@ -17,6 +17,12 @@ interface SupplyOrder {
   received_at: string
 }
 
+// Temporary exclusion for a known bad row in sales.supply_orders.
+// The dashboard shows order 4791AA8 with mismatched revenue/cogs, while the
+// underlying order detail shows a positive margin, so we omit it until the
+// upstream settlement data is corrected.
+const EXCLUDED_SUPPLY_ORDER_IDS = new Set(['4791AA8'])
+
 export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
   const isAdmin = !brandParam || brandParam.toLowerCase() === 'admin'
   const brandSlug = isAdmin ? undefined : (getCanonicalBrandSlug(brandParam) ?? undefined)
@@ -38,9 +44,17 @@ export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
   }
 
   const rows: SupplyOrder[] = await res.json()
-  const filteredRows = brandSlug
-    ? rows.filter((row) => getCanonicalBrandSlug(row.brand_slug) === brandSlug)
-    : rows
+  const filteredRows = rows.filter((row) => {
+    if (EXCLUDED_SUPPLY_ORDER_IDS.has(row.id)) {
+      return false
+    }
+
+    if (!brandSlug) {
+      return true
+    }
+
+    return getCanonicalBrandSlug(row.brand_slug) === brandSlug
+  })
 
   return filteredRows.map((row) => ({
     orderId: row.id,
