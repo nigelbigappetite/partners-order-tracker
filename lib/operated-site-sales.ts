@@ -158,11 +158,6 @@ function dedupeOperatedSiteSales(rows: OperatedSiteDailySale[]): OperatedSiteDai
   })
 }
 
-export async function readOperatedSiteSalesFromGoogleSheet(): Promise<OperatedSiteDailySale[]> {
-  const results = await Promise.all(OPERATED_SITE_SHEETS.map((config) => readCombinedRowsFromSheet(config)))
-  return dedupeOperatedSiteSales(results.flat())
-}
-
 function filterOperatedSiteSalesByDateRange(
   rows: OperatedSiteDailySale[],
   range: OperatedSiteSyncDateRange = {}
