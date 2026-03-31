@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { applyOrderLineOverrides } from '@/lib/order-line-overrides'
+import { getCanonicalBrandSlug } from '@/lib/brands'
 
 type SortField = 'orderId' | 'orderDate' | 'franchisee' | 'orderStage' | 'orderTotal'
 type SortDirection = 'asc' | 'desc'
@@ -126,8 +127,8 @@ export default function BrandOrdersPage() {
   }
 
   const correctedOrders = useMemo(
-    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines)),
-    [isAdmin, orders, orderLines]
+    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines, getCanonicalBrandSlug(brandSlug))),
+    [isAdmin, orders, orderLines, brandSlug]
   )
 
   const filteredAndSortedOrders = useMemo(() => {

@@ -226,8 +226,8 @@ export default function BrandDashboard() {
   }
 
   const correctedOrders = useMemo(
-    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines)),
-    [isAdmin, orders, orderLines]
+    () => (isAdmin ? orders : applyOrderLineOverrides(orders, orderLines, getCanonicalBrandSlug(brandSlug))),
+    [isAdmin, orders, orderLines, brandSlug]
   )
 
   // Filter orders — brand + date range (admin only for brand/date; non-admin already pre-filtered)

@@ -1,5 +1,11 @@
 import { Order, OrderLine } from './types'
 
+const BRAND_SKU_PREFIXES: Record<string, string> = {
+  'smsh-bn': 'SBN-',
+  'wing-shack-co': 'WS-',
+  'eggs-nstuff': 'ENS-',
+}
+
 function normalizeRef(value?: string | null): string {
   if (!value) return ''
   return String(value).replace(/#/g, '').trim().toLowerCase()
@@ -45,12 +51,21 @@ function aggregateOrderLines(orderLines: OrderLine[]) {
   return { byOrderId, byInvoiceNo }
 }
 
-export function applyOrderLineOverrides(orders: Order[], orderLines: OrderLine[]): Order[] {
+export function applyOrderLineOverrides(
+  orders: Order[],
+  orderLines: OrderLine[],
+  brandSlug?: string | null
+): Order[] {
   if (!orders.length || !orderLines.length) {
     return orders
   }
 
-  const { byOrderId, byInvoiceNo } = aggregateOrderLines(orderLines)
+  const skuPrefix = brandSlug ? BRAND_SKU_PREFIXES[brandSlug] : undefined
+  const applicableLines = skuPrefix
+    ? orderLines.filter((line) => String(line.sku || '').startsWith(skuPrefix))
+    : orderLines
+
+  const { byOrderId, byInvoiceNo } = aggregateOrderLines(applicableLines)
 
   return orders.map((order) => {
     const invoiceKey = normalizeRef(order.invoiceNo)
