@@ -68,10 +68,10 @@ interface OperatedSiteDailySaleRow {
 }
 
 const OPERATED_SITE_SHEETS: OperatedSiteSheetConfig[] = [
-  { sheetName: 'loughton-rev-tracker', siteSlug: 'loughton', siteName: 'Loughton', brandSlug: null },
-  { sheetName: 'maidstone-rev-tracker', siteSlug: 'maidstone', siteName: 'Maidstone', brandSlug: null },
-  { sheetName: 'chatham-rev-tracker', siteSlug: 'chatham', siteName: 'Chatham', brandSlug: null },
-  { sheetName: 'Wanstead_Rev_Tracker', siteSlug: 'wanstead', siteName: 'Wanstead', brandSlug: null },
+  { sheetName: 'loughton-rev-tracker', siteSlug: 'loughton', siteName: 'Loughton', brandSlug: 'wing-shack-co' },
+  { sheetName: 'maidstone-rev-tracker', siteSlug: 'maidstone', siteName: 'Maidstone', brandSlug: 'wing-shack-co' },
+  { sheetName: 'chatham-rev-tracker', siteSlug: 'chatham', siteName: 'Chatham', brandSlug: 'wing-shack-co' },
+  { sheetName: 'Wanstead_Rev_Tracker', siteSlug: 'wanstead', siteName: 'Wanstead', brandSlug: 'wing-shack-co' },
   { sheetName: 'wsco-bethnal-rev-tracker', siteSlug: 'wsco-bethnal', siteName: 'WSCO Bethnal Green', brandSlug: 'wing-shack-co' },
   { sheetName: 'eggs-n-stuff-bethnal-rev-tracker', siteSlug: 'eggs-bethnal', siteName: 'Eggs n Stuff Bethnal Green', brandSlug: 'eggs-nstuff' },
   { sheetName: 'smsh-bn-bethnal-rev-tracker', siteSlug: 'smsh-bn-bethnal', siteName: 'SMSH BN Bethnal Green', brandSlug: 'smsh-bn' },
