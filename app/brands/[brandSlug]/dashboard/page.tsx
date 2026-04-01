@@ -27,6 +27,7 @@ function formatCurrencyTwoDecimals(value: number): string {
 export default function BrandDashboard() {
   const params = useParams()
   const brandSlug = params.brandSlug as string
+  const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug) ?? brandSlug
   const [brandName, setBrandName] = useState<string>('')
   const [orders, setOrders] = useState<Order[]>([])
   const [sales, setSales] = useState<KitchenSales[]>([])
@@ -42,7 +43,8 @@ export default function BrandDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [adminTableMode, setAdminTableMode] = useState<'supply' | 'kitchen'>('supply')
   const [brandTableMode, setBrandTableMode] = useState<'kitchen' | 'supply'>('kitchen')
-  const isAdmin = brandSlug.toLowerCase() === 'admin'
+  const isAdmin = canonicalBrandSlug === 'admin'
+  const hideInternalGpCards = ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug)
   // All brands present in orders (for admin filter dropdown)
   const uniqueBrands = useMemo(
     () => Array.from(new Set(orders.map((o) => (o.brand || '').trim()).filter(Boolean))).sort(),
@@ -80,11 +82,11 @@ export default function BrandDashboard() {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true)
-      const canonicalBrandSlug = isAdmin
+      const dashboardBrandSlug = isAdmin
         ? brandFilter === 'all'
           ? 'admin'
           : getCanonicalBrandSlug(brandFilter) ?? brandFilter
-        : getCanonicalBrandSlug(brandSlug) ?? brandSlug
+        : canonicalBrandSlug
       const canonicalBrandName = getBrandDisplayName(brandSlug) ?? (brandName || brandSlug)
 
       if (!brandName && canonicalBrandName) {
@@ -92,7 +94,7 @@ export default function BrandDashboard() {
       }
       
       // For admin, pass "admin" which will be ignored by API (shows all orders)
-      const brandParam = isAdmin ? 'admin' : canonicalBrandSlug
+      const brandParam = isAdmin ? 'admin' : dashboardBrandSlug
       console.log(`[BrandDashboard] Fetching orders for brand: "${brandParam}" (slug: "${brandSlug}")`)
       const response = await fetch(`/api/orders?brand=${encodeURIComponent(brandParam)}`)
       if (response.ok) {
@@ -125,11 +127,11 @@ export default function BrandDashboard() {
         // This ensures only orders matching the brand are shown, even if API returns incorrect data
         let filteredOrders = processedOrders
         if (!isAdmin) {
-          console.log(`[BrandDashboard] Filtering orders - expected canonical slug: "${canonicalBrandSlug}"`)
+          console.log(`[BrandDashboard] Filtering orders - expected canonical slug: "${dashboardBrandSlug}"`)
           
           filteredOrders = processedOrders.filter((order: any) => {
             const orderBrandSlug = getCanonicalBrandSlug(order.brand)
-            const matches = orderBrandSlug === canonicalBrandSlug
+            const matches = orderBrandSlug === dashboardBrandSlug
             
             // Log all orders for debugging
             console.log(`[BrandDashboard] Order ${order.orderId || order.invoiceNo}: brand="${order.brand}" (canonical: "${orderBrandSlug}") - ${matches ? 'MATCH' : 'FILTERED OUT'}`)
@@ -137,7 +139,7 @@ export default function BrandDashboard() {
             return matches
           })
           
-          console.log(`[BrandDashboard] After filtering: ${filteredOrders.length} orders match brand "${canonicalBrandSlug}"`)
+          console.log(`[BrandDashboard] After filtering: ${filteredOrders.length} orders match brand "${dashboardBrandSlug}"`)
         }
         
         setOrders(filteredOrders)
@@ -154,11 +156,11 @@ export default function BrandDashboard() {
       setSalesLoading(true)
       const startDate = dateRange.start.toISOString().split('T')[0]
       const endDate = dateRange.end.toISOString().split('T')[0]
-      const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug) ?? brandSlug
+      const salesBrandSlug = canonicalBrandSlug
       const allTime = isAllTimeRange(dateRange.start, dateRange.end)
 
       const currentRequest = fetch(
-        `/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(canonicalBrandSlug)}`
+        `/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(salesBrandSlug)}`
       )
 
       if (allTime) {
@@ -183,7 +185,7 @@ export default function BrandDashboard() {
       previousStart.setDate(previousStart.getDate() - (periodDays - 1))
 
       const previousRequest = fetch(
-        `/api/sales?startDate=${previousStart.toISOString().split('T')[0]}&endDate=${previousEnd.toISOString().split('T')[0]}&brand=${encodeURIComponent(canonicalBrandSlug)}`
+        `/api/sales?startDate=${previousStart.toISOString().split('T')[0]}&endDate=${previousEnd.toISOString().split('T')[0]}&brand=${encodeURIComponent(salesBrandSlug)}`
       )
 
       const [response, previousResponse] = await Promise.all([currentRequest, previousRequest])
@@ -635,14 +637,18 @@ export default function BrandDashboard() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-4">
+              <div className={`grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 ${hideInternalGpCards ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
                 <div className="col-span-2">
                   <KPICard metric={{ label: 'Kitchen Revenue', value: formatCurrencyTwoDecimals(kitchenRevenue), ...getTrend(kitchenRevenue, previousKitchenRevenue) }} />
                 </div>
                 <KPICard metric={{ label: 'Kitchen Orders', value: kitchenOrders.toLocaleString(), ...getTrend(kitchenOrders, previousKitchenOrders) }} />
                 <KPICard metric={{ label: 'Kitchen Order AOV', value: formatCurrencyTwoDecimals(kitchenAOV), ...getTrend(kitchenAOV, previousKitchenAOV) }} />
-                <KPICard metric={{ label: 'Estimated GP %', value: `${estimatedKitchenGPPct.toFixed(1)}%`, ...getTrend(estimatedKitchenGPPct, previousEstimatedKitchenGPPct) }} />
-                <KPICard metric={{ label: 'Estimated GP £', value: formatCurrencyTwoDecimals(estimatedKitchenGP), ...getTrend(estimatedKitchenGP, previousEstimatedKitchenGP) }} />
+                {!hideInternalGpCards && (
+                  <KPICard metric={{ label: 'Estimated GP %', value: `${estimatedKitchenGPPct.toFixed(1)}%`, ...getTrend(estimatedKitchenGPPct, previousEstimatedKitchenGPPct) }} />
+                )}
+                {!hideInternalGpCards && (
+                  <KPICard metric={{ label: 'Estimated GP £', value: formatCurrencyTwoDecimals(estimatedKitchenGP), ...getTrend(estimatedKitchenGP, previousEstimatedKitchenGP) }} />
+                )}
               </div>
             </section>
 
@@ -660,14 +666,18 @@ export default function BrandDashboard() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-4">
+              <div className={`grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 ${hideInternalGpCards ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
                 <div className="col-span-2">
                   <KPICard metric={{ label: 'Supply Revenue', value: formatCurrencyTwoDecimals(productRevenue), ...getTrend(productRevenue, previousProductRevenue) }} />
                 </div>
                 <KPICard metric={{ label: 'Supply Orders', value: supplierOrders.toLocaleString(), ...getTrend(supplierOrders, previousSupplierOrders) }} />
                 <KPICard metric={{ label: 'Supply Order AOV', value: formatCurrencyTwoDecimals(productOrderAOV), ...getTrend(productOrderAOV, previousProductAOV) }} />
-                <KPICard metric={{ label: 'GP %', value: `${grossMargin.toFixed(1)}%`, ...getTrend(grossMargin, previousProductMargin) }} />
-                <KPICard metric={{ label: 'GP £', value: formatCurrencyTwoDecimals(grossProfit), ...getTrend(grossProfit, previousProductProfit) }} />
+                {!hideInternalGpCards && (
+                  <KPICard metric={{ label: 'GP %', value: `${grossMargin.toFixed(1)}%`, ...getTrend(grossMargin, previousProductMargin) }} />
+                )}
+                {!hideInternalGpCards && (
+                  <KPICard metric={{ label: 'GP £', value: formatCurrencyTwoDecimals(grossProfit), ...getTrend(grossProfit, previousProductProfit) }} />
+                )}
               </div>
             </section>
 

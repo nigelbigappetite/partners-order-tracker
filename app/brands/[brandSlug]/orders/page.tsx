@@ -8,6 +8,7 @@ import Table from '@/components/Table'
 import OrderModal from '@/components/OrderModal'
 import StatusPill from '@/components/StatusPill'
 import { Order } from '@/lib/types'
+import { getCanonicalBrandSlug } from '@/lib/brands'
 import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
@@ -25,6 +26,7 @@ function formatCompactOrderReference(orderId?: string, invoiceNo?: string): stri
 export default function BrandOrdersPage() {
   const params = useParams()
   const brandSlug = params.brandSlug as string
+  const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug) ?? brandSlug
   const [brandName, setBrandName] = useState<string>('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,7 +36,8 @@ export default function BrandOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<SortField>('orderDate')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const isAdmin = brandSlug.toLowerCase() === 'admin'
+  const isAdmin = canonicalBrandSlug === 'admin'
+  const hideInternalGpCards = ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug)
 
   useEffect(() => {
     fetchBrandName()
@@ -221,7 +224,7 @@ export default function BrandOrdersPage() {
         </div>
 
         {!isAdmin && (
-          <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className={`mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 ${hideInternalGpCards ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
             <KPICard
               metric={{
                 label: 'Total Orders',
@@ -234,18 +237,22 @@ export default function BrandOrdersPage() {
                 value: formatCurrencyNoDecimals(totalRevenue),
               }}
             />
-            <KPICard
-              metric={{
-                label: 'Gross Profit',
-                value: formatCurrencyNoDecimals(grossProfit),
-              }}
-            />
-            <KPICard
-              metric={{
-                label: 'Gross Margin %',
-                value: `${grossMargin.toFixed(1)}%`,
-              }}
-            />
+            {!hideInternalGpCards && (
+              <KPICard
+                metric={{
+                  label: 'Gross Profit',
+                  value: formatCurrencyNoDecimals(grossProfit),
+                }}
+              />
+            )}
+            {!hideInternalGpCards && (
+              <KPICard
+                metric={{
+                  label: 'Gross Margin %',
+                  value: `${grossMargin.toFixed(1)}%`,
+                }}
+              />
+            )}
           </div>
         )}
 
