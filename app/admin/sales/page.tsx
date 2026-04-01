@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Navigation from '@/components/Navigation'
 import CSVUpload from '@/components/sales/CSVUpload'
-import DateRangePicker from '@/components/locations/DateRangePicker'
+import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import Table from '@/components/Table'
 import KPICard from '@/components/KPICard'
 import { KitchenSales } from '@/lib/types'
@@ -373,7 +373,18 @@ export default function AdminSalesPage() {
       })
       .map((sale) => sale.location)
   ).size
-  const selectedPeriodLabel = getSalesPeriodLabel(dateRange.start, dateRange.end)
+  const earliestFilteredSalesDate = filteredSales.reduce<Date | null>((earliest, sale) => {
+    if (!sale.date) return earliest
+    const saleDate = new Date(`${sale.date}T00:00:00`)
+    if (Number.isNaN(saleDate.getTime())) return earliest
+    if (!earliest || saleDate < earliest) return saleDate
+    return earliest
+  }, null)
+  const periodStartDate =
+    isAllTimeRange(dateRange.start, dateRange.end) && earliestFilteredSalesDate
+      ? earliestFilteredSalesDate
+      : dateRange.start
+  const selectedPeriodLabel = getSalesPeriodLabel(periodStartDate, dateRange.end)
   const activeKitchenPeriodLabel = `Last 30 days to ${formatDateForSubtitle(latestSalesDate ?? new Date())}`
 
   // Group by location for location breakdown

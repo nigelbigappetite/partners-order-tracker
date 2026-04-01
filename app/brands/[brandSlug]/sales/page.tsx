@@ -5,7 +5,7 @@ import BrandNavigation from '@/components/BrandNavigation'
 import Navigation from '@/components/Navigation'
 import KPICard from '@/components/KPICard'
 import Table from '@/components/Table'
-import DateRangePicker from '@/components/locations/DateRangePicker'
+import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import { KitchenSales } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -197,7 +197,18 @@ export default function SalesDashboard() {
       })
       .map((sale) => sale.location)
   ).size
-  const selectedPeriodLabel = getSalesPeriodLabel(dateRange.start, dateRange.end)
+  const earliestFilteredSalesDate = filteredSales.reduce<Date | null>((earliest, sale) => {
+    if (!sale.date) return earliest
+    const saleDate = new Date(`${sale.date}T00:00:00`)
+    if (Number.isNaN(saleDate.getTime())) return earliest
+    if (!earliest || saleDate < earliest) return saleDate
+    return earliest
+  }, null)
+  const periodStartDate =
+    isAllTimeRange(dateRange.start, dateRange.end) && earliestFilteredSalesDate
+      ? earliestFilteredSalesDate
+      : dateRange.start
+  const selectedPeriodLabel = getSalesPeriodLabel(periodStartDate, dateRange.end)
   const activeKitchenPeriodLabel = `Last 30 days to ${formatDateForSubtitle(latestSalesDate ?? new Date())}`
   const grossProfit = totalRevenue * 0.039 // 3.9% of revenue
 
