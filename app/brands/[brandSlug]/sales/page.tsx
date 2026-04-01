@@ -35,6 +35,7 @@ export default function SalesDashboard() {
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const isAdmin = brandSlug.toLowerCase() === 'admin'
+  const hideGrossProfitCard = ['wing-shack-co', 'eggs-nstuff'].includes(brandSlug.toLowerCase())
 
   // Date range state - default to all time
   const [dateRange, setDateRange] = useState(() => ({
@@ -345,7 +346,7 @@ export default function SalesDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 lg:grid-cols-5">
+        <div className={`mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 ${hideGrossProfitCard ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
           <div>
             <KPICard
               metric={{
@@ -373,15 +374,17 @@ export default function SalesDashboard() {
               }}
             />
           </div>
-          <div>
-            <KPICard
-              metric={{
-                label: 'Gross Profit',
-                value: formatCurrency(grossProfit),
-                subtitle: selectedPeriodLabel,
-              }}
-            />
-          </div>
+          {!hideGrossProfitCard && (
+            <div>
+              <KPICard
+                metric={{
+                  label: 'Gross Profit',
+                  value: formatCurrency(grossProfit),
+                  subtitle: selectedPeriodLabel,
+                }}
+              />
+            </div>
+          )}
           <div className="col-span-2 mx-auto w-full max-w-[15rem] lg:col-span-1 lg:mx-0 lg:max-w-none">
             <KPICard
               metric={{
