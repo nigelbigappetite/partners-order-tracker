@@ -171,8 +171,6 @@ export async function getKitchenSalesFromSupabase(
   let operatedUrl = `${SUPABASE_URL}/rest/v1/operated_site_daily_sales?select=*&order=date.desc`
   if (brandSlug) {
     operatedUrl += `&brand_slug=eq.${encodeURIComponent(brandSlug)}`
-  } else {
-    operatedUrl += '&brand_slug=not.is.null'
   }
   if (startDate) operatedUrl += `&date=gte.${startDate}`
   if (endDate) operatedUrl += `&date=lte.${endDate}`
