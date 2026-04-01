@@ -7,6 +7,7 @@ import KPICard from '@/components/KPICard'
 import Table from '@/components/Table'
 import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import { KitchenSales } from '@/lib/types'
+import { getCanonicalBrandSlug } from '@/lib/brands'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
@@ -28,14 +29,15 @@ function getSalesPeriodLabel(start: Date, end: Date): string {
 export default function SalesDashboard() {
   const params = useParams()
   const brandSlug = params.brandSlug as string
+  const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug)
   const [brandName, setBrandName] = useState<string>('')
   const [sales, setSales] = useState<KitchenSales[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLocation, setSelectedLocation] = useState<string>('all')
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const isAdmin = brandSlug.toLowerCase() === 'admin'
-  const hideGrossProfitCard = ['wing-shack-co', 'eggs-nstuff'].includes(brandSlug.toLowerCase())
+  const isAdmin = canonicalBrandSlug === 'admin'
+  const hideGrossProfitCard = ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug || '')
 
   // Date range state - default to all time
   const [dateRange, setDateRange] = useState(() => ({
