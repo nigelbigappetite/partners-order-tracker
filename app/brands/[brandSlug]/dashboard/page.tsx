@@ -93,7 +93,8 @@ export default function BrandDashboard() {
         setBrandName(canonicalBrandName)
       }
       
-      // For admin, pass "admin" which will be ignored by API (shows all orders)
+      // Admin uses the aggregate live supply feed; brandFilter is applied client-side
+      // so the dropdown options remain stable.
       const brandParam = isAdmin ? 'admin' : dashboardBrandSlug
       console.log(`[BrandDashboard] Fetching orders for brand: "${brandParam}" (slug: "${brandSlug}")`)
       const response = await fetch(`/api/orders?brand=${encodeURIComponent(brandParam)}`)
@@ -213,6 +214,10 @@ export default function BrandDashboard() {
       const startDate = dateRange.start.toISOString().split('T')[0]
       const endDate = dateRange.end.toISOString().split('T')[0]
       result = result.filter((o) => o.orderDate >= startDate && o.orderDate <= endDate)
+      if (brandFilter !== 'all') {
+        const selectedBrandSlug = getCanonicalBrandSlug(brandFilter)
+        result = result.filter((o) => getCanonicalBrandSlug(o.brand) === selectedBrandSlug)
+      }
     } else {
       const startDate = dateRange.start.toISOString().split('T')[0]
       const endDate = dateRange.end.toISOString().split('T')[0]

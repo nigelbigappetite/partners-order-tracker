@@ -212,5 +212,15 @@ export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
     return getBrandSupplyOrdersFromOrdering(canonicalBrandSlug)
   }
 
+  if (getOrderingHeaders()) {
+    const ordersByBrand = await Promise.all(
+      Object.keys(BRAND_SKU_PREFIXES).map((brandSlug) => getBrandSupplyOrdersFromOrdering(brandSlug))
+    )
+
+    return ordersByBrand
+      .flat()
+      .sort((a, b) => String(b.orderDate || '').localeCompare(String(a.orderDate || '')))
+  }
+
   return getSupplyOrdersFromSnapshot(brandParam)
 }
