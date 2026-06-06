@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Multi-brand Supplier Ordering & Franchise Operations Dashboard for the Hungry Tum restaurant group. **Google Sheets is the entire backend** — there is no traditional database. The app reads/writes a single spreadsheet via the Google Sheets API, with `lib/sheets.ts` as the core data engine.
+Multi-brand Supplier Ordering & Franchise Operations Dashboard for the Hungry Tum restaurant group. Originally Google Sheets-only backend; **sales data has now migrated to Supabase** (`hungry-tum-partners` project). Orders, payments, and reference data still use Google Sheets via `lib/sheets.ts`.
 
 ## Commands
 
@@ -15,13 +15,13 @@ npm run start    # Production server
 npm run lint     # ESLint
 ```
 
-No test suite configured.
+No test suite configured. Dev server runs on port 3002 locally.
 
 ## Architecture
 
-### Google Sheets as Database
+### Google Sheets as Database (Orders, Payments, Reference Data)
 
-All data lives in a single Google Spreadsheet with named sheets (`Orders_Header`, `Order_Lines`, `SKU_COGS`, `Franchise_Summary`, `Supplier_Summary`, `Brand_Auth`, `Payments`, `Supplier_Invoices`, `Order_Supplier_Allocations`, etc.).
+All orders/payment data lives in a single Google Spreadsheet with named sheets (`Orders_Header`, `Order_Lines`, `SKU_COGS`, `Franchise_Summary`, `Supplier_Summary`, `Brand_Auth`, `Payments`, `Supplier_Invoices`, `Order_Supplier_Allocations`, etc.).
 
 `lib/sheets.ts` (~3000 lines) is the core engine. It:
 - Authenticates via a Google service account
@@ -30,7 +30,36 @@ All data lives in a single Google Spreadsheet with named sheets (`Orders_Header`
 
 **Debugging column issues**: `GET /api/debug/columns?sheet=SheetName` shows actual column names in any sheet. Use `GET /api/debug/sheets-analysis` for broader diagnostics.
 
-When column names in the sheet change, update the mapping in `lib/sheets.ts` under the relevant `columnMapping` key. The mapping supports multiple fallback names per property.
+### Supabase — Sales Data
+
+Sales data lives in `hungry-tum-partners` Supabase project (`rmpdffxjwfgwgstksnzp`), schema `sales`, table `kitchen_sales`.
+
+```sql
+sales.kitchen_sales (
+  id uuid PRIMARY KEY,
+  brand_slug text,       -- 'smsh-bn' | 'wing-shack-co' | 'eggs-nstuff'
+  date date,
+  location text,         -- raw Deliverect kitchen name
+  revenue numeric,
+  gross_sales numeric,
+  order_count integer,
+  avg_order_value numeric,
+  imported_at timestamptz,
+  UNIQUE (brand_slug, date, location)
+)
+```
+
+- `lib/sales-supabase.ts` — all Supabase sales reads/writes (uses REST API directly, not Supabase client)
+- Headers use `Accept-Profile: sales` (reads) and `Content-Profile: sales` (writes/deletes)
+- Upsert uses `Prefer: resolution=ignore-duplicates` — silently skips rows matching the composite unique constraint
+- Env vars: `HT_PARTNERS_SUPABASE_URL`, `HT_PARTNERS_SERVICE_ROLE_KEY`
+
+**Brand slugs (canonical, must match URL routing from Brand_Auth sheet):**
+- `smsh-bn` — SMSH BN (Dec 2025 onwards, 263 rows)
+- `wing-shack-co` — Wing Shack Co (Mar 2025 onwards, 8000 rows, 67 locations)
+- `eggs-nstuff` — Eggs n Stuff (Nov 2025 onwards, 324 rows) ← note: no hyphen before 'stuff'
+
+⚠️ `eggs-n-stuff` is WRONG — the routing slug is `eggs-nstuff`. Both are in BRAND_DISPLAY for legacy compat but only `eggs-nstuff` should be used for new uploads.
 
 ### Brand System & Auth
 
@@ -39,7 +68,8 @@ The app is multi-brand and multi-tenant:
 - Brand auth uses HTTP-only cookies (`brand-auth-{slug}`, 30-day expiry) checked against a `Brand_Auth` sheet
 - `lib/brandAuth.ts` handles session get/set; brand layout files call `getBrandSession()` server-side
 - `admin` is a special brand slug with no password requirement
-- Brand logos are mapped in `lib/brandLogos.ts`
+- Brand logos mapped in `lib/brandLogos.ts`
+- `lib/supply.ts` — `BRAND_DISPLAY` map translates brand_slug → display name for admin views
 
 ### Route Structure
 
@@ -47,24 +77,59 @@ The app is multi-brand and multi-tenant:
 app/
 ├── brand-select/                      # Entry point — pick a brand
 ├── brands/[brandSlug]/
-│   ├── dashboard/                     # KPI overview, active orders
+│   ├── dashboard/                     # KPI overview + sortable brands table (admin) / orders table (brand)
 │   ├── orders/                        # Order list
 │   ├── locations/                     # Franchise location performance
 │   ├── products/                      # SKU catalog
 │   ├── suppliers/                     # Supplier metrics
-│   └── sales/                         # Sales metrics
+│   └── sales/                         # Sales dashboard (reads from Supabase)
 ├── admin/
 │   ├── payments/                      # Payment reconciliation dashboard
-│   └── sales/                         # Sales CSV import & analysis
+│   └── sales/                         # Sales CSV import, analysis, bulk delete
 └── api/
     ├── orders/                        # Order CRUD
     ├── payments/                      # Payment tracking + recon
     ├── supplier-invoices/             # Supplier invoice management
-    ├── sales/                         # CSV import, kitchen mappings
+    ├── sales/                         # GET (read from Supabase), import (CSV → Supabase), delete
+    ├── sales/import/                  # POST: parse Deliverect CSV → insert to kitchen_sales
+    ├── sales/delete/                  # DELETE: bulk delete by id array
     ├── brands/[slug]/auth             # Brand password check
     ├── skus/, franchises/, suppliers/ # Reference data
     └── debug/                         # Column/data diagnostics
 ```
+
+### Sales Feature — Key Details
+
+**Admin sales page** (`app/admin/sales/page.tsx`):
+- Filters: date range (default All Time), brand dropdown, location dropdown
+- KPI cards: Total Revenue, Total Orders, AOV, Active Kitchens
+- Daily Sales table with checkboxes for bulk delete
+- CSV upload with brand selector + confirmation modal (pre-import stats + post-import result)
+- "Today's Sales" section removed — manually updated data doesn't suit live widget
+
+**Brand sales page** (`app/brands/[brandSlug]/sales/page.tsx`):
+- Same filter/table pattern scoped to one brand
+- Location filter (not city — full raw location string)
+
+**CSV Upload flow** (`components/sales/CSVUpload.tsx`):
+1. Drop/select CSV → 5-row preview shown
+2. Click "Import CSV" → client-side full parse → **confirmation modal** shows: brand, row count, total revenue, total orders, date range, unique locations
+3. User confirms → POST to `/api/sales/import` with `brand_slug`
+4. Modal updates to show: imported (new rows) + skipped (duplicates)
+
+**Location naming:**
+- Deliverect exports use two formats:
+  - `Brand - City` (space-dash-space, 2 parts) → city = last part e.g. "SMSH BN - BETHNAL GREEN" → "BETHNAL GREEN"
+  - `Brand-City-Country` (hyphen, 3 parts) → city = second-to-last e.g. "Chesters-Bolton-UK" → "Bolton"
+- `getCityFromLocation()` in both sales pages handles both formats
+
+**Wing Shack Co note:** 8,000 rows (full year history) vs ~600 rows total for SMSH BN + Eggs n Stuff. Wing Shack Co will always dominate aggregate figures until other brands have comparable history uploaded.
+
+### Admin Dashboard (`app/brands/[brandSlug]/dashboard/page.tsx`)
+
+- **Admin view:** sortable brands performance table (Brand, Orders, Revenue, Gross Profit, Margin %, Last Order) — no orders table
+- **Brand view:** orders table scoped to that brand
+- Brand summary cards removed; "Brands" nav tab removed from Navigation.tsx
 
 ### Payment Reconciliation (Core Feature)
 
@@ -75,33 +140,32 @@ Three-level payment tracking:
 
 Status workflow: `OPEN → PAID_NOT_CLEARED → WAITING_SUPPLIERS → SETTLED`
 
-Recon calculations (linked invoice count, paid/unpaid split, outstanding £ amount) are computed in the app from existing sheet data — no extra columns needed.
-
-### Sales Data
-
-Deliverect CSV import maps kitchen names to franchise codes via a kitchen mapping table. See `SUPPLIER_RECON_FLOW.md`, `MAPPING_GUIDE.md` in the repo for extended workflow docs.
-
 ### Component Patterns
 
 - Client components use `'use client'` directive
 - Toast notifications via `react-hot-toast` (configured in root layout)
 - Icons from `lucide-react`
 - `components/payments/` — modal-heavy payment workflow components
-- `components/Table.tsx` — generic reusable table used throughout
+- `components/Table.tsx` — generic reusable sortable table used throughout
+- `components/sales/CSVUpload.tsx` — file drop + preview + confirmation modal
 
 ## Environment Variables
 
 ```bash
-# Required
+# Google Sheets (orders, payments, auth)
 GOOGLE_SHEETS_SPREADSHEET_ID=
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# Supabase — hungry-tum-partners (sales data)
+HT_PARTNERS_SUPABASE_URL=
+HT_PARTNERS_SERVICE_ROLE_KEY=
 
 # Optional (supplier invoice file uploads)
 BLOB_READ_WRITE_TOKEN=   # Vercel Blob
 ```
 
-`GOOGLE_PRIVATE_KEY` must preserve `\n` newline characters. The service account must have editor access to the spreadsheet.
+`GOOGLE_PRIVATE_KEY` must preserve `\n` newline characters.
 
 ## Path Alias
 

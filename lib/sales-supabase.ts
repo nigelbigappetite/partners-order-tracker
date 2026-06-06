@@ -1,5 +1,6 @@
 import { KitchenSales } from './types'
 import { getBrandDisplayName } from './brands'
+import { getSalesChannel, normalizeSalesLocation } from './sales-channels'
 
 const SUPABASE_URL = process.env.HT_PARTNERS_SUPABASE_URL!
 const SERVICE_ROLE_KEY = process.env.HT_PARTNERS_SERVICE_ROLE_KEY!
@@ -44,8 +45,9 @@ function toKitchenSales(row: KitchenSalesRow): KitchenSales {
     id: row.id,
     brandSlug: row.brand_slug,
     brandName: getBrandDisplayName(row.brand_slug) ?? row.brand_slug,
+    salesChannel: getSalesChannel(row.brand_slug, row.location),
     date: row.date,
-    location: row.location,
+    location: canonicalizeSalesLocation(row.location),
     revenue: Number(row.revenue),
     grossSales: Number(row.gross_sales),
     count: row.order_count,
@@ -60,6 +62,7 @@ function toKitchenSalesFromOperated(row: OperatedSiteDailySalesRow): KitchenSale
     id: row.id,
     brandSlug: row.brand_slug ?? undefined,
     brandName: row.brand_slug ? getBrandDisplayName(row.brand_slug) ?? row.brand_slug : undefined,
+    salesChannel: getSalesChannel(row.brand_slug, row.site_name, 'operated_site'),
     date: row.date,
     location: canonicalizeSalesLocation(row.site_name),
     revenue: Number(row.revenue),
@@ -69,16 +72,6 @@ function toKitchenSalesFromOperated(row: OperatedSiteDailySalesRow): KitchenSale
     importDate: row.imported_at,
     importSource: 'GOOGLE_SHEETS',
   }
-}
-
-function normalizeSalesLocation(location: string): string {
-  return location
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 function canonicalizeSalesLocation(location: string): string {

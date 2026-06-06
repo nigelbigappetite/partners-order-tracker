@@ -10,22 +10,25 @@ export async function POST(request: Request) {
 
     let csvRows: DeliverectCSVRow[] = []
     let brandSlug = ''
+    let importDateOverride: string | undefined
 
     if (contentType?.includes('multipart/form-data')) {
       const formData = await request.formData()
       const file = formData.get('file') as File
       brandSlug = (formData.get('brand_slug') as string) || ''
+      importDateOverride = ((formData.get('import_date') as string) || '').trim() || undefined
 
       if (!file) {
         return NextResponse.json({ error: 'No file provided' }, { status: 400 })
       }
 
       const text = await file.text()
-      csvRows = parseCSV(text)
+      csvRows = parseCSV(text, importDateOverride)
     } else if (contentType?.includes('application/json')) {
       const body = await request.json()
       csvRows = Array.isArray(body.rows) ? body.rows : Array.isArray(body) ? body : []
       brandSlug = body.brand_slug || ''
+      importDateOverride = body.import_date || undefined
     } else {
       const text = await request.text()
       csvRows = parseCSV(text)
@@ -70,7 +73,7 @@ export async function POST(request: Request) {
   }
 }
 
-function parseCSV(csvText: string): DeliverectCSVRow[] {
+function parseCSV(csvText: string, importDateOverride?: string): DeliverectCSVRow[] {
   const lines = csvText.split('\n').filter((line) => line.trim())
   if (lines.length < 2) return []
 
@@ -86,8 +89,12 @@ function parseCSV(csvText: string): DeliverectCSVRow[] {
   const countIndex = headerMap['count'] ?? -1
   const locationIndex = headerMap['location'] ?? -1
 
-  if (dateIndex === -1 || revenueIndex === -1 || countIndex === -1 || locationIndex === -1) {
+  if ((dateIndex === -1 && !importDateOverride) || revenueIndex === -1 || countIndex === -1 || locationIndex === -1) {
     throw new Error('CSV missing required columns: Date, Revenue, Count, Location')
+  }
+
+  if (importDateOverride && !/^\d{4}-\d{2}-\d{2}$/.test(importDateOverride)) {
+    throw new Error('import_date must use YYYY-MM-DD format')
   }
 
   const rows: DeliverectCSVRow[] = []
@@ -95,7 +102,7 @@ function parseCSV(csvText: string): DeliverectCSVRow[] {
     const values = parseCSVLine(lines[i])
     if (values.length === 0) continue
 
-    const date = values[dateIndex]?.trim() || ''
+    const date = dateIndex >= 0 ? values[dateIndex]?.trim() || '' : importDateOverride || ''
     const rawRevenue = values[revenueIndex]?.trim() || ''
     const rawCount = values[countIndex]?.trim() || ''
     const location = values[locationIndex]?.trim() || ''

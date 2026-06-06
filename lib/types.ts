@@ -167,6 +167,7 @@ export interface KitchenSales {
   id?: string; // Supabase row ID (for delete)
   brandSlug?: string;
   brandName?: string;
+  salesChannel?: 'gfv' | 'hungry_tum';
   date: string; // YYYY-MM-DD format
   location: string; // Full location string from Deliverect
   revenue: number; // Net revenue

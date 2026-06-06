@@ -11,6 +11,8 @@ import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import BrandLogoCell from '@/components/BrandLogoCell'
+import SMSHPartnerAccount from '@/components/partners/SMSHPartnerAccount'
+import CompanyBrandRevenueAccount from '@/components/partners/CompanyBrandRevenueAccount'
 import { ArrowRight, ChevronUp, ChevronDown, Package, TrendingUp } from 'lucide-react'
 import { getCanonicalBrandSlug, getBrandDisplayName } from '@/lib/brands'
 import { isAllTimeRange } from '@/components/locations/DateRangePicker'
@@ -50,6 +52,16 @@ export default function BrandDashboard() {
     () => Array.from(new Set(orders.map((o) => (o.brand || '').trim()).filter(Boolean))).sort(),
     [orders]
   )
+  const earliestTrackedDate = useMemo(() => {
+    const dates = [
+      ...orders.map((order) => order.orderDate),
+      ...sales.map((sale) => sale.date),
+    ]
+      .filter((date): date is string => Boolean(date))
+      .sort()
+
+    return dates.length > 0 ? new Date(`${dates[0]}T00:00:00`) : undefined
+  }, [orders, sales])
 
   useEffect(() => {
     fetchBrandName()
@@ -444,6 +456,7 @@ export default function BrandDashboard() {
               startDate={dateRange.start}
               endDate={dateRange.end}
               onChange={(start, end) => setDateRange({ start, end })}
+              allTimeStartDate={earliestTrackedDate}
             />
           </div>
         )}
@@ -582,6 +595,18 @@ export default function BrandDashboard() {
               }}
             />
           </div>
+        ) : canonicalBrandSlug === 'smsh-bn' ? (
+          <SMSHPartnerAccount
+            brandSlug={brandSlug}
+            sales={sales}
+            supplyOrders={filteredOrders}
+          />
+        ) : ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug) ? (
+          <CompanyBrandRevenueAccount
+            brandSlug={brandSlug}
+            sales={sales}
+            supplyOrders={filteredOrders}
+          />
         ) : (
           <div className="space-y-6 sm:space-y-8">
             <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">

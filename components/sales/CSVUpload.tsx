@@ -25,6 +25,58 @@ interface ImportResult {
   skipped: number
 }
 
+interface CSVHeaderInfo {
+  hasDate: boolean
+  hasRevenue: boolean
+  hasCount: boolean
+  hasLocation: boolean
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+
+  result.push(current.trim())
+  return result
+}
+
+function normalizeCSVHeader(header: string): string {
+  return header.replace(/"/g, '').trim().toLowerCase()
+}
+
+function getCSVHeaderInfo(csvText: string): CSVHeaderInfo | null {
+  const lines = csvText.split('\n').filter((l) => l.trim())
+  if (lines.length < 2) return null
+
+  const headers = parseCSVLine(lines[0]).map(normalizeCSVHeader)
+  return {
+    hasDate: headers.includes('date'),
+    hasRevenue: headers.includes('revenue'),
+    hasCount: headers.includes('count'),
+    hasLocation: headers.includes('location'),
+  }
+}
+
 export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CSVUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -33,6 +85,8 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
   const [showModal, setShowModal] = useState(false)
   const [csvStats, setCsvStats] = useState<CSVStats | null>(null)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [requiresImportDate, setRequiresImportDate] = useState(false)
+  const [importDateOverride, setImportDateOverride] = useState(() => new Date().toISOString().split('T')[0])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (file: File) => {
@@ -42,6 +96,8 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
     }
     setFileName(file.name)
     const text = await file.text()
+    const headerInfo = getCSVHeaderInfo(text)
+    setRequiresImportDate(Boolean(headerInfo && !headerInfo.hasDate && headerInfo.hasRevenue && headerInfo.hasCount && headerInfo.hasLocation))
     const preview = parseCSVPreview(text)
     setPreviewData(preview)
   }
@@ -59,18 +115,18 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
   }
 
   // Full client-side parse to compute stats before confirming
-  const parseFullCSV = (csvText: string): CSVStats | null => {
+  const parseFullCSV = (csvText: string, dateOverride?: string): CSVStats | null => {
     const lines = csvText.split('\n').filter((l) => l.trim())
     if (lines.length < 2) return null
 
-    const headers = lines[0].split(',').map((h) => h.replace(/"/g, '').trim().toLowerCase())
+    const headers = parseCSVLine(lines[0]).map(normalizeCSVHeader)
     const dateIdx = headers.indexOf('date')
     const revenueIdx = headers.indexOf('revenue')
     const grossSalesIdx = headers.indexOf('grosssales') !== -1 ? headers.indexOf('grosssales') : headers.indexOf('gross sales')
     const countIdx = headers.indexOf('count')
     const locationIdx = headers.indexOf('location')
 
-    if (dateIdx === -1 || revenueIdx === -1 || countIdx === -1 || locationIdx === -1) return null
+    if ((dateIdx === -1 && !dateOverride) || revenueIdx === -1 || countIdx === -1 || locationIdx === -1) return null
 
     let totalRevenue = 0
     let totalOrders = 0
@@ -78,12 +134,12 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
     const locations = new Set<string>()
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map((v) => v.replace(/"/g, '').trim())
+      const values = parseCSVLine(lines[i]).map((v) => v.replace(/"/g, '').trim())
       const rawRevenue = values[revenueIdx] || ''
       const rawCount = values[countIdx] || ''
       if (!rawRevenue && !rawCount) continue
 
-      const date = values[dateIdx] || ''
+      const date = dateIdx >= 0 ? values[dateIdx] || '' : dateOverride || ''
       const location = values[locationIdx] || ''
       const revenue = parseFloat(rawRevenue || '0') || 0
       const count = parseInt(rawCount || '0', 10) || 0
@@ -115,9 +171,9 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
     if (!fileInput) return
 
     const text = await fileInput.text()
-    const stats = parseFullCSV(text)
+    const stats = parseFullCSV(text, requiresImportDate ? importDateOverride : undefined)
     if (!stats) {
-      toast.error('Could not parse CSV — check column headers')
+      toast.error(requiresImportDate ? 'Please choose an import date' : 'Could not parse CSV — check column headers')
       return
     }
 
@@ -135,6 +191,9 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
       const formData = new FormData()
       formData.append('file', fileInput)
       formData.append('brand_slug', brandSlug)
+      if (requiresImportDate) {
+        formData.append('import_date', importDateOverride)
+      }
 
       const response = await fetch('/api/sales/import', { method: 'POST', body: formData })
       const result = await response.json()
@@ -146,6 +205,7 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
       // Reset file state but keep modal open to show result
       setPreviewData([])
       setFileName('')
+      setRequiresImportDate(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
 
       if (onImportComplete) onImportComplete()
@@ -171,10 +231,10 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
   const parseCSVPreview = (csvText: string): any[] => {
     const lines = csvText.split('\n').filter((l) => l.trim())
     if (lines.length < 2) return []
-    const headers = lines[0].split(',').map((h) => h.trim())
+    const headers = parseCSVLine(lines[0]).map((h) => h.replace(/"/g, '').trim())
     const preview: any[] = []
     for (let i = 1; i < Math.min(6, lines.length); i++) {
-      const values = lines[i].split(',').map((v) => v.trim())
+      const values = parseCSVLine(lines[i]).map((v) => v.replace(/"/g, '').trim())
       const row: any = {}
       headers.forEach((header, idx) => { row[header] = values[idx] || '' })
       preview.push(row)
@@ -216,12 +276,28 @@ export default function CSVUpload({ brandSlug, brandName, onImportComplete }: CS
               <span className="text-sm text-gray-500">({previewData.length} rows preview)</span>
             </div>
             <button
-              onClick={() => { setPreviewData([]); setFileName(''); if (fileInputRef.current) fileInputRef.current.value = '' }}
+              onClick={() => { setPreviewData([]); setFileName(''); setRequiresImportDate(false); if (fileInputRef.current) fileInputRef.current.value = '' }}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               Clear
             </button>
           </div>
+          {requiresImportDate && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">No `Date` column detected in this export.</p>
+              <p className="mt-1 text-xs text-amber-800">This file will be imported as a single-day report using the date below.</p>
+              <div className="mt-3 flex items-center gap-3">
+                <label htmlFor="import-date" className="text-sm text-amber-900">Import date</label>
+                <input
+                  id="import-date"
+                  type="date"
+                  value={importDateOverride}
+                  onChange={(e) => setImportDateOverride(e.target.value)}
+                  className="rounded border border-amber-300 bg-white px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead>

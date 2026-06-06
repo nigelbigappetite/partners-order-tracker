@@ -32,6 +32,22 @@ interface SupplyOrderSnapshot {
   received_at: string
 }
 
+interface SupplyOrderBrandTotal {
+  id: string
+  source_order_id: string
+  brand_slug: string
+  site_id: string | null
+  site_name: string | null
+  order_created_at: string | null
+  completed_at: string | null
+  settled_at: string | null
+  revenue: number
+  cogs: number
+  item_count: number
+  currency: string
+  synced_at: string
+}
+
 interface OrderingOrderRow {
   id: string
   created_at: string | null
@@ -65,6 +81,67 @@ function getSiteName(sites: OrderingOrderRow['sites']): string {
     return sites[0]?.name ?? ''
   }
   return sites.name ?? ''
+}
+
+function isMissingRelationError(message: string): boolean {
+  return message.includes('PGRST205') || message.includes('Could not find the table')
+}
+
+async function getSupplyOrdersFromBrandTotals(brandParam?: string): Promise<Order[]> {
+  const isAdmin = !brandParam || brandParam.toLowerCase() === 'admin'
+  const brandSlug = isAdmin ? undefined : (getCanonicalBrandSlug(brandParam) ?? undefined)
+  const url = new URL(`${PARTNERS_SUPABASE_URL}/rest/v1/supply_order_brand_totals`)
+  url.searchParams.set('select', '*')
+  url.searchParams.set('order', 'completed_at.desc.nullslast,order_created_at.desc')
+  if (brandSlug) {
+    url.searchParams.set('brand_slug', `eq.${brandSlug}`)
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      apikey: PARTNERS_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${PARTNERS_SERVICE_ROLE_KEY}`,
+      'Accept-Profile': 'sales',
+    },
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    const message = await res.text()
+    if (isMissingRelationError(message)) {
+      throw new Error(`[supply-brand-totals-missing] ${message}`)
+    }
+    throw new Error(`[supply] Failed to fetch supply_order_brand_totals: ${message}`)
+  }
+
+  const rows = (await res.json()) as SupplyOrderBrandTotal[]
+  return rows.map((row) => {
+    const revenue = Number(row.revenue) || 0
+    const cogs = Number(row.cogs) || 0
+    const grossProfit = revenue - cogs
+
+    return {
+      orderId: `${row.source_order_id}:${row.brand_slug}`,
+      invoiceNo: row.source_order_id,
+      brand: getBrandDisplayName(row.brand_slug) ?? row.brand_slug,
+      franchisee: row.site_name ?? '',
+      orderDate:
+        row.order_created_at?.split('T')[0] ??
+        row.completed_at?.split('T')[0] ??
+        '',
+      orderStage: row.settled_at ? 'Settled' : 'Fulfilled',
+      supplierOrdered: true,
+      supplierShipped: true,
+      deliveredToPartner: true,
+      partnerPaid: Boolean(row.settled_at),
+      orderTotal: revenue,
+      totalCOGS: cogs,
+      grossProfit,
+      grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+      daysOpen: 0,
+      nextAction: row.settled_at ? '' : 'Awaiting settlement',
+    } satisfies Order
+  })
 }
 
 async function getSupplyOrdersFromSnapshot(brandParam?: string): Promise<Order[]> {
@@ -206,6 +283,16 @@ async function getBrandSupplyOrdersFromOrdering(brandSlug: string): Promise<Orde
 }
 
 export async function getSupplyOrders(brandParam?: string): Promise<Order[]> {
+  try {
+    return await getSupplyOrdersFromBrandTotals(brandParam)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.startsWith('[supply-brand-totals-missing]')) {
+      throw error
+    }
+    console.warn('[supply] Brand totals snapshot is not deployed yet; using the legacy supply source')
+  }
+
   const canonicalBrandSlug = brandParam ? getCanonicalBrandSlug(brandParam) : null
 
   if (canonicalBrandSlug && canonicalBrandSlug !== 'admin') {
