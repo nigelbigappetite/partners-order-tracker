@@ -3,6 +3,18 @@ export interface BrandDefinition {
   displayName: string
   logoPath: string
   aliases: string[]
+  /** When set, query kitchen_sales using this brand_slug instead of canonicalSlug */
+  dataBrandSlug?: string
+  /** When set, filter kitchen_sales to rows matching this location string */
+  locationFilter?: string
+  /** When set, do not return sales data before this date (YYYY-MM-DD). Used to exclude prior-operator data. */
+  dataStartDate?: string
+  /** When set (kitchen sites only), fetch supply orders from hungry-tum-ordering for this site_id */
+  orderingSiteId?: string
+  /** When set (kitchen sites only), fetch Deliveroo order data from brain Supabase using this location key */
+  deliverooLocationKey?: string
+  /** Canonical location name used to normalise all sales rows for this kitchen site */
+  kitchenLocation?: string
 }
 
 const BRAND_DEFINITIONS: BrandDefinition[] = [
@@ -23,6 +35,18 @@ const BRAND_DEFINITIONS: BrandDefinition[] = [
     displayName: 'Eggs n Stuff',
     logoPath: '/Eggs n Stuff logo.png',
     aliases: ['eggs-n-stuff', 'eggs n stuff', 'eggsnstuff'],
+  },
+  {
+    canonicalSlug: 'wing-shack-chatham',
+    displayName: 'Wing Shack Chatham',
+    logoPath: '/transparent Wing Shack logo 1080x1080.png',
+    aliases: ['wing shack chatham', 'wingshack chatham', 'ws chatham'],
+    dataBrandSlug: 'wing-shack-co',
+    locationFilter: 'Chatham',
+    dataStartDate: '2026-06-09',
+    orderingSiteId: '5f5b748c-ee24-47aa-9e52-7f40770c0c9a',
+    deliverooLocationKey: 'chatham',
+    kitchenLocation: 'Wing Shack Co- Chatham',
   },
   {
     canonicalSlug: 'admin',

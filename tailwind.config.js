@@ -18,15 +18,26 @@ module.exports = {
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
-        // Hungry Tum brand colors
+        // Hungry Tum brand colors — sourced from styles/brand-tokens.css
         brand: {
-          primary: '#FF6B35',      // Warm orange (appetite/appealing)
-          secondary: '#F7931E',     // Golden orange
-          accent: '#FF8C42',       // Lighter orange
-          dark: '#D84315',         // Deep orange-red
-          light: '#FFE5D9',        // Light peach
-          text: '#2C1810',        // Warm dark brown
-          muted: '#8B6F47',       // Muted brown
+          primary:   'var(--ht-color-primary)',       // #ff8c42
+          secondary: 'var(--ht-color-orange-hover)',  // #e67e3b
+          accent:    'var(--ht-color-accent)',         // #9b59b6
+          light:     'var(--ht-color-off-white)',      // #fdf8f1
+          canvas:    'var(--ht-color-canvas)',         // #fdfdf9
+          dark:      '#D84315',
+          text:      '#2C1810',
+          muted:     '#8B6F47',
+        },
+        // ht.* namespace — use these in new components
+        ht: {
+          orange:          'var(--ht-color-orange)',        // #ff8c42
+          'orange-hover':  'var(--ht-color-orange-hover)', // #e67e3b
+          'orange-dark':   'var(--ht-color-orange-hover-dark)', // #ff9f62
+          purple:          'var(--ht-color-accent)',        // #9b59b6
+          green:           'var(--ht-color-success)',       // #27ae60
+          'off-white':     'var(--ht-color-off-white)',     // #fdf8f1
+          canvas:          'var(--ht-color-canvas)',        // #fdfdf9
         },
       },
       fontFamily: {

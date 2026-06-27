@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       revenue: r.Revenue,
       grossSales: r.GrossSales,
       count: r.Count,
+      ...(r.Platform ? { platform: r.Platform } : {}),
     }))
 
     const result = await insertKitchenSales(brandSlug, rows)

@@ -14,6 +14,7 @@ interface KitchenSalesRow {
   gross_sales: number
   order_count: number
   avg_order_value: number | null
+  platform?: string | null
   imported_at: string
 }
 
@@ -51,6 +52,7 @@ function toKitchenSales(row: KitchenSalesRow): KitchenSales {
     revenue: Number(row.revenue),
     grossSales: Number(row.gross_sales),
     count: row.order_count,
+    platform: row.platform ?? null,
     averageOrderValue: row.avg_order_value != null ? Number(row.avg_order_value) : undefined,
     importDate: row.imported_at,
     importSource: 'CSV',
@@ -152,7 +154,8 @@ function isMissingRelationError(message: string): boolean {
 export async function getKitchenSalesFromSupabase(
   brandSlug: string | null, // null = admin (all brands)
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  locationFilter?: string // when set, restrict to rows where location ilike %value%
 ): Promise<KitchenSales[]> {
   let url = `${SUPABASE_URL}/rest/v1/kitchen_sales?select=*&order=date.desc`
   if (brandSlug) {
@@ -160,6 +163,7 @@ export async function getKitchenSalesFromSupabase(
   }
   if (startDate) url += `&date=gte.${startDate}`
   if (endDate) url += `&date=lte.${endDate}`
+  if (locationFilter) url += `&location=ilike.${encodeURIComponent(`*${locationFilter}*`)}`
 
   let operatedUrl = `${SUPABASE_URL}/rest/v1/operated_site_daily_sales?select=*&order=date.desc`
   if (brandSlug) {
@@ -167,6 +171,7 @@ export async function getKitchenSalesFromSupabase(
   }
   if (startDate) operatedUrl += `&date=gte.${startDate}`
   if (endDate) operatedUrl += `&date=lte.${endDate}`
+  if (locationFilter) operatedUrl += `&site_name=ilike.${encodeURIComponent(`*${locationFilter}*`)}`
 
   const kitchenRowsPromise = fetchPaginatedRows<KitchenSalesRow>(url, 'sales')
   const operatedRowsPromise = fetchPaginatedRows<OperatedSiteDailySalesRow>(operatedUrl, 'sales').catch((error) => {
@@ -206,19 +211,23 @@ export async function deleteKitchenSales(ids: string[]): Promise<void> {
 
 export async function insertKitchenSales(
   brandSlug: string,
-  rows: Array<{ date: string; location: string; revenue: number; grossSales: number; count: number }>
+  rows: Array<{ date: string; location: string; revenue: number; grossSales: number; count: number; platform?: string }>
 ): Promise<{ imported: number; skipped: number }> {
-  const records = rows.map((r) => ({
-    brand_slug: brandSlug,
-    date: r.date,
-    location: r.location,
-    revenue: r.revenue,
-    gross_sales: r.grossSales,
-    order_count: r.count,
-    avg_order_value: r.count > 0 ? r.revenue / r.count : null,
-  }))
+  const records = rows.map((r) => {
+    const record: Record<string, unknown> = {
+      brand_slug: brandSlug,
+      date: r.date,
+      location: r.location,
+      revenue: r.revenue,
+      gross_sales: r.grossSales,
+      order_count: r.count,
+      avg_order_value: r.count > 0 ? r.revenue / r.count : null,
+    }
+    if (r.platform !== undefined) record.platform = r.platform
+    return record
+  })
 
-  const onConflict = encodeURIComponent('brand_slug,date,location')
+  const onConflict = encodeURIComponent('brand_slug,date,location,platform')
   const res = await fetch(`${SUPABASE_URL}/rest/v1/kitchen_sales?on_conflict=${onConflict}`, {
     method: 'POST',
     headers: {
@@ -237,6 +246,6 @@ export async function insertKitchenSales(
     throw new Error(`[kitchen_sales] Insert failed: ${err}`)
   }
 
-  const inserted: KitchenSalesRow[] = await res.json()
+  const inserted: unknown[] = await res.json()
   return { imported: inserted.length, skipped: records.length - inserted.length }
 }

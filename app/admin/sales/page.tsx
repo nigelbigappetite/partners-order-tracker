@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Navigation from '@/components/Navigation'
 import CSVUpload from '@/components/sales/CSVUpload'
+import UberCSVUpload from '@/components/sales/UberCSVUpload'
+import ManualSalesEntryModal from '@/components/sales/ManualSalesEntryModal'
 import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import Table from '@/components/Table'
 import KPICard from '@/components/KPICard'
@@ -66,7 +68,10 @@ export default function AdminSalesPage() {
   const [sales, setSales] = useState<KitchenSales[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload] = useState(false)
+  const [showUberUpload, setShowUberUpload] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(false)
   const [uploadBrand, setUploadBrand] = useState<string>('smsh-bn')
+  const [uberUploadBrand, setUberUploadBrand] = useState<string>('wing-shack-co')
   const [selectedLocation, setSelectedLocation] = useState<string>('all')
   const [selectedBrand, setSelectedBrand] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -460,7 +465,19 @@ export default function AdminSalesPage() {
               onClick={() => setShowUpload(!showUpload)}
               className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 sm:flex-none"
             >
-              {showUpload ? 'Hide Upload' : 'Upload CSV'}
+              {showUpload ? 'Hide Deliverect' : 'Upload Deliverect CSV'}
+            </button>
+            <button
+              onClick={() => setShowUberUpload(!showUberUpload)}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 sm:flex-none"
+            >
+              {showUberUpload ? 'Hide Uber' : 'Upload Uber CSV'}
+            </button>
+            <button
+              onClick={() => setShowManualEntry(true)}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 sm:flex-none"
+            >
+              + Manual Entry
             </button>
             <button
               onClick={exportToCSV}
@@ -498,6 +515,39 @@ export default function AdminSalesPage() {
             />
           </div>
         )}
+
+        {/* Uber CSV Upload Section */}
+        {showUberUpload && (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Import Uber Eats CSV</h2>
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Brand</label>
+              <select
+                value={uberUploadBrand}
+                onChange={(e) => setUberUploadBrand(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 sm:w-auto"
+              >
+                {brandOptions.map((brand) => (
+                  <option key={brand.canonicalSlug} value={brand.canonicalSlug}>
+                    {brand.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <UberCSVUpload
+              brandSlug={uberUploadBrand}
+              brandName={brandOptions.find((brand) => brand.canonicalSlug === uberUploadBrand)?.displayName}
+              onImportComplete={handleImportComplete}
+            />
+          </div>
+        )}
+
+        {/* Manual Sales Entry Modal */}
+        <ManualSalesEntryModal
+          isOpen={showManualEntry}
+          onClose={() => setShowManualEntry(false)}
+          onImportComplete={handleImportComplete}
+        />
 
         {showOperatedSyncModal && operatedSalesPreview && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

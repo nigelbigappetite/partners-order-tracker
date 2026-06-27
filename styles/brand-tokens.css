@@ -1,0 +1,16 @@
+:root {
+  --ht-color-orange: #ff8c42;
+  --ht-color-purple: #9b59b6;
+  --ht-color-green: #27ae60;
+  --ht-color-off-white: #fdf8f1;
+  --ht-color-near-white: #fdfdf9;
+
+  --ht-color-orange-hover: #e67e3b;
+  --ht-color-orange-hover-dark: #ff9f62;
+
+  --ht-color-primary: var(--ht-color-orange);
+  --ht-color-accent: var(--ht-color-purple);
+  --ht-color-success: var(--ht-color-green);
+  --ht-color-canvas: var(--ht-color-near-white);
+  --ht-color-on-primary: var(--ht-color-off-white);
+}

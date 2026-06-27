@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getKitchenSales } from '@/lib/sheets'
 import { getKitchenSalesFromSupabase } from '@/lib/sales-supabase'
-import { getCanonicalBrandSlug } from '@/lib/brands'
+import { getCanonicalBrandSlug, getBrandDefinition } from '@/lib/brands'
 import { getSalesChannel } from '@/lib/sales-channels'
 
 export const dynamic = 'force-dynamic'
@@ -13,10 +13,11 @@ function isSupabaseSalesConfigured(): boolean {
 async function getSalesData(
   brandSlug: string | null,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  locationFilter?: string
 ) {
   if (isSupabaseSalesConfigured()) {
-    return getKitchenSalesFromSupabase(brandSlug, startDate, endDate)
+    return getKitchenSalesFromSupabase(brandSlug, startDate, endDate, locationFilter)
   }
 
   console.warn('[Sales API] Supabase sales env missing, falling back to Google Sheets sales loader')
@@ -40,9 +41,21 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate') || undefined
     const endDate = searchParams.get('endDate') || undefined
     const brand = searchParams.get('brand') || null
-    const brandSlug = !brand || brand === 'admin' ? null : getCanonicalBrandSlug(brand)
 
-    const sales = await getSalesData(brandSlug, startDate, endDate)
+    // Resolve brand config — supports location-specific slugs like wing-shack-chatham
+    const brandDef = brand && brand !== 'admin' ? getBrandDefinition(brand) : null
+    const brandSlug = !brand || brand === 'admin'
+      ? null
+      : (brandDef?.dataBrandSlug ?? getCanonicalBrandSlug(brand))
+    const locationFilter = brandDef?.locationFilter
+
+    // Clamp start date to brand's dataStartDate (e.g. new operator start) if set
+    const effectiveStartDate =
+      brandDef?.dataStartDate && (!startDate || startDate < brandDef.dataStartDate)
+        ? brandDef.dataStartDate
+        : startDate
+
+    const sales = await getSalesData(brandSlug, effectiveStartDate, endDate, locationFilter)
 
     const totalRevenue = sales.reduce((sum, s) => sum + s.revenue, 0)
     const totalGrossSales = sales.reduce((sum, s) => sum + s.grossSales, 0)

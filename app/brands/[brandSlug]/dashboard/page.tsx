@@ -13,6 +13,7 @@ import { useParams } from 'next/navigation'
 import BrandLogoCell from '@/components/BrandLogoCell'
 import SMSHPartnerAccount from '@/components/partners/SMSHPartnerAccount'
 import CompanyBrandRevenueAccount from '@/components/partners/CompanyBrandRevenueAccount'
+import WSCChathamPartnerAccount from '@/components/partners/WSCChathamPartnerAccount'
 import { ArrowRight, ChevronUp, ChevronDown, Package, TrendingUp } from 'lucide-react'
 import { getCanonicalBrandSlug, getBrandDisplayName } from '@/lib/brands'
 import { isAllTimeRange } from '@/components/locations/DateRangePicker'
@@ -595,6 +596,11 @@ export default function BrandDashboard() {
               }}
             />
           </div>
+        ) : canonicalBrandSlug === 'wing-shack-chatham' ? (
+          <WSCChathamPartnerAccount
+            brandSlug={brandSlug}
+            sales={sales}
+          />
         ) : canonicalBrandSlug === 'smsh-bn' ? (
           <SMSHPartnerAccount
             brandSlug={brandSlug}

@@ -8,7 +8,8 @@ import Table from '@/components/Table'
 import OrderModal from '@/components/OrderModal'
 import StatusPill from '@/components/StatusPill'
 import { Order } from '@/lib/types'
-import { getCanonicalBrandSlug } from '@/lib/brands'
+import { getCanonicalBrandSlug, getBrandDefinition } from '@/lib/brands'
+import KitchenSiteOrders from '@/components/orders/KitchenSiteOrders'
 import { formatCurrencyNoDecimals } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
@@ -38,6 +39,8 @@ export default function BrandOrdersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const isAdmin = canonicalBrandSlug === 'admin'
   const hideInternalGpCards = ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug)
+  const brandDef = getBrandDefinition(brandSlug)
+  const orderingSiteId = brandDef?.orderingSiteId ?? null
 
   useEffect(() => {
     fetchBrandName()
@@ -201,6 +204,22 @@ export default function BrandOrdersPage() {
       })
       .sort((a, b) => b.revenue - a.revenue)
   }, [orders])
+
+  // Kitchen sites (e.g. wing-shack-chatham) show their own stock orders from hungry-tum-ordering
+  if (orderingSiteId) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <BrandNavigation brandSlug={brandSlug} brandName={brandName || brandSlug} />
+        <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-8">
+          <div className="mb-6 xs:mb-8">
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900">Stock Orders</h1>
+            <p className="mt-1 text-sm text-gray-500">Your Hungry Tum supply orders and spend.</p>
+          </div>
+          <KitchenSiteOrders brandSlug={brandSlug} siteId={orderingSiteId} />
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

@@ -173,6 +173,7 @@ export interface KitchenSales {
   revenue: number; // Net revenue
   grossSales: number; // Gross sales before deductions
   count: number; // Order count
+  platform?: string | null; // e.g. 'uber_eats' | 'deliveroo' | 'just_eat' | null
   franchiseCode?: string; // Mapped from Kitchen_Mapping
   averageOrderValue?: number; // Calculated: revenue / count
   importDate: string; // When imported
@@ -188,6 +189,7 @@ export interface DeliverectCSVRow {
   GrossSales: number;
   Count: number;
   Location: string;
+  Platform?: string;
 }export interface KitchenMapping {
   location: string;
   franchiseCode: string;

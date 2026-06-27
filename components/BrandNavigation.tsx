@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { LayoutDashboard, Package, MapPin, FileText, Menu, X, TrendingUp } from 'lucide-react'
 import { getBrandLogo, getBrandLogoAlt } from '@/lib/brandLogos'
-import { getCanonicalBrandSlug } from '@/lib/brands'
+import { getCanonicalBrandSlug, getBrandDefinition } from '@/lib/brands'
 
 interface BrandNavigationProps {
   brandSlug: string
@@ -21,20 +21,29 @@ export default function BrandNavigation({ brandSlug, brandName }: BrandNavigatio
   // Define which pages each brand can access
   const getNavItems = () => {
     const canonicalBrandSlug = getCanonicalBrandSlug(brandSlug)
+    const brandDef = getBrandDefinition(brandSlug)
+
+    // Kitchen site = brand with a locationFilter (e.g. wing-shack-chatham)
+    // They only see Dashboard, Sales, and their own Stock Orders — no Locations or Products
+    const isKitchenSite = Boolean(brandDef?.locationFilter)
+    if (isKitchenSite) {
+      return [
+        { href: `/brands/${brandSlug}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
+        { href: `/brands/${brandSlug}/sales`, label: 'Sales', icon: TrendingUp },
+        { href: `/brands/${brandSlug}/orders`, label: 'Stock Orders', icon: FileText },
+      ]
+    }
+
     const useSupplyOrdersLabel =
       canonicalBrandSlug === 'wing-shack-co' ||
       canonicalBrandSlug === 'eggs-nstuff' ||
       canonicalBrandSlug === 'smsh-bn'
-    const useOrderLocationsLabel = useSupplyOrdersLabel
 
     return [
       { href: `/brands/${brandSlug}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
       { href: `/brands/${brandSlug}/sales`, label: 'Sales', icon: TrendingUp },
       { href: `/brands/${brandSlug}/orders`, label: useSupplyOrdersLabel ? 'Supply Orders' : 'Orders', icon: FileText },
       { href: `/brands/${brandSlug}/products`, label: 'Products', icon: Package },
-      ...(useOrderLocationsLabel
-        ? []
-        : [{ href: `/brands/${brandSlug}/locations`, label: 'Locations', icon: MapPin }]),
     ]
   }
   

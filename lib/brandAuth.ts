@@ -3,7 +3,17 @@
  */
 
 import { cookies } from 'next/headers';
-import { getCanonicalBrandSlug, getBrandDisplayName } from './brands';
+import { getCanonicalBrandSlug, getBrandDefinition, getBrandDisplayName } from './brands';
+
+/**
+ * Look up password from env var for brands defined in brands.ts.
+ * Convention: BRAND_PASSWORD_{SLUG_UPPERCASED_UNDERSCORED}
+ * e.g. wing-shack-chatham → BRAND_PASSWORD_WING_SHACK_CHATHAM
+ */
+function getBrandPasswordFromEnv(slug: string): string | null {
+  const key = `BRAND_PASSWORD_${slug.toUpperCase().replace(/-/g, '_')}`
+  return process.env[key] || null
+}
 
 const BRAND_AUTH_COOKIE_PREFIX = 'brand-auth-';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -52,15 +62,16 @@ export async function verifyBrandPassword(
   slug: string,
   password: string
 ): Promise<boolean> {
+  // Check env var first (for brands defined in brands.ts without a Sheets entry)
+  const envPassword = getBrandPasswordFromEnv(slug)
+  if (envPassword !== null) {
+    return envPassword === password
+  }
+
   try {
     const { getBrandAuth } = await import('./sheets');
     const brandAuth = await getBrandAuth(slug);
-    
-    if (!brandAuth) {
-      return false;
-    }
-    
-    // Simple password comparison (case-sensitive)
+    if (!brandAuth) return false;
     return brandAuth.password === password;
   } catch (error) {
     console.error('Error verifying brand password:', error);
@@ -72,16 +83,19 @@ export async function verifyBrandPassword(
  * Get brand name from slug
  */
 export async function getBrandNameFromSlug(slug: string): Promise<string | null> {
+  const canonicalSlug = getCanonicalBrandSlug(slug)
+  if (canonicalSlug === 'admin') return 'Admin'
+
+  // If the brand is defined in brands.ts, use it directly (no Sheets call needed)
+  const brandDef = getBrandDefinition(slug)
+  if (brandDef) return brandDef.displayName
+
   try {
-    // Admin always returns "Admin" as brand name
-    const canonicalSlug = getCanonicalBrandSlug(slug)
-    if (canonicalSlug === 'admin') return 'Admin'
-    
     const { getBrandAuth } = await import('./sheets');
     const brandAuth = await getBrandAuth(slug);
     return brandAuth?.brandName || getBrandDisplayName(slug) || null;
   } catch (error) {
     console.error('Error getting brand name from slug:', error);
-    return null;
+    return getBrandDisplayName(slug) || null;
   }
 }

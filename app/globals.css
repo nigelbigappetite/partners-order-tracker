@@ -1,3 +1,5 @@
+@import "../styles/brand-tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,22 +42,22 @@ body {
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: #FFE5D9;
+  background: var(--ht-color-off-white);
   border-radius: 4px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #FF8C42;
+  background: var(--ht-color-orange);
   border-radius: 4px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #FF6B35;
+  background: var(--ht-color-orange-hover);
 }
 
 /* For Firefox */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #FF8C42 #FFE5D9;
+  scrollbar-color: var(--ht-color-orange) var(--ht-color-off-white);
 }
 
