@@ -110,6 +110,8 @@ export default function SalesDashboard() {
                 count: r.orders,
                 averageOrderValue: r.orders > 0 ? r.netPayout / r.orders : 0,
                 platform: 'deliveroo',
+                importDate: r.date,
+                importSource: 'WEBHOOK' as const,
               }))
             allSales = [...allSales, ...deliverooSales]
           }
