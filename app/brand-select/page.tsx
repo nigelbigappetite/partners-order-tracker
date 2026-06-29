@@ -4,92 +4,102 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import BrandCard from '@/components/BrandCard'
-import { BrandAuthData } from '@/lib/sheets'
+
+interface BrandEntry {
+  slug: string
+  brandName: string
+}
+
+interface KitchenEntry {
+  slug: string
+  kitchenName: string
+}
 
 export default function BrandSelectPage() {
   const router = useRouter()
-  const [brands, setBrands] = useState<BrandAuthData[]>([])
+  const [brands, setBrands] = useState<BrandEntry[]>([])
+  const [kitchens, setKitchens] = useState<KitchenEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchBrands()
+    Promise.all([
+      fetch('/api/brands/auth').then((r) => r.json()),
+      fetch('/api/kitchens/list').then((r) => r.json()),
+    ])
+      .then(([brandsData, kitchensData]) => {
+        setBrands(Array.isArray(brandsData) ? brandsData : [])
+        setKitchens(Array.isArray(kitchensData) ? kitchensData : [])
+      })
+      .catch((err) => console.error('[BrandSelect] Error fetching:', err))
+      .finally(() => setLoading(false))
   }, [])
-
-  const fetchBrands = async () => {
-    try {
-      const response = await fetch('/api/brands/auth')
-      const data = await response.json()
-      
-      if (response.ok) {
-        console.log('[BrandSelect] Fetched brands:', data)
-        setBrands(Array.isArray(data) ? data : [])
-      } else {
-        console.error('[BrandSelect] API error:', data)
-        // Show error message to user
-        if (data.error) {
-          alert(`Error loading brands: ${data.error}`)
-        }
-      }
-    } catch (error: any) {
-      console.error('[BrandSelect] Error fetching brands:', error)
-      alert(`Failed to load brands: ${error.message || 'Unknown error'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleBrandSelect = (slug: string) => {
-    router.push(`/brands/${slug}`)
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Minimal header with just logo */}
       <nav className="border-b border-brand-light bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6">
           <div className="flex h-16 items-center">
-            <div className="flex items-center space-x-2 xs:space-x-3">
-              <div className="relative h-9 w-9 xs:h-10 xs:w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20">
-                <Image
-                  src="/Hungry Tum Logo.jpeg"
-                  alt="Hungry Tum"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
+            <div className="relative h-9 w-9 xs:h-10 xs:w-10 flex-shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-primary/20">
+              <Image
+                src="/Hungry Tum Logo.jpeg"
+                alt="Hungry Tum"
+                fill
+                className="object-contain"
+                unoptimized
+              />
             </div>
           </div>
         </div>
       </nav>
+
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-4 xs:py-6 sm:py-12">
-        <div className="mb-4 xs:mb-6 sm:mb-8">
-          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Partners Order Tracker</h1>
-          <p className="mt-1.5 xs:mt-2 text-xs xs:text-sm sm:text-base text-gray-600">Choose a brand to view your dashboard</p>
+        <div className="mb-6 xs:mb-8 sm:mb-10">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Partner OS</h1>
+          <p className="mt-1.5 xs:mt-2 text-xs xs:text-sm sm:text-base text-gray-600">Select a brand or kitchen to continue</p>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading from Hungry Tum OS</p>
-          </div>
-        ) : brands.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No brands available</p>
+            <p className="text-gray-500">Loading…</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {brands.map((brand) => (
-              <BrandCard
-                key={brand.slug}
-                brandSlug={brand.slug}
-                brandName={brand.brandName}
-                onClick={() => handleBrandSelect(brand.slug)}
-              />
-            ))}
+          <div className="space-y-10">
+            {/* Brands */}
+            {brands.length > 0 && (
+              <section>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-gray-400">Brands</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {brands.map((brand) => (
+                    <BrandCard
+                      key={brand.slug}
+                      brandSlug={brand.slug}
+                      brandName={brand.brandName}
+                      onClick={() => router.push(`/brands/${brand.slug}`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Kitchens */}
+            {kitchens.length > 0 && (
+              <section>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-gray-400">Kitchens</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {kitchens.map((kitchen) => (
+                    <BrandCard
+                      key={kitchen.slug}
+                      brandSlug={kitchen.slug}
+                      brandName={kitchen.kitchenName}
+                      onClick={() => router.push(`/kitchens/${kitchen.slug}/sales`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
     </div>
   )
 }
-
