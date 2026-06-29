@@ -38,10 +38,11 @@ export default function BrandDashboard() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [salesLoading, setSalesLoading] = useState(true)
   const [brandFilter, setBrandFilter] = useState<string>('all')
-  const [dateRange, setDateRange] = useState(() => ({
-    start: new Date(0),
-    end: new Date(),
-  }))
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date()
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
+    return { start, end }
+  })
   const [sortField, setSortField] = useState<BrandSortField>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [adminTableMode, setAdminTableMode] = useState<'supply' | 'kitchen'>('supply')

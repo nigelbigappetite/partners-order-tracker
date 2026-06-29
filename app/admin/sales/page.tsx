@@ -85,11 +85,11 @@ export default function AdminSalesPage() {
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
-  // Date range state - default to all time
-  const [dateRange, setDateRange] = useState(() => ({
-    start: new Date(0),
-    end: new Date(),
-  }))
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date()
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
+    return { start, end }
+  })
 
   useEffect(() => {
     fetchSales()

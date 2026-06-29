@@ -25,12 +25,9 @@ export default function LocationsPage() {
     activeBrands: '',
   })
 
-  // Date range state - default to all time (from epoch to far future)
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(() => {
     const end = new Date()
-    end.setFullYear(2099, 11, 31) // Far future date
-    end.setHours(23, 59, 59, 999)
-    const start = new Date(0) // Epoch (January 1, 1970) - effectively all time
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
     return { start, end }
   })
 
