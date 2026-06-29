@@ -401,55 +401,62 @@ export default function SalesDashboard() {
 
         {/* Filters */}
         <div className="mb-4 xs:mb-6 rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
-          <DateRangePicker
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onChange={(start, end) => setDateRange({ start, end })}
-          />
-          {isKitchenSite && uniquePlatforms.length > 1 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Platform</span>
-              <button
-                onClick={() => setSelectedPlatform('all')}
-                className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
-                  selectedPlatform === 'all'
-                    ? 'bg-brand-primary border-brand-primary text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                All Platforms
-              </button>
-              {uniquePlatforms.map((platform) => (
-                <button
-                  key={platform}
-                  onClick={() => setSelectedPlatform(platform)}
-                  className={`rounded-lg border px-4 py-2 shadow-sm transition-colors flex items-center ${
-                    selectedPlatform === platform
-                      ? 'bg-brand-primary border-brand-primary'
-                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                  }`}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
+            <div className="flex-1 min-w-0">
+              <DateRangePicker
+                startDate={dateRange.start}
+                endDate={dateRange.end}
+                onChange={(start, end) => setDateRange({ start, end })}
+              />
+            </div>
+            {isKitchenSite && uniquePlatforms.length > 1 && (
+              <div className="mt-3 border-t border-gray-100 pt-3 sm:mt-0 sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0 sm:shrink-0">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Platform</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedPlatform('all')}
+                    className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
+                      selectedPlatform === 'all'
+                        ? 'bg-brand-primary border-brand-primary text-white'
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {uniquePlatforms.map((platform) => (
+                    <button
+                      key={platform}
+                      onClick={() => setSelectedPlatform(platform)}
+                      className={`rounded-lg border px-3 py-2 shadow-sm transition-colors flex items-center ${
+                        selectedPlatform === platform
+                          ? 'bg-brand-primary border-brand-primary'
+                          : 'bg-white border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <PlatformLogo platform={platform} height={24} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isKitchenSite && uniqueLocations.length > 0 && (
+              <div className="mt-3 border-t border-gray-100 pt-3 sm:mt-0 sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0 sm:shrink-0">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Location</p>
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 sm:w-auto sm:min-w-[200px]"
                 >
-                  <PlatformLogo platform={platform} height={28} />
-                </button>
-              ))}
-            </div>
-          )}
-          {!isKitchenSite && uniqueLocations.length > 0 && (
-            <div className="mt-3 border-t border-gray-100 pt-3">
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 sm:w-auto sm:min-w-[220px]"
-              >
-                <option value="all">All Locations</option>
-                {uniqueLocations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+                  <option value="all">All Locations</option>
+                  {uniqueLocations.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* KPI Cards */}

@@ -104,7 +104,6 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
     const daysDiff = Math.round((today.getTime() - selStart.getTime()) / DAY_MS)
     if (daysDiff === 7) return '7'
     if (daysDiff === 30) return '30'
-    if (daysDiff === 90) return '90'
     return 'custom'
   }, [startDate, endDate])
 
@@ -228,9 +227,6 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
             </button>
             <button onClick={() => handlePreset(30)} className={`${getButtonClass('30')} shrink-0 whitespace-nowrap`}>
               Last 30 days
-            </button>
-            <button onClick={() => handlePreset(90)} className={`${getButtonClass('90')} shrink-0 whitespace-nowrap`}>
-              Last 90 days
             </button>
             <button onClick={() => handlePreset(null)} className={`${getButtonClass('all')} shrink-0 whitespace-nowrap`}>
               All time

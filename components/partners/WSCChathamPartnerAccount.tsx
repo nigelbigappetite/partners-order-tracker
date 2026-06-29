@@ -183,7 +183,7 @@ export default function WSCChathamPartnerAccount({ brandSlug, sales, startDate, 
             </h2>
             <p className="mt-3 hidden max-w-3xl text-sm leading-6 text-gray-600 sm:block">
               Third-party platform sales across Uber Eats, Deliveroo and other delivery platforms.
-              Data shown from 9 June 2026 (new operator).
+              Data shown from 9 June 2026.
             </p>
           </div>
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
