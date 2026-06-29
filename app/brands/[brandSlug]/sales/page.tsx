@@ -435,7 +435,7 @@ export default function SalesDashboard() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    <PlatformLogo platform={platform} height={18} />
+                    <PlatformLogo platform={platform} height={28} />
                   </button>
                 ))}
               </div>
