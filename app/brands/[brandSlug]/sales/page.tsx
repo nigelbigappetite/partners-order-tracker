@@ -419,7 +419,7 @@ export default function SalesDashboard() {
                   onClick={() => setSelectedPlatform('all')}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     selectedPlatform === 'all'
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-orange-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -431,7 +431,7 @@ export default function SalesDashboard() {
                     onClick={() => setSelectedPlatform(platform)}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors flex items-center ${
                       selectedPlatform === platform
-                        ? 'bg-gray-900 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
