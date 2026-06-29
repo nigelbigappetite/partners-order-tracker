@@ -417,10 +417,10 @@ export default function SalesDashboard() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setSelectedPlatform('all')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
                     selectedPlatform === 'all'
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-brand-primary border-brand-primary text-white'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   All Platforms
@@ -429,10 +429,10 @@ export default function SalesDashboard() {
                   <button
                     key={platform}
                     onClick={() => setSelectedPlatform(platform)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors flex items-center ${
+                    className={`rounded-lg border px-4 py-2 shadow-sm transition-colors flex items-center ${
                       selectedPlatform === platform
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-brand-primary border-brand-primary'
+                        : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     <PlatformLogo platform={platform} height={28} />
