@@ -109,6 +109,8 @@ The app is multi-brand and multi-tenant:
 
 **Kitchen site auth** (`app/kitchens/`): separate login from brand auth. Uses `lib/kitchenAuth.ts` with its own cookies; login page at `/kitchens/login`.
 
+**Homepage** (`app/brand-select/`): shows brands only — kitchens are NOT listed. Each kitchen operator bookmarks their direct URL (`/kitchens/[slug]`) and is redirected to login if unauthenticated. Per-kitchen passwords set via Vercel env vars: `KITCHEN_PASSWORD_[SLUG_UPPERCASE_WITH_UNDERSCORES]`. Admin password `KITCHEN_ADMIN_PASSWORD` works for any kitchen.
+
 ### Route Structure
 
 ```
@@ -151,7 +153,7 @@ app/
 ### Sales Feature — Key Details
 
 **Admin sales page** (`app/admin/sales/page.tsx`):
-- Filters: date range (default All Time), brand dropdown, location dropdown
+- Filters: date range (default current pay week), brand dropdown, location dropdown
 - KPI cards: Total Revenue, Total Orders, AOV, Active Kitchens
 - Daily Sales table with checkboxes for bulk delete
 - Three upload paths: Deliverect CSV (`CSVUpload`), Uber Eats CSV (`UberCSVUpload`), Manual entry (`ManualSalesEntryModal`)
@@ -159,12 +161,16 @@ app/
 **Brand sales page** (`app/brands/[brandSlug]/sales/page.tsx`):
 - Branches on `isKitchenSite`:
   - **Standard brands**: Date + Location filter, Revenue/GrossSales/Orders/AOV table, Revenue by Location breakdown
-  - **Kitchen sites**: Date filter (default **last 7 days**) + platform toggle pills, 3 KPI cards (Gross Sales / Total Orders / AOV), Order History section with individual orders
+  - **Kitchen sites**: Date filter + platform toggle pills, 3 KPI cards (Gross Sales / Total Orders / AOV), Order History section with individual orders
 - **Platform toggle**: pill buttons (All Platforms / Uber Eats / Deliveroo) rendered when 2+ platforms exist in the data; filters both Daily Sales table and Order History simultaneously. `selectedPlatform` state drives `filteredSales` and `filteredOrders` memos.
 
+**Default date range**: All pages default to the current pay week (Mon–today). On Mondays, defaults to last week (Mon–Sun) since there is no current-week data yet. Uses `toLocalDateStr()` from `lib/utils.ts` for all date-to-string conversions — **never use `toISOString().split('T')[0]`** as it converts to UTC and shifts UK BST dates one day back.
+
 **Kitchen site sales flow:**
-1. `fetchSales` — fetches `kitchen_sales` (filters out `platform='deliveroo'` rows), then merges live Deliveroo daily data from `/api/sales/deliveroo-site`, normalises all locations to `kitchenLocation`
+1. `fetchSales` — fetches `kitchen_sales` (filters out `platform='deliveroo'` rows), then merges live Deliveroo daily data from `/api/sales/deliveroo-site` **filtered to the selected date range**, normalises all locations to `kitchenLocation`
 2. `fetchOrders` — fetches `/api/sales/orders` which combines `kitchen_orders` (Uber) + brain `raw_events` (Deliveroo per-order)
+
+⚠️ **Deliveroo date filtering**: The `/api/sales/deliveroo-site` endpoint returns all rows — date range filtering must be applied client-side after the fetch (see `fetchSales` in sales pages).
 
 **Uber Eats CSV import** (`components/sales/UberCSVUpload.tsx` → `/api/sales/import/uber`):
 - Parses per-order rows, skips blank Order ID rows (ad spend)
@@ -216,6 +222,11 @@ Status workflow: `OPEN → PAID_NOT_CLEARED → WAITING_SUPPLIERS → SETTLED`
 - `components/sales/ManualSalesEntryModal.tsx` — manual single-day sales entry
 - `components/PlatformLogo.tsx` — renders platform logo img or text fallback; exports `getPlatformLabel()`
 - `components/partners/WSCChathamPartnerAccount.tsx` — Wing Shack Chatham partner dashboard (sales reporting only, no payout figures)
+- `components/locations/DateRangePicker.tsx` — shared date range picker used on all pages
+  - Presets: **This week** / **Last week** (Mon–Sun pay weeks) / Last 7 days / Last 30 days / Last 90 days / All time / Custom
+  - Shows actual date range label below buttons (e.g. "23 Jun 2026 – 29 Jun 2026")
+  - `getPayWeek(weeksAgo)` helper computes Mon-based weeks; `weeksAgo=0` = Mon–today, `weeksAgo=1` = previous Mon–Sun
+  - `allTimeStartDate` prop used only for display label, not to restrict selectable dates (only future dates are disabled)
 
 ## Environment Variables
 
