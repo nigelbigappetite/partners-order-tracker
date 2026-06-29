@@ -107,12 +107,9 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
     return [toDateOnly(displayedStartDate), toDateOnly(endDate)]
   }, [dragAnchor, dragDate, pendingStart, hoverDate, displayedStartDate, endDate])
 
-  const minimumDate = allTimeStartDate ? toDateOnly(allTimeStartDate) : null
   const maximumDate = toDateOnly(new Date())
 
-  const isDisabled = (date: Date) =>
-    (minimumDate != null && date.getTime() < minimumDate.getTime()) ||
-    date.getTime() > maximumDate.getTime()
+  const isDisabled = (date: Date) => date.getTime() > maximumDate.getTime()
 
   const commitRange = (first: Date, second: Date) => {
     const [rangeStart, rangeEnd] = orderRange(toDateOnly(first), toDateOnly(second))
