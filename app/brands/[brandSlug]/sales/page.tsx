@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import BrandNavigation from '@/components/BrandNavigation'
 import Navigation from '@/components/Navigation'
 import KPICard from '@/components/KPICard'
@@ -57,6 +57,9 @@ export default function SalesDashboard() {
     return { start, end }
   })
 
+  const fetchSalesIdRef = useRef(0)
+  const fetchOrdersIdRef = useRef(0)
+
   useEffect(() => {
     fetchBrandName()
     fetchSales()
@@ -77,6 +80,7 @@ export default function SalesDashboard() {
   }
 
   const fetchSales = async () => {
+    const fetchId = ++fetchSalesIdRef.current
     try {
       setLoading(true)
       const startDate = toLocalDateStr(dateRange.start)
@@ -85,6 +89,7 @@ export default function SalesDashboard() {
       const response = await fetch(
         `/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(brandSlug)}`
       )
+      if (fetchId !== fetchSalesIdRef.current) return
       if (!response.ok) {
         toast.error('Failed to load sales data')
         return
@@ -101,6 +106,7 @@ export default function SalesDashboard() {
           const dRes = await fetch(
             `/api/sales/deliveroo-site?locationKey=${encodeURIComponent(brandDef.deliverooLocationKey)}`
           )
+          if (fetchId !== fetchSalesIdRef.current) return
           if (dRes.ok) {
             const dData = await dRes.json()
             const rows: DeliverooDay[] = dData.rows || []
@@ -126,6 +132,8 @@ export default function SalesDashboard() {
         }
       }
 
+      if (fetchId !== fetchSalesIdRef.current) return
+
       // Normalise all rows to one canonical location name for kitchen sites
       if (brandDef?.kitchenLocation) {
         allSales = allSales.map((s) => ({ ...s, location: brandDef!.kitchenLocation! }))
@@ -133,20 +141,23 @@ export default function SalesDashboard() {
 
       setSales(allSales)
     } catch (error) {
+      if (fetchId !== fetchSalesIdRef.current) return
       console.error('Error fetching sales:', error)
       toast.error('Failed to load sales data')
     } finally {
-      setLoading(false)
+      if (fetchId === fetchSalesIdRef.current) setLoading(false)
     }
   }
 
   const fetchOrders = async () => {
+    const fetchId = ++fetchOrdersIdRef.current
     try {
       const startDate = toLocalDateStr(dateRange.start)
       const endDate = toLocalDateStr(dateRange.end)
       const res = await fetch(
         `/api/sales/orders?brand=${encodeURIComponent(brandSlug)}&startDate=${startDate}&endDate=${endDate}`
       )
+      if (fetchId !== fetchOrdersIdRef.current) return
       if (res.ok) {
         const data = await res.json()
         setOrders(data.orders || [])
