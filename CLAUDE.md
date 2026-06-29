@@ -107,6 +107,8 @@ The app is multi-brand and multi-tenant:
 
 **`isKitchenSite` flag** = `!!(brandDef?.deliverooLocationKey || brandDef?.orderingSiteId)` — drives entirely different UI on the brand sales page.
 
+**Kitchen site auth** (`app/kitchens/`): separate login from brand auth. Uses `lib/kitchenAuth.ts` with its own cookies; login page at `/kitchens/login`.
+
 ### Route Structure
 
 ```
@@ -119,6 +121,14 @@ app/
 │   ├── products/                      # SKU catalog
 │   ├── suppliers/                     # Supplier metrics
 │   └── sales/                         # Sales dashboard — branches on isKitchenSite
+├── kitchens/
+│   ├── login/                         # Kitchen site login (separate auth from brand auth)
+│   └── [kitchenSlug]/
+│       ├── layout.tsx                 # Kitchen layout (KitchenNavigation)
+│       ├── page.tsx                   # Redirects to /sales
+│       ├── dashboard/                 # Kitchen dashboard
+│       ├── orders/                    # Kitchen supply orders
+│       └── sales/                     # Kitchen sales dashboard (platform toggle, last 7 days default)
 ├── admin/
 │   ├── payments/                      # Payment reconciliation dashboard
 │   └── sales/                         # Sales CSV import (Deliverect + Uber), manual entry, bulk delete
@@ -149,7 +159,8 @@ app/
 **Brand sales page** (`app/brands/[brandSlug]/sales/page.tsx`):
 - Branches on `isKitchenSite`:
   - **Standard brands**: Date + Location filter, Revenue/GrossSales/Orders/AOV table, Revenue by Location breakdown
-  - **Kitchen sites**: Platform logos instead of location, 3 KPI cards (Gross Sales / Total Orders / AOV), Order History section with individual orders
+  - **Kitchen sites**: Date filter (default **last 7 days**) + platform toggle pills, 3 KPI cards (Gross Sales / Total Orders / AOV), Order History section with individual orders
+- **Platform toggle**: pill buttons (All Platforms / Uber Eats / Deliveroo) rendered when 2+ platforms exist in the data; filters both Daily Sales table and Order History simultaneously. `selectedPlatform` state drives `filteredSales` and `filteredOrders` memos.
 
 **Kitchen site sales flow:**
 1. `fetchSales` — fetches `kitchen_sales` (filters out `platform='deliveroo'` rows), then merges live Deliveroo daily data from `/api/sales/deliveroo-site`, normalises all locations to `kitchenLocation`
