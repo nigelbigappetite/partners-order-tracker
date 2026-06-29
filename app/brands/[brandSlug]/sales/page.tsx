@@ -8,7 +8,7 @@ import Table from '@/components/Table'
 import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import { KitchenSales } from '@/lib/types'
 import { getCanonicalBrandSlug, getBrandDefinition } from '@/lib/brands'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, toLocalDateStr } from '@/lib/utils'
 import type { DeliverooDay } from '@/app/api/sales/deliveroo-site/route'
 import type { KitchenOrder } from '@/lib/kitchen-orders-supabase'
 import PlatformLogo, { getPlatformLabel } from '@/components/PlatformLogo'
@@ -79,8 +79,8 @@ export default function SalesDashboard() {
   const fetchSales = async () => {
     try {
       setLoading(true)
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
 
       const response = await fetch(
         `/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(brandSlug)}`
@@ -142,8 +142,8 @@ export default function SalesDashboard() {
 
   const fetchOrders = async () => {
     try {
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
       const res = await fetch(
         `/api/sales/orders?brand=${encodeURIComponent(brandSlug)}&startDate=${startDate}&endDate=${endDate}`
       )
@@ -352,7 +352,7 @@ export default function SalesDashboard() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sales-${dateRange.start.toISOString().split('T')[0]}-to-${dateRange.end.toISOString().split('T')[0]}.csv`
+    a.download = `sales-${toLocalDateStr(dateRange.start)}-to-${toLocalDateStr(dateRange.end)}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }

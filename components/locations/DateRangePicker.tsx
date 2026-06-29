@@ -205,6 +205,13 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
     }`
   }
 
+  const rangeLabel = useMemo(() => {
+    const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    const s = toDateOnly(displayedStartDate)
+    const e = toDateOnly(endDate)
+    return isSameDay(s, e) ? fmt(s) : `${fmt(s)} – ${fmt(e)}`
+  }, [displayedStartDate, endDate])
+
   return (
     <div className="relative flex w-full flex-wrap items-start gap-2">
       <div className="flex flex-1 flex-wrap gap-2">
@@ -234,6 +241,8 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
       >
         Custom ▾
       </button>
+
+      <p className="w-full text-xs text-gray-500 -mt-1">{rangeLabel}</p>
 
       {showCustom && (
         <div className="z-30 w-full rounded-xl border border-gray-200 bg-white p-4 shadow-xl sm:absolute sm:right-0 sm:top-10 sm:w-[340px]">

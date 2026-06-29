@@ -9,7 +9,7 @@ import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRang
 import Table from '@/components/Table'
 import KPICard from '@/components/KPICard'
 import { KitchenSales } from '@/lib/types'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, toLocalDateStr } from '@/lib/utils'
 import { getCanonicalBrands } from '@/lib/brands'
 import toast from 'react-hot-toast'
 import { AlertTriangle, CheckCircle, Download, Filter, RefreshCw, XCircle } from 'lucide-react'
@@ -102,8 +102,8 @@ export default function AdminSalesPage() {
   const fetchSales = async () => {
     try {
       setLoading(true)
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
       
       const params = new URLSearchParams({ startDate, endDate })
       if (selectedBrand !== 'all') params.set('brand', selectedBrand)
@@ -429,7 +429,7 @@ export default function AdminSalesPage() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sales-${dateRange.start.toISOString().split('T')[0]}-to-${dateRange.end.toISOString().split('T')[0]}.csv`
+    a.download = `sales-${toLocalDateStr(dateRange.start)}-to-${toLocalDateStr(dateRange.end)}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }

@@ -7,7 +7,7 @@ import Navigation from '@/components/Navigation'
 import KPICard from '@/components/KPICard'
 import DateRangePicker from '@/components/locations/DateRangePicker'
 import { Order, KPIMetric, KitchenSales } from '@/lib/types'
-import { formatCurrencyNoDecimals } from '@/lib/utils'
+import { formatCurrencyNoDecimals, toLocalDateStr } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import BrandLogoCell from '@/components/BrandLogoCell'
@@ -173,8 +173,8 @@ export default function BrandDashboard() {
   const fetchSales = async () => {
     try {
       setSalesLoading(true)
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
       const salesBrandSlug = canonicalBrandSlug
       const allTime = isAllTimeRange(dateRange.start, dateRange.end)
 
@@ -204,7 +204,7 @@ export default function BrandDashboard() {
       previousStart.setDate(previousStart.getDate() - (periodDays - 1))
 
       const previousRequest = fetch(
-        `/api/sales?startDate=${previousStart.toISOString().split('T')[0]}&endDate=${previousEnd.toISOString().split('T')[0]}&brand=${encodeURIComponent(salesBrandSlug)}`
+        `/api/sales?startDate=${toLocalDateStr(previousStart)}&endDate=${toLocalDateStr(previousEnd)}&brand=${encodeURIComponent(salesBrandSlug)}`
       )
 
       const [response, previousResponse] = await Promise.all([currentRequest, previousRequest])
@@ -229,16 +229,16 @@ export default function BrandDashboard() {
     let result = orders
 
     if (isAdmin) {
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
       result = result.filter((o) => o.orderDate >= startDate && o.orderDate <= endDate)
       if (brandFilter !== 'all') {
         const selectedBrandSlug = getCanonicalBrandSlug(brandFilter)
         result = result.filter((o) => getCanonicalBrandSlug(o.brand) === selectedBrandSlug)
       }
     } else {
-      const startDate = dateRange.start.toISOString().split('T')[0]
-      const endDate = dateRange.end.toISOString().split('T')[0]
+      const startDate = toLocalDateStr(dateRange.start)
+      const endDate = toLocalDateStr(dateRange.end)
       result = result.filter((o) => o.orderDate >= startDate && o.orderDate <= endDate)
     }
 
@@ -380,7 +380,7 @@ export default function BrandDashboard() {
   const previousStartDateOnly = new Date(previousEndDateOnly)
   previousStartDateOnly.setDate(previousStartDateOnly.getDate() - (periodDays - 1))
   const previousOrders = hasComparablePeriod
-    ? orders.filter((o) => o.orderDate >= previousStartDateOnly.toISOString().split('T')[0] && o.orderDate <= previousEndDateOnly.toISOString().split('T')[0])
+    ? orders.filter((o) => o.orderDate >= toLocalDateStr(previousStartDateOnly) && o.orderDate <= toLocalDateStr(previousEndDateOnly))
     : []
   const previousProductRevenue = previousOrders.reduce((sum, o) => sum + (Number(o.orderTotal) || 0), 0)
   const previousProductCOGS = previousOrders.reduce((sum, o) => sum + (Number(o.totalCOGS) || 0), 0)
