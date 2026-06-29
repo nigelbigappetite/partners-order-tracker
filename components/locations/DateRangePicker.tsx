@@ -213,39 +213,42 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
   }, [displayedStartDate, endDate])
 
   return (
-    <div className="relative flex w-full flex-wrap items-start gap-2">
-      <div className="flex flex-1 flex-wrap gap-2">
-        <button onClick={() => handlePayWeek(0)} className={`${getButtonClass('this-week')} min-w-[88px] flex-1`}>
-          This week
-        </button>
-        <button onClick={() => handlePayWeek(1)} className={`${getButtonClass('last-week')} min-w-[88px] flex-1`}>
-          Last week
-        </button>
-        <button onClick={() => handlePreset(7)} className={`${getButtonClass('7')} min-w-[88px] flex-1`}>
-          Last 7 days
-        </button>
-        <button onClick={() => handlePreset(30)} className={`${getButtonClass('30')} min-w-[88px] flex-1`}>
-          Last 30 days
-        </button>
-        <button onClick={() => handlePreset(90)} className={`${getButtonClass('90')} min-w-[88px] flex-1`}>
-          Last 90 days
-        </button>
-        <button onClick={() => handlePreset(null)} className={`${getButtonClass('all')} min-w-[88px] flex-1`}>
-          All time
+    <div className="relative flex w-full flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="flex gap-1.5">
+            <button onClick={() => handlePayWeek(0)} className={`${getButtonClass('this-week')} shrink-0 whitespace-nowrap`}>
+              This week
+            </button>
+            <button onClick={() => handlePayWeek(1)} className={`${getButtonClass('last-week')} shrink-0 whitespace-nowrap`}>
+              Last week
+            </button>
+            <button onClick={() => handlePreset(7)} className={`${getButtonClass('7')} shrink-0 whitespace-nowrap`}>
+              Last 7 days
+            </button>
+            <button onClick={() => handlePreset(30)} className={`${getButtonClass('30')} shrink-0 whitespace-nowrap`}>
+              Last 30 days
+            </button>
+            <button onClick={() => handlePreset(90)} className={`${getButtonClass('90')} shrink-0 whitespace-nowrap`}>
+              Last 90 days
+            </button>
+            <button onClick={() => handlePreset(null)} className={`${getButtonClass('all')} shrink-0 whitespace-nowrap`}>
+              All time
+            </button>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowCustom(!showCustom)}
+          className={`${getButtonClass('custom')} shrink-0 whitespace-nowrap`}
+        >
+          Custom ▾
         </button>
       </div>
 
-      <button
-        onClick={() => setShowCustom(!showCustom)}
-        className={`${getButtonClass('custom')} w-full sm:w-auto`}
-      >
-        Custom ▾
-      </button>
-
-      <p className="w-full text-xs text-gray-500 -mt-1">{rangeLabel}</p>
+      <p className="text-xs text-gray-500">{rangeLabel}</p>
 
       {showCustom && (
-        <div className="z-30 w-full rounded-xl border border-gray-200 bg-white p-4 shadow-xl sm:absolute sm:right-0 sm:top-10 sm:w-[340px]">
+        <div className="z-30 mt-1 w-full rounded-xl border border-gray-200 bg-white p-4 shadow-xl sm:absolute sm:right-0 sm:mt-0 sm:top-9 sm:w-[340px]">
           <div className="flex items-center justify-between">
             <button
               type="button"

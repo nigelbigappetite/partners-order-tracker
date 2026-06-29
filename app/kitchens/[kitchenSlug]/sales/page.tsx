@@ -12,7 +12,7 @@ import type { KitchenOrder } from '@/lib/kitchen-orders-supabase'
 import PlatformLogo, { getPlatformLabel } from '@/components/PlatformLogo'
 import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
-import { Download, Filter } from 'lucide-react'
+import { Download } from 'lucide-react'
 
 function formatDateForSubtitle(date: Date): string {
   const day = `${date.getDate()}`.padStart(2, '0')
@@ -279,47 +279,40 @@ export default function KitchenSalesDashboard() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 xs:mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-semibold text-gray-700">Filters:</span>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
-            <div className="w-full sm:flex-1 sm:min-w-[320px]">
-              <DateRangePicker
-                startDate={dateRange.start}
-                endDate={dateRange.end}
-                onChange={(start, end) => setDateRange({ start, end })}
-              />
-            </div>
-            {uniquePlatforms.length > 1 && (
-              <div className="flex flex-wrap items-center gap-2">
+        <div className="mb-4 xs:mb-6 rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+          <DateRangePicker
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            onChange={(start, end) => setDateRange({ start, end })}
+          />
+          {uniquePlatforms.length > 1 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Platform</span>
+              <button
+                onClick={() => setSelectedPlatform('all')}
+                className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
+                  selectedPlatform === 'all'
+                    ? 'bg-brand-primary border-brand-primary text-white'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                All Platforms
+              </button>
+              {uniquePlatforms.map((platform) => (
                 <button
-                  onClick={() => setSelectedPlatform('all')}
-                  className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
-                    selectedPlatform === 'all'
-                      ? 'bg-brand-primary border-brand-primary text-white'
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  key={platform}
+                  onClick={() => setSelectedPlatform(platform)}
+                  className={`rounded-lg border px-4 py-2 shadow-sm transition-colors flex items-center ${
+                    selectedPlatform === platform
+                      ? 'bg-brand-primary border-brand-primary'
+                      : 'bg-white border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  All Platforms
+                  <PlatformLogo platform={platform} height={28} />
                 </button>
-                {uniquePlatforms.map((platform) => (
-                  <button
-                    key={platform}
-                    onClick={() => setSelectedPlatform(platform)}
-                    className={`rounded-lg border px-4 py-2 shadow-sm transition-colors flex items-center ${
-                      selectedPlatform === platform
-                        ? 'bg-brand-primary border-brand-primary'
-                        : 'bg-white border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <PlatformLogo platform={platform} height={28} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* KPI Cards */}

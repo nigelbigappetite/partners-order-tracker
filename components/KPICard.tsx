@@ -40,7 +40,7 @@ export default function KPICard({ metric }: KPICardProps) {
             </div>
           )}
           {metric.subtitle && (
-            <p className="mt-1 text-xs text-gray-500">{metric.subtitle}</p>
+            <p className="mt-1 text-xs text-gray-500 truncate">{metric.subtitle}</p>
           )}
         </div>
       </div>
