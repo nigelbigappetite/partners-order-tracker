@@ -90,9 +90,11 @@ function getThirtyDayProjection(rows: KitchenSales[]) {
 interface WSCChathamPartnerAccountProps {
   brandSlug: string
   sales: KitchenSales[]
+  startDate?: string
+  endDate?: string
 }
 
-export default function WSCChathamPartnerAccount({ brandSlug, sales }: WSCChathamPartnerAccountProps) {
+export default function WSCChathamPartnerAccount({ brandSlug, sales, startDate, endDate }: WSCChathamPartnerAccountProps) {
   const brandDef = getBrandDefinition(brandSlug)
   const deliverooLocationKey = brandDef?.deliverooLocationKey ?? null
   const dataStartDate = brandDef?.dataStartDate ?? null
@@ -108,11 +110,13 @@ export default function WSCChathamPartnerAccount({ brandSlug, sales }: WSCChatha
         if (data.error) throw new Error(data.error)
         let rows: DeliverooDay[] = data.rows ?? []
         if (dataStartDate) rows = rows.filter((r) => r.date >= dataStartDate)
+        if (startDate) rows = rows.filter((r) => r.date >= startDate)
+        if (endDate) rows = rows.filter((r) => r.date <= endDate)
         setDeliverooRows(rows)
       })
       .catch((e) => toast.error(e.message || 'Failed to load Deliveroo data'))
       .finally(() => setDeliverooLoading(false))
-  }, [deliverooLocationKey, dataStartDate])
+  }, [deliverooLocationKey, dataStartDate, startDate, endDate])
 
   const deliverooAsSales: KitchenSales[] = useMemo(
     () =>

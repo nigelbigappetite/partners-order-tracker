@@ -308,13 +308,13 @@ export default function KitchenSalesDashboard() {
                   <button
                     key={platform}
                     onClick={() => setSelectedPlatform(platform)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors flex items-center ${
                       selectedPlatform === platform
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {getPlatformLabel(platform)}
+                    <PlatformLogo platform={platform} height={18} />
                   </button>
                 ))}
               </div>

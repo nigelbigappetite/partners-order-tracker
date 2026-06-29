@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import BrandNavigation from '@/components/BrandNavigation'
 import Navigation from '@/components/Navigation'
 import KPICard from '@/components/KPICard'
@@ -47,6 +47,8 @@ export default function BrandDashboard() {
     const end = isMonday ? new Date(today.getTime() - 24 * 60 * 60 * 1000) : new Date()
     return { start, end }
   })
+  const fetchSalesIdRef = useRef(0)
+
   const [sortField, setSortField] = useState<BrandSortField>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [adminTableMode, setAdminTableMode] = useState<'supply' | 'kitchen'>('supply')
@@ -171,6 +173,7 @@ export default function BrandDashboard() {
   }
 
   const fetchSales = async () => {
+    const fetchId = ++fetchSalesIdRef.current
     try {
       setSalesLoading(true)
       const startDate = toLocalDateStr(dateRange.start)
@@ -184,6 +187,7 @@ export default function BrandDashboard() {
 
       if (allTime) {
         const response = await currentRequest
+        if (fetchId !== fetchSalesIdRef.current) return
 
         if (!response.ok) {
           throw new Error('Failed to load sales')
@@ -208,6 +212,7 @@ export default function BrandDashboard() {
       )
 
       const [response, previousResponse] = await Promise.all([currentRequest, previousRequest])
+      if (fetchId !== fetchSalesIdRef.current) return
 
       if (!response.ok || !previousResponse.ok) {
         throw new Error('Failed to load sales')
@@ -218,9 +223,10 @@ export default function BrandDashboard() {
       setSales(data.sales || [])
       setPreviousSales(previousData.sales || [])
     } catch (error) {
+      if (fetchId !== fetchSalesIdRef.current) return
       toast.error('Failed to load sales')
     } finally {
-      setSalesLoading(false)
+      if (fetchId === fetchSalesIdRef.current) setSalesLoading(false)
     }
   }
 
@@ -605,6 +611,8 @@ export default function BrandDashboard() {
           <WSCChathamPartnerAccount
             brandSlug={brandSlug}
             sales={sales}
+            startDate={toLocalDateStr(dateRange.start)}
+            endDate={toLocalDateStr(dateRange.end)}
           />
         ) : canonicalBrandSlug === 'smsh-bn' ? (
           <SMSHPartnerAccount
