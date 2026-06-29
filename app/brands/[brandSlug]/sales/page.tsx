@@ -41,15 +41,17 @@ export default function SalesDashboard() {
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLocation, setSelectedLocation] = useState<string>('all')
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const isAdmin = canonicalBrandSlug === 'admin'
   const hideGrossProfitCard = isKitchenSite || ['wing-shack-co', 'eggs-nstuff'].includes(canonicalBrandSlug || '')
 
-  const [dateRange, setDateRange] = useState(() => ({
-    start: new Date(0),
-    end: new Date(),
-  }))
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date()
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
+    return { start, end }
+  })
 
   useEffect(() => {
     fetchBrandName()
@@ -173,11 +175,25 @@ export default function SalesDashboard() {
     [sales]
   )
 
+  const uniquePlatforms = useMemo(
+    () => Array.from(new Set(sales.map((s) => s.platform || '').filter(Boolean))).sort(),
+    [sales]
+  )
+
+  const filteredOrders = useMemo(() => {
+    if (selectedPlatform === 'all') return orders
+    return orders.filter((order) => order.platform === selectedPlatform)
+  }, [orders, selectedPlatform])
+
   const filteredSales = useMemo(() => {
     let filtered =
       selectedLocation === 'all'
         ? sales
         : sales.filter((sale) => sale.location === selectedLocation)
+
+    if (isKitchenSite && selectedPlatform !== 'all') {
+      filtered = filtered.filter((sale) => sale.platform === selectedPlatform)
+    }
 
     if (sortColumn) {
       filtered = [...filtered].sort((a, b) => {
@@ -233,7 +249,7 @@ export default function SalesDashboard() {
     }
 
     return filtered
-  }, [sales, selectedLocation, sortColumn, sortDirection])
+  }, [sales, selectedLocation, selectedPlatform, isKitchenSite, sortColumn, sortDirection])
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -382,6 +398,33 @@ export default function SalesDashboard() {
                 onChange={(start, end) => setDateRange({ start, end })}
               />
             </div>
+            {isKitchenSite && uniquePlatforms.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setSelectedPlatform('all')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    selectedPlatform === 'all'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  All Platforms
+                </button>
+                {uniquePlatforms.map((platform) => (
+                  <button
+                    key={platform}
+                    onClick={() => setSelectedPlatform(platform)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      selectedPlatform === platform
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {getPlatformLabel(platform)}
+                  </button>
+                ))}
+              </div>
+            )}
             {!isKitchenSite && uniqueLocations.length > 0 && (
               <select
                 value={selectedLocation}
@@ -665,11 +708,11 @@ export default function SalesDashboard() {
             <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-sm">
               {/* Mobile */}
               <div className="space-y-2 md:hidden">
-                {orders.length === 0 ? (
+                {filteredOrders.length === 0 ? (
                   <p className="py-6 text-center text-sm text-gray-400">No orders found for this period.</p>
                 ) : (
                   <div className="max-h-[40rem] space-y-2 overflow-y-auto pr-1">
-                    {orders.map((order, i) => (
+                    {filteredOrders.map((order, i) => (
                       <div key={`${order.orderId}-${i}`} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
                         <div className="flex items-center gap-3">
                           <PlatformLogo platform={order.platform} height={20} />
@@ -697,14 +740,14 @@ export default function SalesDashboard() {
                   stickyHeader={true}
                   sortable={false}
                 >
-                  {orders.length === 0 ? (
+                  {filteredOrders.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">
                         No orders found for this period.
                       </td>
                     </tr>
                   ) : (
-                    orders.map((order, i) => (
+                    filteredOrders.map((order, i) => (
                       <tr key={`${order.orderId}-${i}`} className="hover:bg-gray-50">
                         <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-700">
                           {formatDate(order.date)}
