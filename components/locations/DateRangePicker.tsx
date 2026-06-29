@@ -33,6 +33,19 @@ function formatShortDate(date: Date): string {
   })
 }
 
+// Returns Mon–today for weeksAgo=0, Mon–Sun for weeksAgo=1, 2, …
+function getPayWeek(weeksAgo: number): { start: Date; end: Date } {
+  const today = toDateOnly(new Date())
+  const daysSinceMonday = (today.getDay() + 6) % 7 // 0=Mon … 6=Sun
+  const currentMonday = new Date(today)
+  currentMonday.setDate(today.getDate() - daysSinceMonday)
+
+  const start = new Date(currentMonday)
+  start.setDate(currentMonday.getDate() - 7 * weeksAgo)
+  const end = weeksAgo === 0 ? today : new Date(start.getTime() + 6 * DAY_MS)
+  return { start, end }
+}
+
 export function isAllTimeRange(startDate: Date, endDate: Date): boolean {
   if (startDate.getTime() !== new Date(0).getTime()) return false
 
@@ -77,10 +90,18 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
     if (isAllTimeRange(startDate, endDate)) return 'all'
 
     const today = toDateOnly(new Date())
-    const selectedEnd = toDateOnly(endDate)
-    if (!isSameDay(selectedEnd, today)) return 'custom'
+    const selStart = toDateOnly(startDate)
+    const selEnd = toDateOnly(endDate)
 
-    const daysDiff = Math.round((today.getTime() - toDateOnly(startDate).getTime()) / DAY_MS)
+    const thisWeek = getPayWeek(0)
+    if (isSameDay(selStart, thisWeek.start) && isSameDay(selEnd, thisWeek.end)) return 'this-week'
+
+    const lastWeek = getPayWeek(1)
+    if (isSameDay(selStart, lastWeek.start) && isSameDay(selEnd, lastWeek.end)) return 'last-week'
+
+    if (!isSameDay(selEnd, today)) return 'custom'
+
+    const daysDiff = Math.round((today.getTime() - selStart.getTime()) / DAY_MS)
     if (daysDiff === 7) return '7'
     if (daysDiff === 30) return '30'
     if (daysDiff === 90) return '90'
@@ -121,6 +142,13 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
   const handlePreset = (days: number | null) => {
     const end = new Date()
     const start = days ? new Date(end.getTime() - days * DAY_MS) : new Date(0)
+    onChange(start, end)
+    setShowCustom(false)
+    setPendingStart(null)
+  }
+
+  const handlePayWeek = (weeksAgo: number) => {
+    const { start, end } = getPayWeek(weeksAgo)
     onChange(start, end)
     setShowCustom(false)
     setPendingStart(null)
@@ -180,6 +208,12 @@ export default function DateRangePicker({ startDate, endDate, onChange, allTimeS
   return (
     <div className="relative flex w-full flex-wrap items-start gap-2">
       <div className="flex flex-1 flex-wrap gap-2">
+        <button onClick={() => handlePayWeek(0)} className={`${getButtonClass('this-week')} min-w-[88px] flex-1`}>
+          This week
+        </button>
+        <button onClick={() => handlePayWeek(1)} className={`${getButtonClass('last-week')} min-w-[88px] flex-1`}>
+          Last week
+        </button>
         <button onClick={() => handlePreset(7)} className={`${getButtonClass('7')} min-w-[88px] flex-1`}>
           Last 7 days
         </button>
