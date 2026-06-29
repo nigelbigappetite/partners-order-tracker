@@ -26,9 +26,10 @@ export default function LocationsPage() {
   })
 
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(() => {
-    const end = new Date()
-    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
-    return { start, end }
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const start = new Date(today)
+    start.setDate(today.getDate() - (today.getDay() + 6) % 7)
+    return { start, end: new Date() }
   })
 
   useEffect(() => {
