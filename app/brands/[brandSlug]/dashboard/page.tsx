@@ -40,9 +40,12 @@ export default function BrandDashboard() {
   const [brandFilter, setBrandFilter] = useState<string>('all')
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
+    const daysSinceMonday = (today.getDay() + 6) % 7
+    const isMonday = daysSinceMonday === 0
     const start = new Date(today)
-    start.setDate(today.getDate() - (today.getDay() + 6) % 7)
-    return { start, end: new Date() }
+    start.setDate(today.getDate() - (isMonday ? 7 : daysSinceMonday))
+    const end = isMonday ? new Date(today.getTime() - 24 * 60 * 60 * 1000) : new Date()
+    return { start, end }
   })
   const [sortField, setSortField] = useState<BrandSortField>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')

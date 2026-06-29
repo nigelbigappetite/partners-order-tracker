@@ -48,9 +48,12 @@ export default function KitchenSalesDashboard() {
 
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
+    const daysSinceMonday = (today.getDay() + 6) % 7
+    const isMonday = daysSinceMonday === 0
     const start = new Date(today)
-    start.setDate(today.getDate() - (today.getDay() + 6) % 7)
-    return { start, end: new Date() }
+    start.setDate(today.getDate() - (isMonday ? 7 : daysSinceMonday))
+    const end = isMonday ? new Date(today.getTime() - 24 * 60 * 60 * 1000) : new Date()
+    return { start, end }
   })
 
   useEffect(() => {
@@ -88,7 +91,7 @@ export default function KitchenSalesDashboard() {
             const rows: DeliverooDay[] = dData.rows || []
             const startCutoff = brandDef.dataStartDate ?? null
             const deliverooSales: KitchenSales[] = rows
-              .filter((r) => !startCutoff || r.date >= startCutoff)
+              .filter((r) => (!startCutoff || r.date >= startCutoff) && r.date >= startDate && r.date <= endDate)
               .map((r) => ({
                 id: `deliveroo-${r.date}`,
                 date: r.date,
