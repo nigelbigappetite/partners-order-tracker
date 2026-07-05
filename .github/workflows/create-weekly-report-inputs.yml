@@ -1,0 +1,70 @@
+name: Create weekly report input folders
+
+on:
+  schedule:
+    # Every Monday at 06:00 UK time during GMT, 07:00 during BST.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      week_start:
+        description: 'Monday week start in UK format DD/MM/YYYY, e.g. 06/07/2026. Leave blank for current Monday.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-week-folder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set week start
+        id: week
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.week_start }}" ]; then
+            INPUT="${{ github.event.inputs.week_start }}"
+            if [[ "$INPUT" =~ ^[0-9]{2}/[0-9]{2}/[0-9]{4}$ ]]; then
+              DAY="${INPUT:0:2}"
+              MONTH="${INPUT:3:2}"
+              YEAR="${INPUT:6:4}"
+              ISO="$YEAR-$MONTH-$DAY"
+            elif [[ "$INPUT" =~ ^[0-9]{2}-[0-9]{2}-[0-9]{4}$ ]]; then
+              DAY="${INPUT:0:2}"
+              MONTH="${INPUT:3:2}"
+              YEAR="${INPUT:6:4}"
+              ISO="$YEAR-$MONTH-$DAY"
+            else
+              ISO="$INPUT"
+            fi
+          else
+            ISO="$(node -e "const d=new Date(); const u=new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const day=u.getUTCDay(); const diff=day===0?-6:1-day; u.setUTCDate(u.getUTCDate()+diff); console.log(u.toISOString().slice(0,10));")"
+          fi
+
+          UK="$(date -u -d "$ISO" +%d/%m/%Y)"
+          echo "iso=$ISO" >> "$GITHUB_OUTPUT"
+          echo "uk=$UK" >> "$GITHUB_OUTPUT"
+          echo "folder=report-inputs/week_$ISO" >> "$GITHUB_OUTPUT"
+
+      - name: Create weekly report input folders
+        run: node scripts/create-weekly-report-inputs.js "${{ steps.week.outputs.iso }}"
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/create-report-inputs-${{ steps.week.outputs.iso }}
+          delete-branch: true
+          commit-message: Create report input folders for ${{ steps.week.outputs.uk }}
+          title: Create weekly report input folders - ${{ steps.week.outputs.uk }}
+          body: |
+            Creates the weekly report input folder for week commencing ${{ steps.week.outputs.uk }}.
+
+            Folder:
+            `${{ steps.week.outputs.folder }}`
+
+            Fill each site/platform folder with the weekly exports, then generate the HTML reports.
