@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wing Shack Co – Chatham · Week 22–28 Jun 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #fdfdf9; color: #171717; overflow-x: hidden; }
+
+    /* Progress */
+    .progress { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: 4px; background: rgba(17,20,13,0.1); }
+    .progress-fill { height: 100%; width: 0; border-radius: 0 9999px 9999px 0; background: #ff7426; transition: width 0.1s; }
+
+    /* Bottom nav — desktop only */
+    .bottom-nav { display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 40; border-radius: 9999px; border: 1px solid rgba(17,20,13,0.1); background: rgba(255,255,255,0.9); padding: 8px 12px; box-shadow: 0 8px 32px rgba(17,20,13,0.12); backdrop-filter: blur(12px); gap: 4px; }
+    @media (min-width: 768px) { .bottom-nav { display: flex; } }
+    .bottom-nav a { text-decoration: none; border-radius: 9999px; padding: 8px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #4e5148; transition: all 0.15s; }
+    .bottom-nav a:hover { background: #ff7426; color: white; }
+
+    /* Sections */
+    .s-white  { background: #ffffff;  color: #171717; padding: 64px 20px; }
+    .s-light  { background: #fdfdf9;  color: #171717; padding: 64px 20px; }
+    .s-cream  { background: #f5f0df;  color: #11140d; padding: 64px 20px; }
+    .s-dark   { background: #11140d;  color: #fdfdf9; padding: 64px 20px; }
+    .s-darker { background: #0d1009;  color: #fdfdf9; padding: 64px 20px; }
+    .s-orange { background: #ff7426;  color: #11140d; padding: 64px 20px; }
+    @media (min-width: 640px)  { .s-white,.s-light,.s-cream,.s-dark,.s-darker,.s-orange { padding: 80px 32px; } }
+    @media (min-width: 1024px) { .s-white,.s-light,.s-cream,.s-dark,.s-darker,.s-orange { padding: 88px 40px; } }
+
+    .inner { max-width: 1280px; margin: 0 auto; }
+
+    /* 2-col story layout */
+    .story { display: grid; gap: 40px; }
+    @media (min-width: 1024px) { .story { grid-template-columns: 0.42fr 0.58fr; align-items: center; } }
+    @media (min-width: 1024px) { .story-left { position: sticky; top: 40px; } }
+
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #ff7426; }
+    .eyebrow-lt { color: #ffabea; }
+    .story-h { margin-top: 16px; font-size: clamp(2rem, 4.5vw, 3.25rem); font-weight: 700; line-height: 1.04; max-width: 460px; }
+    .story-p { margin-top: 18px; max-width: 400px; font-size: 15px; font-weight: 500; line-height: 1.75; color: #4e5148; }
+    .story-p-lt { color: #d9d1b7; }
+
+    /* Grid helpers */
+    .g2 { display: grid; gap: 14px; }
+    @media (min-width: 540px) { .g2 { grid-template-columns: 1fr 1fr; } }
+    .g3 { display: grid; gap: 14px; }
+    @media (min-width: 540px) { .g3 { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1024px) { .g3 { grid-template-columns: 1fr 1fr 1fr; } }
+    .g4 { display: grid; gap: 12px; }
+    @media (min-width: 540px) { .g4 { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1024px) { .g4 { grid-template-columns: repeat(4, 1fr); } }
+
+    /* Organic bubble */
+    .bubble { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 28px; border-radius: 46% 54% 48% 52% / 58% 42% 58% 42%; box-shadow: 0 18px 48px rgba(17,20,13,0.10); }
+    .bubble-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+    .bubble-val { font-size: clamp(2.4rem, 7vw, 4rem); font-weight: 700; line-height: 1; margin-top: 12px; white-space: nowrap; }
+    .bubble-hlp { font-size: 13px; font-weight: 600; margin-top: 14px; opacity: 0.8; max-width: 200px; line-height: 1.4; }
+    .bub-lg { min-height: 260px; } .bub-md { min-height: 200px; } .bub-sm { min-height: 170px; }
+    @media (min-width: 640px) { .bub-lg { min-height: 340px; } .bub-md { min-height: 260px; } .bub-sm { min-height: 210px; } }
+    .b-orange { background: #ff7426; color: white; }
+    .b-blue   { background: #2f7bd8; color: white; }
+    .b-ink    { background: #11140d; color: white; }
+    .b-cream  { background: #f5f0df; color: #11140d; }
+    .b-pink   { background: #ffabea; color: #11140d; }
+    .b-yellow { background: #ffc43d; color: #11140d; }
+
+    /* Tile card */
+    .tile { border-radius: 34px; padding: 24px; box-shadow: 0 16px 42px rgba(17,20,13,0.08); }
+    .tile-icon { width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .tile-h { margin-top: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .tile-p { margin-top: 10px; font-size: 14px; font-weight: 500; line-height: 1.65; }
+    .t-orange { background: #ff7426; color: white; } .t-orange .tile-icon { background: rgba(255,255,255,0.18); } .t-orange .tile-p { color: rgba(255,255,255,0.85); }
+    .t-blue   { background: #2f7bd8; color: white; } .t-blue   .tile-icon { background: rgba(255,255,255,0.18); } .t-blue   .tile-p { color: rgba(255,255,255,0.85); }
+    .t-ink    { background: #11140d; color: white; } .t-ink    .tile-icon { background: rgba(255,255,255,0.18); } .t-ink    .tile-p { color: rgba(255,255,255,0.82); }
+    .t-cream  { background: #f5f0df; color: #11140d; } .t-cream .tile-icon { background: rgba(255,255,255,0.7); } .t-cream .tile-p { color: #4e5148; }
+    .t-pink   { background: #ffabea; color: #11140d; } .t-pink  .tile-icon { background: rgba(255,255,255,0.7); } .t-pink  .tile-p { color: #4e5148; }
+    .t-yellow { background: #ffc43d; color: #11140d; } .t-yellow .tile-icon { background: rgba(255,255,255,0.7); } .t-yellow .tile-p { color: #4e5148; }
+
+    /* Change pill */
+    .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 8px 16px; font-size: 13px; font-weight: 700; }
+    .pill-up { background: #2f7bd8; color: white; }
+    .pill-neu { background: white; color: #11140d; box-shadow: 0 2px 8px rgba(17,20,13,0.08); }
+
+    /* Hero */
+    .hero { position: relative; min-height: 100vh; background: white; padding: 28px 20px; overflow: hidden; }
+    @media (min-width: 640px) { .hero { padding: 28px 32px; } }
+    .hero-blob1 { position: absolute; top: 96px; right: -112px; width: 288px; height: 288px; border-radius: 9999px; background: rgba(255,171,234,0.7); pointer-events: none; }
+    .hero-blob2 { position: absolute; bottom: 80px; left: -128px; width: 320px; height: 320px; border-radius: 9999px; background: rgba(255,116,38,0.85); pointer-events: none; }
+    .hero-inner { position: relative; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; min-height: calc(100vh - 56px); }
+    .hero-bar { display: flex; align-items: center; justify-content: space-between; border-top: 2px solid #11140d; border-bottom: 2px solid #11140d; padding: 16px 0; }
+    .hero-brand { display: flex; align-items: center; gap: 16px; }
+    .ht-logo { width: 44px; height: 44px; border-radius: 9999px; overflow: hidden; flex-shrink: 0; }
+    .ht-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-tag-badge { display: inline-flex; border-radius: 9999px; padding: 8px 16px; background: #11140d; color: white; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
+    .hero-title { margin-top: 20px; font-size: clamp(2.8rem, 8vw, 5.5rem); font-weight: 700; line-height: 0.98; }
+    .hero-sub { margin-top: 24px; max-width: 480px; font-size: 17px; font-weight: 500; line-height: 1.7; color: #4e5148; }
+    .hero-pills { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .hero-bubbles { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+    .bubble-col { display: grid; gap: 16px; }
+    .hero-content { display: grid; gap: 32px; flex: 1; align-items: center; padding: 40px 0; }
+    @media (min-width: 1024px) { .hero-content { grid-template-columns: 0.48fr 0.52fr; } }
+    .scroll-down { display: flex; justify-content: center; margin-bottom: 8px; }
+    .scroll-btn { width: 48px; height: 48px; border-radius: 9999px; background: #11140d; color: white; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 22px; line-height: 1; transition: transform 0.2s; }
+    .scroll-btn:hover { transform: translateY(4px); }
+
+    /* Daily rhythm */
+    .rhythm-card { background: white; border-radius: 42px; padding: 28px; box-shadow: 0 22px 70px rgba(17,20,13,0.09); }
+    .rhythm-row { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 12px; align-items: center; margin-bottom: 14px; }
+    @media (min-width: 600px) { .rhythm-row { grid-template-columns: 84px minmax(0,1fr) 90px; } }
+    .rhythm-day { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #4e5148; }
+    .rhythm-track { height: 48px; border-radius: 9999px; background: #ece6d4; padding: 4px; }
+    .rhythm-bar { height: 100%; border-radius: 9999px; min-width: 48px; display: flex; align-items: center; justify-content: flex-end; padding-right: 14px; font-size: 13px; font-weight: 700; color: white; }
+    .rhythm-val { text-align: right; font-size: 13px; font-weight: 700; color: #11140d; display: none; }
+    @media (min-width: 600px) { .rhythm-val { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; } }
+    .rhythm-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(17,20,13,0.08); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    /* Tags */
+    .tag { display: inline-block; border-radius: 9999px; padding: 3px 11px; font-size: 11px; font-weight: 700; }
+    .tag-green  { background: #2f7bd8; color: white; }
+    .tag-warn   { background: #ffabea; color: #11140d; }
+    .tag-muted  { background: #ece6d4; color: #4e5148; }
+    .tag-orange { background: #ff7426; color: white; }
+
+    /* Platform circles */
+    .plat-circle { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 180px; border-radius: 44% 56% 47% 53% / 54% 46% 54% 46%; padding: 24px; }
+    @media (min-width: 640px) { .plat-circle { min-height: 210px; } }
+
+    /* Platform bars */
+    .plat-bars { background: rgba(255,255,255,0.06); border-radius: 36px; padding: 20px; margin-top: 28px; }
+    .plat-bar-row { margin-bottom: 20px; }
+    .plat-bar-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f7f4e8; }
+    .plat-track { height: 14px; border-radius: 9999px; background: rgba(255,255,255,0.12); }
+    .plat-fill { height: 100%; border-radius: 9999px; }
+
+    /* Item cards */
+    .item-card { background: white; border-radius: 22px; padding: 16px 18px; box-shadow: 0 8px 28px rgba(17,20,13,0.07); display: flex; align-items: center; gap: 14px; }
+    .item-rank { font-size: 28px; font-weight: 900; color: #ece6d4; min-width: 34px; text-align: center; line-height: 1; }
+    .item-info { flex: 1; }
+    .item-name { font-size: 14px; font-weight: 700; color: #11140d; line-height: 1.3; }
+    .item-note { font-size: 12px; font-weight: 500; color: #6f7169; margin-top: 4px; }
+    .item-sales { text-align: right; flex-shrink: 0; }
+    .item-sales-val { font-size: 16px; font-weight: 800; color: #11140d; }
+    .item-qty { font-size: 11px; font-weight: 600; color: #6f7169; margin-top: 3px; }
+
+    /* Speed rows */
+    .speed-block { background: rgba(17,20,13,0.04); border-radius: 22px; padding: 6px 20px; margin-bottom: 20px; }
+    .speed-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid rgba(17,20,13,0.07); gap: 10px; flex-wrap: wrap; }
+    .speed-row:last-child { border-bottom: none; }
+    .speed-lbl { font-size: 13px; font-weight: 500; color: #4e5148; flex: 1; min-width: 140px; }
+    .speed-val { font-size: 15px; font-weight: 800; color: #11140d; }
+    .speed-val-good  { color: #15803d; }
+    .speed-val-watch { color: #dc2626; }
+    .speed-dot { width: 8px; height: 8px; border-radius: 9999px; flex-shrink: 0; }
+    .dot-good  { background: #15803d; }
+    .dot-watch { background: #dc2626; }
+    .dot-ok    { background: rgba(17,20,13,0.18); }
+
+    /* Alerts */
+    .alert { border-radius: 20px; padding: 18px 20px; border: 2px solid; }
+    .alert-good { background: rgba(47,123,216,0.1); border-color: rgba(47,123,216,0.25); }
+    .alert-warn { background: rgba(255,171,234,0.12); border-color: rgba(255,171,234,0.3); }
+
+    /* Reviews */
+    .review-card { background: rgba(17,20,13,0.04); border: 1px solid rgba(17,20,13,0.08); border-radius: 22px; padding: 20px; }
+    .review-stars { font-size: 17px; letter-spacing: 2px; margin-bottom: 10px; }
+    .review-txt { font-size: 14px; font-weight: 500; line-height: 1.6; color: #11140d; font-style: italic; }
+    .review-meta { margin-top: 10px; font-size: 11px; font-weight: 600; color: #6f7169; text-transform: uppercase; letter-spacing: 0.1em; }
+    .review-pos { background: rgba(47,123,216,0.07); border-color: rgba(47,123,216,0.18); }
+
+    /* Rating bars */
+    .rbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .rbar-row:last-child { margin-bottom: 0; }
+    .rbar-lbl { font-size: 12px; font-weight: 700; color: #4e5148; width: 28px; text-align: right; }
+    .rbar-track { flex: 1; height: 9px; border-radius: 9999px; background: rgba(17,20,13,0.1); }
+    .rbar-fill { height: 100%; border-radius: 9999px; }
+    .rbar-pct { font-size: 12px; font-weight: 700; color: #4e5148; width: 32px; }
+
+    /* Stat boxes */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+    @media (min-width: 540px) { .stat-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 900px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+    .stat-box { background: #f5f0df; border-radius: 18px; padding: 16px; text-align: center; }
+    .stat-val { font-size: 22px; font-weight: 800; color: #11140d; line-height: 1; }
+    .stat-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6f7169; margin-top: 6px; }
+
+    /* Metric rows */
+    .metric-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #ece6d4; gap: 8px; }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-lbl { font-size: 13px; font-weight: 500; color: #4e5148; }
+    .metric-val { font-size: 15px; font-weight: 800; color: #11140d; }
+
+    /* Funnel */
+    .funnel-wrap { background: #f5f0df; border-radius: 24px; padding: 20px; }
+    .funnel-step { display: flex; align-items: center; gap: 14px; background: rgba(17,20,13,0.04); border-radius: 14px; padding: 14px 16px; margin-bottom: 6px; }
+    .funnel-num { font-size: 22px; font-weight: 800; color: #ff7426; min-width: 72px; text-align: right; }
+    .funnel-lbl { font-size: 13px; font-weight: 600; color: #4e5148; }
+    .funnel-arrow { text-align: center; font-size: 13px; font-weight: 600; color: #6f7169; margin: 4px 14px; }
+
+    /* Next-week focus items */
+    .focus-item { display: flex; align-items: flex-start; gap: 16px; padding: 20px 0; border-bottom: 2px solid rgba(255,255,255,0.08); }
+    .focus-item:last-child { border-bottom: none; }
+    .focus-num { font-size: 40px; font-weight: 900; color: rgba(255,255,255,0.15); line-height: 1; min-width: 44px; }
+    .focus-body { flex: 1; }
+    .focus-action { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
+    .focus-desc { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.88); line-height: 1.65; }
+
+    /* Kicker */
+    .kicker { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #6f7169; margin-bottom: 14px; display: block; }
+
+    /* Footer */
+    footer { background: #fdfdf9; padding: 32px 20px; }
+    .footer-inner { max-width: 1280px; margin: 0 auto; border-top: 2px solid #11140d; padding-top: 20px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+    .footer-txt { font-size: 13px; font-weight: 700; color: #6f7169; }
+
+    @media print {
+      @page { size: 1440px 900px; margin: 0; }
+      html, body {
+        width: 1440px;
+        background: #ffffff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .progress, .bottom-nav, .scroll-down, footer { display: none !important; }
+      .hero,
+      .s-white,
+      .s-light,
+      .s-cream,
+      .s-dark,
+      .s-darker,
+      .s-orange {
+        min-height: 900px !important;
+        break-before: page;
+        page-break-before: always;
+        break-after: auto;
+        page-break-after: auto;
+        padding: 56px 88px !important;
+        display: flex !important;
+        align-items: center !important;
+      }
+      .hero { height: 900px !important; break-before: auto !important; page-break-before: auto !important; display: block !important; }
+      .hero-inner { min-height: calc(900px - 112px) !important; }
+      .hero-content { padding: 28px 0 0 !important; gap: 24px !important; align-items: start !important; }
+      .hero-title { font-size: 72px !important; line-height: 0.98 !important; margin-top: 18px !important; }
+      .hero-sub { margin-top: 18px !important; font-size: 16px !important; }
+      .hero-pills { margin-top: 22px !important; }
+      .hero-bubbles { gap: 12px !important; transform: none !important; }
+      .bubble-col { gap: 12px !important; }
+      .bub-lg { min-height: 270px !important; }
+      .bub-md { min-height: 210px !important; }
+      .bub-sm { min-height: 155px !important; }
+      .bubble { padding: 20px !important; }
+      .bubble-val { font-size: 52px !important; }
+      .inner { max-width: 1180px !important; }
+      .story { grid-template-columns: 0.36fr 0.64fr !important; gap: 56px !important; align-items: center !important; }
+      .story-left { position: static !important; top: auto !important; }
+      .story-h { font-size: 52px !important; max-width: 440px !important; }
+      .story-p { font-size: 16px !important; max-width: 400px !important; }
+      .g2 { grid-template-columns: 1fr 1fr !important; }
+      .g3 { grid-template-columns: 1fr 1fr 1fr !important; }
+      .g4 { grid-template-columns: repeat(4, 1fr) !important; }
+      .rhythm-row { grid-template-columns: 84px minmax(0,1fr) 90px !important; }
+      .rhythm-val { display: flex !important; flex-direction: column; align-items: flex-end; gap: 2px; }
+      #ads .stat-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; margin-bottom: 16px !important; }
+      #ads .story-p { font-size: 13px !important; line-height: 1.45 !important; }
+      #ads { height: 900px !important; overflow: hidden !important; }
+      #ads .stat-box { padding: 7px !important; border-radius: 14px !important; }
+      #ads .stat-val { font-size: 16px !important; }
+      #ads .stat-lbl { font-size: 9px !important; margin-top: 4px !important; }
+      #ads .metric-row { padding: 5px 0 !important; }
+      #ads .funnel-wrap { padding: 10px !important; }
+      #ads .funnel-step { padding: 7px 12px !important; margin-bottom: 3px !important; }
+      #ads .funnel-num { font-size: 17px !important; min-width: 58px !important; }
+      #ads .funnel-arrow { margin: 2px 14px !important; font-size: 11px !important; }
+      #ads .kicker { margin-bottom: 8px !important; }
+      #ads [style*="background:#f5f0df"] { padding: 12px 16px !important; margin-bottom: 14px !important; }
+      .tile, .rhythm-card, .review-card, .funnel-wrap, .plat-bars, .speed-block, .stat-box, .item-card, .bubble, .pill, .pill-neu { box-shadow: none !important; }
+      a { color: inherit !important; text-decoration: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress"><div class="progress-fill" id="progressBar"></div></div>
+
+<nav class="bottom-nav">
+  <a href="#pulse">Read</a>
+  <a href="#rhythm">Rhythm</a>
+  <a href="#channels">Channels</a>
+  <a href="#items">Items</a>
+  <a href="#speed">Speed</a>
+  <a href="#reviews">Reviews</a>
+  <a href="#ads">Ads</a>
+  <a href="#focus">Focus</a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero" id="top">
+  <div class="hero-blob1"></div>
+  <div class="hero-blob2"></div>
+  <div class="hero-inner">
+
+    <header class="hero-bar">
+      <div class="hero-brand">
+        <div class="ht-logo"><img src="/Hungry Tum Logo.jpeg" alt="Hungry Tum"></div>
+        <div>
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Hungry Tum weekly</p>
+          <p style="font-size:11px;font-weight:500;color:#6f7169;margin-top:4px;">22 Jun – 28 Jun 2026</p>
+        </div>
+      </div>
+      <div style="width:60px;height:60px;border-radius:14px;overflow:hidden;flex-shrink:0;"><img src="/transparent Wing Shack logo 1080x1080.png" alt="Wing Shack Co" style="width:100%;height:100%;object-fit:contain;display:block;"></div>
+    </header>
+
+    <div class="hero-content">
+      <div>
+        <span class="hero-tag-badge">Weekly site update</span>
+        <h1 class="hero-title">Wing Shack Co&nbsp;Chatham weekly update.</h1>
+        <p class="hero-sub">Here is what happened at the site this week: how busy it was, where demand came from, and what to watch next.</p>
+        <div class="hero-pills">
+          <div class="pill pill-up">↑ Strong demand week</div>
+          <div class="pill pill-neu">📅 22–28 Jun 2026</div>
+        </div>
+      </div>
+
+      <div class="hero-bubbles">
+        <div class="bubble b-orange bub-lg" style="transform:rotate(-3deg);">
+          <p class="bubble-lbl">Gross sales</p>
+          <p class="bubble-val">£1,413</p>
+          <p style="font-size:13px;font-weight:800;color:#bbf7d0;margin:4px 0 0;">↑ +278% vs prior wk</p>
+          <p class="bubble-hlp">54 orders · both platforms</p>
+        </div>
+        <div class="bubble-col">
+          <div class="bubble b-cream bub-sm" style="transform:rotate(2deg);">
+            <p class="bubble-lbl" style="color:#4e5148;">AOV</p>
+            <p class="bubble-val" style="font-size:clamp(1.8rem,5vw,2.8rem);">£26.18</p>
+            <p style="font-size:12px;font-weight:800;color:#dc2626;margin:3px 0 0;">↓ -5% vs prior wk</p>
+            <p class="bubble-hlp" style="color:#4e5148;">Average basket</p>
+          </div>
+          <div class="bubble b-blue bub-sm" style="transform:rotate(-1deg);">
+            <p class="bubble-lbl">Best day</p>
+            <p class="bubble-val" style="font-size:clamp(1.8rem,5vw,2.6rem);">£330</p>
+            <p class="bubble-hlp">Wed 24 Jun</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-down">
+      <a href="#pulse" class="scroll-btn">↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 01 OPERATOR READ ─── -->
+<section id="pulse" class="s-white">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">01 — operator read</p>
+        <h2 class="story-h">Good demand week. Speed and temperature are the things to fix.</h2>
+      </div>
+      <div class="g2">
+        <div class="tile t-cream">
+          <div class="tile-icon">🛍️</div>
+          <p class="tile-h">54 orders fulfilled</p>
+          <p class="tile-p">36 came through Uber Eats and 18 through Deliveroo. Build your prep volumes around this — 54 is a solid week and the trend is upward.</p>
+        </div>
+        <div class="tile t-pink">
+          <div class="tile-icon">🧺</div>
+          <p class="tile-h">Bundles are driving Uber baskets</p>
+          <p class="tile-p">Uber average order was £29.34. Deluxe Bundle for 1 and Snuggle Bundle for 2 are pulling the ticket size up. Keep bundle components prepped and consistent.</p>
+        </div>
+        <div class="tile t-blue">
+          <div class="tile-icon">📣</div>
+          <p class="tile-h">Ads pulled real demand in</p>
+          <p class="tile-p">Uber orders jumped from 9 to 36 vs the prior period. Half of all Deliveroo orders used a marketer offer. When the ads are on, the kitchen needs to be ready.</p>
+        </div>
+        <div class="tile t-ink">
+          <div class="tile-icon">⚠️</div>
+          <p class="tile-h">Speed and temperature flagged</p>
+          <p class="tile-p">Uber's average total order duration was 47.86 mins and two items were flagged in ratings — one cold, one possible delivery temperature issue. These are the priority fixes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 02 DAILY RHYTHM ─── -->
+<section id="rhythm" class="s-cream">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">02 — daily rhythm</p>
+        <h2 class="story-h">Where the week had its shape.</h2>
+        <p class="story-p">Both platforms per day. Midweek Deliveroo demand pushed Wednesday and Tuesday into the best combined days. Uber held the weekend on its own.</p>
+      </div>
+      <div>
+        <div class="rhythm-card">
+          <!-- Legend -->
+          <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#ff7426;"></div><span style="font-size:11px;font-weight:700;color:#4e5148;">Uber Eats</span></div>
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#00ccbc;"></div><span style="font-size:11px;font-weight:700;color:#4e5148;">Deliveroo</span></div>
+          </div>
+          <!-- Mon 22: £99.65 Uber + £17.50 Del = £117.15 / 5 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Mon 22</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:35.5%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:99.65;background:#ff7426;"></div>
+                  <div style="flex:17.50;background:#00ccbc;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£117</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">5 orders</span>
+            </div>
+          </div>
+          <!-- Tue 23: £147.95 Uber + £130.49 Del = £278.44 / 10 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Tue 23</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:84.3%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:147.95;background:#ff7426;"></div>
+                  <div style="flex:130.49;background:#00ccbc;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£278</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">10 orders</span>
+            </div>
+          </div>
+          <!-- Wed 24: £210.05 Uber + £120.29 Del = £330.34 / 10 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Wed 24 ★</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:100%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:210.05;background:#ff7426;"></div>
+                  <div style="flex:120.29;background:#00ccbc;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£330</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">10 orders</span>
+            </div>
+          </div>
+          <!-- Thu 25: £102.35 Uber only / 4 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Thu 25</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:31.0%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:1;background:#ff7426;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£102</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">4 orders</span>
+            </div>
+          </div>
+          <!-- Fri 26: £194.35 Uber + £94.18 Del = £288.53 / 11 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Fri 26</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:87.3%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:194.35;background:#ff7426;"></div>
+                  <div style="flex:94.18;background:#00ccbc;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£289</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">11 orders</span>
+            </div>
+          </div>
+          <!-- Sat 27: £191.54 Uber only / 7 orders -->
+          <div class="rhythm-row">
+            <p class="rhythm-day">Sat 27</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:58.0%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:1;background:#ff7426;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£192</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">7 orders</span>
+            </div>
+          </div>
+          <!-- Sun 28: £110.20 Uber + £65.50 Del = £175.70 / 7 orders -->
+          <div class="rhythm-row" style="margin-bottom:0;">
+            <p class="rhythm-day">Sun 28</p>
+            <div>
+              <div class="rhythm-track">
+                <div style="height:100%;width:53.2%;border-radius:9999px;overflow:hidden;display:flex;">
+                  <div style="flex:110.20;background:#ff7426;"></div>
+                  <div style="flex:65.50;background:#00ccbc;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rhythm-val">
+              <span>£176</span>
+              <span style="font-size:11px;font-weight:600;color:#6f7169;">7 orders</span>
+            </div>
+          </div>
+          <div class="rhythm-footer">
+            <span class="tag tag-orange">★ Best day</span>
+            <span style="font-size:13px;font-weight:600;color:#4e5148;">Wed 24 · £330</span>
+            <span class="tag tag-muted" style="margin-left:6px;">Peak orders</span>
+            <span style="font-size:13px;font-weight:600;color:#4e5148;">Fri 26 · 11</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 03 CHANNEL MIX ─── -->
+<section id="channels" class="s-dark">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow eyebrow-lt">03 — channel mix</p>
+        <h2 class="story-h">Where the orders came from.</h2>
+        <p class="story-p story-p-lt">Uber Eats drove three-quarters of sales and higher-value baskets. Deliveroo contributed 18 orders and helped spread reach across a different customer base.</p>
+      </div>
+      <div>
+        <div class="g2">
+          <div class="plat-circle" style="background:#ff7426;color:white;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,255,255,0.8);">Uber Eats</p>
+            <p style="font-size:3.5rem;font-weight:700;line-height:1;margin-top:8px;">75%</p>
+            <p style="font-size:13px;font-weight:700;margin-top:12px;">36 orders · £1,056</p>
+          </div>
+          <div class="plat-circle" style="background:#ffabea;color:#11140d;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;">Deliveroo</p>
+            <p style="font-size:3.5rem;font-weight:700;line-height:1;margin-top:8px;">25%</p>
+            <p style="font-size:13px;font-weight:700;margin-top:12px;">18 orders · £357</p>
+          </div>
+        </div>
+        <div class="plat-bars">
+          <div class="plat-bar-row">
+            <div class="plat-bar-meta"><span>Uber Eats</span><span>£1,056.09 · £29.34 AOV</span></div>
+            <div class="plat-track"><div class="plat-fill" style="width:75%;background:#ff7426;"></div></div>
+          </div>
+          <div class="plat-bar-row" style="margin-bottom:0;">
+            <div class="plat-bar-meta"><span>Deliveroo</span><span>£357.31 · £19.85 AOV</span></div>
+            <div class="plat-track"><div class="plat-fill" style="width:25%;background:#ffabea;"></div></div>
+          </div>
+          <p style="margin-top:16px;font-size:12px;font-weight:500;color:rgba(255,255,255,0.38);line-height:1.6;">Uber drives the workload and basket size. Deliveroo offers broadened reach with marketer-offer discounts helping bring 9 of its 18 orders in this week.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 04 ITEM WINNERS ─── -->
+<section id="items" class="s-light">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">04 — item winners</p>
+        <h2 class="story-h">What customers actually bought.</h2>
+        <p class="story-p">Keep these prepped and consistent. They are driving revenue and orders across both platforms. Watch temperature and packaging on the top two.</p>
+      </div>
+      <div>
+        <span class="kicker">Top by sales — Uber Eats</span>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+          <div class="item-card">
+            <p class="item-rank">1</p>
+            <div class="item-info">
+              <p class="item-name">Mac N Cheese Bites</p>
+              <p class="item-note">⚠️ One item rating flagged cold/melted — check temp & packaging</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£190.40</p><p class="item-qty">32 sold</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">2</p>
+            <div class="item-info">
+              <p class="item-name">Deluxe Bundle for 1</p>
+              <p class="item-note">🎯 High-value basket driver — £19.95 each</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£179.55</p><p class="item-qty">9 sold</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">3</p>
+            <div class="item-info">
+              <p class="item-name">Banging Buffalo Loaded Fries</p>
+              <p class="item-note">🔥 24 sold across both platforms — cross-platform hero</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£150.00</p><p class="item-qty">20 (Uber) + 4 (Del)</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">4</p>
+            <div class="item-info">
+              <p class="item-name">Wings (5 Set)</p>
+              <p class="item-note">Classic hero — high price point at £29.01 each</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£116.05</p><p class="item-qty">4 sold</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">5</p>
+            <div class="item-info">
+              <p class="item-name">Snuggle Bundle for 2</p>
+              <p class="item-note">Highest single-order value when ordered</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£71.90</p><p class="item-qty">2 sold</p></div>
+          </div>
+        </div>
+
+        <span class="kicker">Also popular — Deliveroo</span>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="item-card">
+            <p class="item-rank">1</p>
+            <div class="item-info">
+              <p class="item-name">Original Chicken Wrap</p>
+              <p class="item-note">Top Deliveroo item by quantity</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£47.70</p><p class="item-qty">6 sold</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">2</p>
+            <div class="item-info">
+              <p class="item-name">Banging Buffalo Chicken Wrap</p>
+              <p class="item-note">Joint second on Deliveroo</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£31.80</p><p class="item-qty">4 sold</p></div>
+          </div>
+          <div class="item-card">
+            <p class="item-rank">3</p>
+            <div class="item-info">
+              <p class="item-name">Cajun Fries</p>
+              <p class="item-note">Strong side attachment on Deliveroo</p>
+            </div>
+            <div class="item-sales"><p class="item-sales-val">£15.96</p><p class="item-qty">4 sold</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 05 SPEED & READINESS ─── -->
+<section id="speed" class="s-cream">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">05 — speed & readiness</p>
+        <h2 class="story-h">Was the kitchen ready for demand?</h2>
+        <p class="story-p">Deliveroo speed was solid across the board. Uber courier wait and total order duration are the watchpoints — customers noticed.</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#8e44ad;margin-bottom:12px;">Deliveroo speed</p>
+        <div class="speed-block">
+          <div class="speed-row">
+            <span class="speed-lbl">Avg prep time</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-ok"></div><span class="speed-val">25.0 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Rider wait past target</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">2.08 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Rider wait &gt;5 mins</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">0.0%</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Rider wait &gt;10 mins</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">0.0%</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Avg total order duration</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">26.82 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Busy mode usage</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">0.0%</span></div>
+          </div>
+        </div>
+
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#ff7426;margin-bottom:12px;">Uber Eats speed</p>
+        <div class="speed-block">
+          <div class="speed-row">
+            <span class="speed-lbl">Avg time to confirm</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">1.29 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Avg original prep time</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-good"></div><span class="speed-val speed-val-good">18.05 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Avg courier wait</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-watch"></div><span class="speed-val speed-val-watch">7.93 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Avoidable courier wait</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-watch"></div><span class="speed-val speed-val-watch">3.04 mins</span></div>
+          </div>
+          <div class="speed-row">
+            <span class="speed-lbl">Avg order duration</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="speed-dot dot-watch"></div><span class="speed-val speed-val-watch">47.86 mins</span></div>
+          </div>
+        </div>
+
+        <div class="g2">
+          <div class="alert alert-good">
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#2f7bd8;margin-bottom:8px;">✓ Zero inaccurate orders</p>
+            <p style="font-size:14px;font-weight:500;color:#4e5148;line-height:1.55;">No inaccurate orders flagged on Uber this week. Clean fulfilment across 35 completed orders.</p>
+          </div>
+          <div class="alert alert-warn">
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8e44ad;margin-bottom:8px;">⚠ 2 cancellations</p>
+            <p style="font-size:14px;font-weight:500;color:#4e5148;line-height:1.55;">Both on Tue 23 Jun — one by restaurant, one by customer. Monitor Tuesday pattern going forward.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 06 REVIEWS ─── -->
+<section id="reviews" class="s-white">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">06 — reviews & quality</p>
+        <h2 class="story-h">What customers said.</h2>
+        <p class="story-p">Mixed signals. Customers who get hot food fast leave 5 stars. The low ratings this week came from delivery speed and one food quality complaint.</p>
+      </div>
+      <div>
+        <div class="g2" style="margin-bottom:24px;">
+          <div style="background:rgba(17,20,13,0.04);border-radius:22px;padding:22px;text-align:center;">
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#6f7169;margin-bottom:12px;">Uber Eats · this week</p>
+            <p style="font-size:60px;font-weight:800;line-height:1;color:#11140d;">3.4</p>
+            <p style="font-size:22px;margin-top:8px;">⭐⭐⭐</p>
+            <p style="font-size:13px;font-weight:600;color:#6f7169;margin-top:8px;">5 ratings this week</p>
+            <p style="font-size:12px;color:#dc2626;font-weight:700;margin-top:4px;">Theme: too slow</p>
+          </div>
+          <div style="background:rgba(17,20,13,0.04);border-radius:22px;padding:22px;text-align:center;">
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#6f7169;margin-bottom:12px;">Deliveroo · overall</p>
+            <p style="font-size:60px;font-weight:800;line-height:1;color:#11140d;">4.4</p>
+            <p style="font-size:22px;margin-top:8px;">⭐⭐⭐⭐</p>
+            <p style="font-size:13px;font-weight:600;color:#6f7169;margin-top:8px;">50+ reviews total</p>
+            <p style="font-size:12px;color:#15803d;font-weight:700;margin-top:4px;">73% are 5-star</p>
+          </div>
+        </div>
+
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#6f7169;margin-bottom:12px;">Deliveroo rating breakdown</p>
+        <div style="background:rgba(17,20,13,0.03);border-radius:18px;padding:16px 20px;margin-bottom:22px;">
+          <div class="rbar-row"><span class="rbar-lbl">5★</span><div class="rbar-track"><div class="rbar-fill" style="width:73%;background:#2f7bd8;"></div></div><span class="rbar-pct">73%</span></div>
+          <div class="rbar-row"><span class="rbar-lbl">4★</span><div class="rbar-track"><div class="rbar-fill" style="width:11%;background:#2f7bd8;"></div></div><span class="rbar-pct">11%</span></div>
+          <div class="rbar-row"><span class="rbar-lbl">3★</span><div class="rbar-track"><div class="rbar-fill" style="width:5%;background:#ffc43d;"></div></div><span class="rbar-pct">5%</span></div>
+          <div class="rbar-row"><span class="rbar-lbl">2★</span><div class="rbar-track"><div class="rbar-fill" style="width:3%;background:#ff7426;"></div></div><span class="rbar-pct">3%</span></div>
+          <div class="rbar-row"><span class="rbar-lbl">1★</span><div class="rbar-track"><div class="rbar-fill" style="width:9%;background:#ffabea;"></div></div><span class="rbar-pct">9%</span></div>
+        </div>
+
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#6f7169;margin-bottom:12px;">Reviews in range: 22–28 Jun</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          <div class="review-card">
+            <div class="review-stars">⭐</div>
+            <p class="review-txt">"food never got delivered ordered £20 worth of food that never showed up."</p>
+            <p class="review-meta">Uber Eats · Jun 2026 · Theme: delivery / communication</p>
+          </div>
+          <div class="review-card">
+            <div class="review-stars">⭐</div>
+            <p class="review-txt">"Awful"</p>
+            <p class="review-meta">Deliveroo · 26 Jun 2026</p>
+          </div>
+          <div class="review-card">
+            <div class="review-stars">⭐⭐⭐</div>
+            <p class="review-txt">"Got food poisoning"</p>
+            <p class="review-meta">Deliveroo · 23 Jun 2026 — Flag for investigation</p>
+          </div>
+          <div class="review-card review-pos">
+            <div class="review-stars">⭐⭐⭐⭐⭐ ⭐⭐⭐⭐⭐ ⭐⭐⭐⭐⭐</div>
+            <p class="review-txt">Three 5-star ratings on Uber this week. Customers who got their food well are happy with the food itself — the kitchen quality is there.</p>
+            <p class="review-meta">Uber Eats · positive signal this week</p>
+          </div>
+        </div>
+
+        <div class="alert alert-warn">
+          <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8e44ad;margin-bottom:8px;">Item quality flags</p>
+          <p style="font-size:14px;font-weight:500;color:#4e5148;line-height:1.6;"><strong style="color:#11140d;">Mac N Cheese Bites</strong> — one Uber item rating tagged cold/melted. Check serving temp and packaging seal before dispatch. &nbsp;·&nbsp; <strong style="color:#11140d;">Banging Buffalo Loaded Fries</strong> — rated 1 star but tagged "good portion", suggesting a delivery temperature issue rather than the item itself.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 07 ADS & OFFERS ─── -->
+<section id="ads" class="s-light">
+  <div class="inner">
+    <div class="story">
+      <div class="story-left">
+        <p class="eyebrow">07 — ads, offers & conversion</p>
+        <h2 class="story-h">What created the demand.</h2>
+        <p class="story-p">Ads and marketer offers worked hard this week on both platforms. Uber ROAS of 7.75× means every £1 in ad spend returned £7.75 in attributed sales. Deliveroo offer orders made up half of all Deliveroo orders.</p>
+      </div>
+      <div>
+        <span class="kicker">Uber Eats ads — this week</span>
+        <div class="stat-grid">
+          <div class="stat-box" style="background:#11140d;color:white;">
+            <p class="stat-val" style="color:#ff7426;font-size:26px;">7.75×</p>
+            <p class="stat-lbl" style="color:rgba(255,255,255,0.55);">ROAS</p>
+          </div>
+          <div class="stat-box"><p class="stat-val">£796</p><p class="stat-lbl">Ad sales</p></div>
+          <div class="stat-box"><p class="stat-val">£103</p><p class="stat-lbl">Ad spend</p></div>
+          <div class="stat-box"><p class="stat-val">28</p><p class="stat-lbl">Ad orders</p></div>
+          <div class="stat-box"><p class="stat-val">6,377</p><p class="stat-lbl">Impressions</p></div>
+          <div class="stat-box"><p class="stat-val">454</p><p class="stat-lbl">Clicks</p></div>
+          <div class="stat-box"><p class="stat-val">7.12%</p><p class="stat-lbl">CTR</p></div>
+          <div class="stat-box"><p class="stat-val">£3.67</p><p class="stat-lbl">Cost / order</p></div>
+        </div>
+
+        <span class="kicker">Deliveroo ads — this week</span>
+        <div style="background:#f5f0df;border-radius:22px;padding:18px 22px;margin-bottom:28px;">
+          <div class="metric-row"><span class="metric-lbl">Ad spend</span><span class="metric-val">£49.64</span></div>
+          <div class="metric-row"><span class="metric-lbl">Click-attributed sales</span><span class="metric-val">£161.99 (8 orders)</span></div>
+          <div class="metric-row"><span class="metric-lbl">View-attributed sales</span><span class="metric-val">£239.88 (10 orders)</span></div>
+          <div class="metric-row"><span class="metric-lbl">Total views</span><span class="metric-val">1,003</span></div>
+          <div class="metric-row"><span class="metric-lbl">Total clicks</span><span class="metric-val">87</span></div>
+        </div>
+
+        <span class="kicker">Deliveroo marketer offers</span>
+        <div class="tile t-cream" style="margin-bottom:28px;">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+            <div><p style="font-size:32px;font-weight:800;color:#11140d;line-height:1;">9 orders</p><p style="font-size:13px;font-weight:600;color:#4e5148;margin-top:5px;">used marketer offers</p></div>
+            <div style="text-align:right;"><p style="font-size:32px;font-weight:800;color:#ff7426;line-height:1;">£70.65</p><p style="font-size:13px;font-weight:600;color:#4e5148;margin-top:5px;">total discount</p></div>
+          </div>
+          <p style="margin-top:16px;font-size:14px;font-weight:500;color:#4e5148;line-height:1.6;">9 of 18 Deliveroo orders used a marketer offer — half of all Deliveroo demand was offer-driven this week. Offers are actively pulling in customers.</p>
+        </div>
+
+        <span class="kicker">Uber Eats conversion funnel — this week vs last</span>
+        <div class="funnel-wrap">
+          <div class="funnel-step"><p class="funnel-num">4,069</p><p class="funnel-lbl">Shop views</p></div>
+          <p class="funnel-arrow">↓ 12.3% shop-to-menu</p>
+          <div class="funnel-step"><p class="funnel-num">499</p><p class="funnel-lbl">Menu views</p></div>
+          <p class="funnel-arrow">↓ 11.0% menu-to-order</p>
+          <div class="funnel-step"><p class="funnel-num">149</p><p class="funnel-lbl">Added to cart</p></div>
+          <p class="funnel-arrow">↓ 36.9% add-to-order</p>
+          <div class="funnel-step" style="background:rgba(47,123,216,0.1);">
+            <p class="funnel-num" style="color:#2f7bd8;">55</p>
+            <p class="funnel-lbl" style="color:#2f7bd8;font-weight:700;">Orders placed</p>
+          </div>
+          <p style="margin-top:14px;font-size:13px;font-weight:600;color:#4e5148;line-height:1.6;">Menu-to-order conversion jumped from 4.9% (last period) to 11.0% this week — more than double. Ads and offers are turning browsers into buyers.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 08 NEXT WEEK FOCUS ─── -->
+<section id="focus" class="s-dark" style="background: linear-gradient(150deg, #5b1d75 0%, #8e44ad 45%, #9b59b6 100%);">
+  <div class="inner">
+    <div style="max-width:560px;margin-bottom:48px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.45);">08 — next week focus</p>
+      <h2 style="margin-top:16px;font-size:clamp(2.2rem,5vw,3.5rem);font-weight:700;line-height:1.02;">What the kitchen takes into next week.</h2>
+    </div>
+    <div>
+      <div class="focus-item">
+        <p class="focus-num">01</p>
+        <div class="focus-body">
+          <p class="focus-action">Keep Mac N Cheese Bites hot and fresh</p>
+          <p class="focus-desc">32 sold this week — the highest volume item on Uber. One customer flagged cold/melted in their item rating. Check serving temperature and packaging before every dispatch.</p>
+        </div>
+      </div>
+      <div class="focus-item">
+        <p class="focus-num">02</p>
+        <div class="focus-body">
+          <p class="focus-action">Reduce Uber courier wait and order duration</p>
+          <p class="focus-desc">Average courier wait was 7.93 mins with 3.04 mins avoidable. Total order duration averaged 47.86 mins. Uber low ratings mentioned slow delivery directly. Tightening dispatch timing will protect the rating.</p>
+        </div>
+      </div>
+      <div class="focus-item">
+        <p class="focus-num">03</p>
+        <div class="focus-body">
+          <p class="focus-action">Stock up for Wed, Fri, Sat peaks</p>
+          <p class="focus-desc">Wednesday was the peak sales day at £210. Friday and Saturday ran 7 orders each — the busiest kitchen days of the week. Run higher stock on Mac N Cheese Bites, Loaded Fries, and bundle components on these three days.</p>
+        </div>
+      </div>
+      <div class="focus-item">
+        <p class="focus-num">04</p>
+        <div class="focus-body">
+          <p class="focus-action">Keep Banging Buffalo Loaded Fries consistent</p>
+          <p class="focus-desc">24 sold across both platforms — the cross-platform hit. One 1-star item rating, though tagged "good portion" — the issue is likely delivery temperature, not the item. Watch packaging and timing.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <span style="font-size:18px;">✨</span>
+    <p class="footer-txt">Hungry Tum weekly partner report · Wing Shack Co Chatham · 22–28 Jun 2026</p>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', function() {
+    var scrolled = window.scrollY;
+    var total = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = total > 0 ? (scrolled / total) * 100 : 0;
+    document.getElementById('progressBar').style.width = pct + '%';
+  });
+</script>
+</body>
+</html>
