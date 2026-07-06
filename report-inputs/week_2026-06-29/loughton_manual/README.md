@@ -1,4 +1,4 @@
-# Loughton — Manual data — Week commencing 06/07/2026
+# Loughton — Manual data — Week commencing 29/06/2026
 
 ## What to collect
 
@@ -14,7 +14,7 @@ Notable low-star and high-star reviews for the week.
 
 ### Any admin observations
 
-## Data collected for week commencing 06/07/2026
+## Data collected for week commencing 29/06/2026
 (fill in after checking platforms)
 - Deliveroo overall rating: ___★ (___ reviews)
 - Rating breakdown: 5★=__%, 4★=__%, 3★=__%, 2★=__%, 1★=__%

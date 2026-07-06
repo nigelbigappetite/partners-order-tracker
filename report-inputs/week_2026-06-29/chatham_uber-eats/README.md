@@ -1,4 +1,4 @@
-# Chatham — Uber Eats files — Week commencing 06/07/2026
+# Chatham — Uber Eats files — Week commencing 29/06/2026
 
 Drop the following Uber Eats export files here. All come from Uber Restaurant Manager.
 
@@ -20,7 +20,7 @@ Drop the following Uber Eats export files here. All come from Uber Restaurant Ma
 - Chatham may not have a leaderboard export this week (low volume) — if missing, §04 will show Deliveroo items only
 - Chatham has no Just Eat — no JE folder needed
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] great_britain.csv
 - [ ] order_history_local_v2.csv
 - [ ] ads-campaigns-list.csv

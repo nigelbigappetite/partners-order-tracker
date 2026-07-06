@@ -1,4 +1,4 @@
-# Maidstone — Just Eat files — Week commencing 06/07/2026
+# Maidstone — Just Eat files — Week commencing 29/06/2026
 
 ## Files needed
 
@@ -11,6 +11,6 @@
 - Maidstone JE data is NOT auto-pulled — upload files manually
 - JE PDF/HTML invoice: parser extracts gross sales and order count
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] CampaignHistory ads CSV
 - [ ] JE invoice PDF or HTML

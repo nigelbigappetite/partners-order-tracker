@@ -1,4 +1,4 @@
-# Weekly Report Data Map - week commencing 06/07/2026
+# Weekly Report Data Map - week commencing 29/06/2026
 
 ## Section → data point → source
 
@@ -57,14 +57,14 @@
 
 ---
 
-## File checklist per site — week commencing 06/07/2026
+## File checklist per site — week commencing 29/06/2026
 
 ### CHATHAM
 | File | Status | Notes |
 |---|---|---|
 | `great_britain.csv` | available | in uber reports folder |
 | `order_history_local_v2.csv` | available | in uber reports folder |
-| `chatham ads-campaigns-list.csv` | available | named "chatham 2026-07-06 ads-campaigns-list.csv" |
+| `chatham ads-campaigns-list.csv` | available | named "chatham 2026-06-29 ads-campaigns-list.csv" |
 | `restaurant_rating_local.csv` | available | in uber reports folder |
 | `restaurant_rating_sku.csv` | available | in uber reports folder |
 | `sales-leaderboard.csv` | **MISSING** | only Loughton + Maidstone in folder |
@@ -72,7 +72,7 @@
 | `rs-orders-report.csv` | **MISSING** | export from Deliveroo Hub (needed for §02) |
 | `rs-items_sold-report.csv` | available | |
 | `rs-adverts-report.csv` | available | |
-| Speed CSVs (4 files) | available | inside `rs-speed-report_06/07/2026_06 Jul 2026 - 12 Jul 2026/` folder |
+| Speed CSVs (4 files) | available | inside `rs-speed-report_29/06/2026_29 Jun 2026 - 05 Jul 2026/` folder |
 | Deliveroo manual rating | provided | 4.4★, 50+ reviews, breakdown known |
 
 ### LOUGHTON

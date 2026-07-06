@@ -1,4 +1,4 @@
-# Maidstone — Manual data — Week commencing 06/07/2026
+# Maidstone — Manual data — Week commencing 29/06/2026
 
 ## What to collect
 
@@ -12,7 +12,7 @@ Notable reviews for the week.
 
 ### Any admin observations
 
-## Data collected for week commencing 06/07/2026
+## Data collected for week commencing 29/06/2026
 (fill in after checking platforms)
 - Deliveroo overall rating: ___★
 - Uber rating theme: ___

@@ -1,4 +1,4 @@
-# Chatham — Manual data — Week commencing 06/07/2026
+# Chatham — Manual data — Week commencing 29/06/2026
 
 Data that cannot be exported as CSV and must be entered by hand in the report generator.
 
@@ -34,7 +34,7 @@ Anything notable this week that the data doesn't capture:
 ## Where to enter this
 In the report generator (admin/weekly-reports/new), Step 4 "Reviews & admin notes" — paste all of the above into the text box. The AI will use it to write the reviews section.
 
-## Data collected for week commencing 06/07/2026
+## Data collected for week commencing 29/06/2026
 - Deliveroo overall rating: 4.4★ (50+ reviews total)
 - Rating breakdown: 5★=73%, 4★=11%, 3★=5%, 2★=3%, 1★=9%
 - Uber rating theme: too slow

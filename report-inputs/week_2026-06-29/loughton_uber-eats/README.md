@@ -1,4 +1,4 @@
-# Loughton — Uber Eats files — Week commencing 06/07/2026
+# Loughton — Uber Eats files — Week commencing 29/06/2026
 
 ## Files needed
 
@@ -17,7 +17,7 @@
 - The multi-site files (great_britain, order_history, ratings) filter to Loughton using "Wing Shack Co" (no location suffix in Uber's system)
 - Loughton is the only Chatham/Loughton/Maidstone site on Just Eat — JE data goes in the just-eat folder
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] great_britain.csv
 - [ ] order_history_local_v2.csv
 - [ ] ads-campaigns-list.csv

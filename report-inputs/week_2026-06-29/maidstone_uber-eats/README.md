@@ -1,4 +1,4 @@
-# Maidstone — Uber Eats files — Week commencing 06/07/2026
+# Maidstone — Uber Eats files — Week commencing 29/06/2026
 
 ## Files needed
 
@@ -17,7 +17,7 @@
 - Multi-site files filter to Maidstone using "Wing Shack Co (Maidstone)"
 - Maidstone has Just Eat — drop JE files in the maidstone_just-eat folder
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] great_britain.csv
 - [ ] order_history_local_v2.csv
 - [ ] ads-campaigns-list.csv

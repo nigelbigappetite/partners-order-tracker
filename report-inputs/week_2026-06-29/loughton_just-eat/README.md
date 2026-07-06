@@ -1,4 +1,4 @@
-# Loughton — Just Eat files — Week commencing 06/07/2026
+# Loughton — Just Eat files — Week commencing 29/06/2026
 
 Loughton is the only Wing Shack site on Just Eat. JE data is auto-pulled from the invoicing system at generate time — you may not need to upload anything.
 
@@ -17,6 +17,6 @@ If the auto-pull doesn't work, drop the JE ads CSV here:
 - JE ads come from the CampaignHistory CSV (upload if available)
 - JE section only appears in the Loughton report, not Chatham or Maidstone
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [x] Auto-pull: active (invoicing system)
 - [ ] CampaignHistory ads CSV (optional upload)

@@ -1,4 +1,4 @@
-# Maidstone — Deliveroo files — Week commencing 06/07/2026
+# Maidstone — Deliveroo files — Week commencing 29/06/2026
 
 ## Files needed
 
@@ -10,7 +10,7 @@
 | Speed CSVs from inside speed report folder | §05 Speed |
 | `maidstone rs-customers-report_....csv` | (future) |
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] rs-orders-report
 - [ ] rs-items_sold-report
 - [ ] rs-adverts-report

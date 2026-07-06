@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       week_start:
-        description: 'Monday week start in UK format DD/MM/YYYY, e.g. 06/07/2026. Leave blank for current Monday.'
+        description: 'Monday week start in UK format DD/MM/YYYY, e.g. 29/06/2026. Leave blank for previous Monday.'
         required: false
         type: string
 
@@ -41,7 +41,7 @@ jobs:
               ISO="$INPUT"
             fi
           else
-            ISO="$(node -e "const d=new Date(); const u=new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const day=u.getUTCDay(); const diff=day===0?-6:1-day; u.setUTCDate(u.getUTCDate()+diff); console.log(u.toISOString().slice(0,10));")"
+            ISO="$(node -e "const d=new Date(); const u=new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const day=u.getUTCDay(); const diff=day===0?-6:1-day; u.setUTCDate(u.getUTCDate()+diff-7); console.log(u.toISOString().slice(0,10));")"
           fi
 
           UK="$(date -u -d "$ISO" +%d/%m/%Y)"

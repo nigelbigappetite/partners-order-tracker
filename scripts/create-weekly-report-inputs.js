@@ -34,6 +34,12 @@ function mondayFor(date) {
   return d
 }
 
+function previousReportingMonday(date) {
+  const monday = mondayFor(date)
+  monday.setUTCDate(monday.getUTCDate() - 7)
+  return monday
+}
+
 function parseDateArg(arg) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
     return new Date(`${arg}T12:00:00Z`)
@@ -48,7 +54,7 @@ function parseDateArg(arg) {
 
 function parseWeekStart() {
   const arg = process.argv[2]
-  if (!arg) return toISODate(mondayFor(new Date()))
+  if (!arg) return toISODate(previousReportingMonday(new Date()))
   const d = parseDateArg(arg)
   if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${arg}`)
   if (d.getUTCDay() !== 1) throw new Error(`${arg} is not a Monday`)

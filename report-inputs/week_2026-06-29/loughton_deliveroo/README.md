@@ -1,4 +1,4 @@
-# Loughton — Deliveroo files — Week commencing 06/07/2026
+# Loughton — Deliveroo files — Week commencing 29/06/2026
 
 ## Files needed
 
@@ -17,7 +17,7 @@ Extract from the `rs-speed-report_DATE_DATE/` folder — copy the 4 individual C
 - rs-speed-report-average-total
 - rs-speed-report-busy-mode
 
-## Status for week commencing 06/07/2026
+## Status for week commencing 29/06/2026
 - [ ] rs-orders-report
 - [ ] rs-items_sold-report
 - [ ] rs-adverts-report
