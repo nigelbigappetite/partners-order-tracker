@@ -182,9 +182,9 @@ export default function KitchenSalesDashboard() {
           aVal = (a.platform || '').toLowerCase()
           bVal = (b.platform || '').toLowerCase()
           break
-        case 'Gross Sales':
-          aVal = a.grossSales
-          bVal = b.grossSales
+        case 'Sales':
+          aVal = a.revenue
+          bVal = b.revenue
           break
         case 'Orders':
           aVal = a.count
@@ -213,9 +213,9 @@ export default function KitchenSalesDashboard() {
     }
   }
 
-  const totalGrossSales = filteredSales.reduce((sum, s) => sum + s.grossSales, 0)
+  const totalSales = filteredSales.reduce((sum, s) => sum + s.revenue, 0)
   const totalOrders = filteredSales.reduce((sum, s) => sum + s.count, 0)
-  const averageOrderValue = totalOrders > 0 ? totalGrossSales / totalOrders : 0
+  const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0
 
   const earliestFilteredSalesDate = filteredSales.reduce<Date | null>((earliest, sale) => {
     if (!sale.date) return earliest
@@ -231,14 +231,13 @@ export default function KitchenSalesDashboard() {
   const selectedPeriodLabel = getSalesPeriodLabel(periodStartDate, dateRange.end)
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Platform', 'Orders', 'Gross Sales', 'Commission', 'Net Payout']
+    const headers = ['Date', 'Platform', 'Orders', 'Sales', 'Raw Gross Sales']
     const rows = filteredSales.map((sale) => [
       sale.date,
       getPlatformLabel(sale.platform || ''),
       sale.count,
-      sale.grossSales,
-      (sale.grossSales - sale.revenue).toFixed(2),
       sale.revenue,
+      sale.grossSales,
     ])
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
@@ -324,7 +323,7 @@ export default function KitchenSalesDashboard() {
         {/* KPI Cards */}
         <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-3 gap-2.5 xs:gap-3 sm:gap-4">
           <KPICard
-            metric={{ label: 'Gross Sales', value: formatCurrency(totalGrossSales), subtitle: selectedPeriodLabel }}
+            metric={{ label: 'Sales', value: formatCurrency(totalSales), subtitle: selectedPeriodLabel }}
           />
           <KPICard
             metric={{ label: 'Total Orders', value: totalOrders.toLocaleString(), subtitle: selectedPeriodLabel }}
@@ -367,13 +366,13 @@ export default function KitchenSalesDashboard() {
                           <p className="font-semibold text-gray-900">{sale.count}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">Gross Sales</p>
-                          <p className="font-medium text-gray-900">{formatCurrency(sale.grossSales)}</p>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">Sales</p>
+                          <p className="font-medium text-gray-900">{formatCurrency(sale.revenue)}</p>
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-wide text-gray-500">AOV</p>
                           <p className="font-medium text-gray-600">
-                            {sale.count > 0 ? formatCurrency(sale.grossSales / sale.count) : '-'}
+                            {sale.count > 0 ? formatCurrency(sale.revenue / sale.count) : '-'}
                           </p>
                         </div>
                       </div>
@@ -385,7 +384,7 @@ export default function KitchenSalesDashboard() {
             {/* Desktop table */}
             <div className="hidden md:block">
               <Table
-                headers={['Date', 'Platform', 'Orders', 'Gross Sales', 'Avg Order Value']}
+                headers={['Date', 'Platform', 'Orders', 'Sales', 'Avg Order Value']}
                 maxHeight="520px"
                 stickyHeader={true}
                 sortable={true}
@@ -418,10 +417,10 @@ export default function KitchenSalesDashboard() {
                         {sale.count}
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
-                        {formatCurrency(sale.grossSales)}
+                        {formatCurrency(sale.revenue)}
                       </td>
                       <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-600">
-                        {sale.count > 0 ? formatCurrency(sale.grossSales / sale.count) : '-'}
+                        {sale.count > 0 ? formatCurrency(sale.revenue / sale.count) : '-'}
                       </td>
                     </tr>
                   ))

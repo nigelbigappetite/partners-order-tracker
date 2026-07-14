@@ -14,7 +14,7 @@ interface UberCSVUploadProps {
 interface UberCSVStats {
   rowCount: number
   orderCount: number
-  totalPayout: number
+  invoiceableRevenue: number
   totalGross: number
   earliestDate: string
   latestDate: string
@@ -66,6 +66,18 @@ function formatDateYMD(d: string): string {
   return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : d
 }
 
+function parseMoney(value: string | undefined): number {
+  if (!value) return 0
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+
+  const isParenthesizedNegative = trimmed.startsWith('(') && trimmed.endsWith(')')
+  const parsed = parseFloat(trimmed.replace(/[^0-9.-]/g, ''))
+  if (!Number.isFinite(parsed)) return 0
+
+  return isParenthesizedNegative ? -Math.abs(parsed) : parsed
+}
+
 interface AggRow {
   date: string
   location: string
@@ -90,10 +102,11 @@ function parseUberCSVStats(csvText: string): UberCSVStats | null {
   const shopNameIdx = headers.indexOf('shop name')
   const orderDateIdx = headers.indexOf('order date')
   const salesInclVATIdx = headers.indexOf('sales (incl. vat)')
-  const totalPayoutIdx = headers.indexOf('total payout')
+  const offersOnItemsIdx = headers.indexOf('offers on items (incl. vat)')
+  const offerRedemptionFeeIdx = headers.indexOf('offer redemption fee (incl. vat)')
   const orderStatusIdx = headers.indexOf('order status')
 
-  if (orderIdIdx === -1 || shopNameIdx === -1 || orderDateIdx === -1 || totalPayoutIdx === -1) {
+  if (orderIdIdx === -1 || shopNameIdx === -1 || orderDateIdx === -1 || salesInclVATIdx === -1) {
     return null
   }
 
@@ -109,11 +122,15 @@ function parseUberCSVStats(csvText: string): UberCSVStats | null {
     const date = parseDDMMYYYY(rawDate)
     if (!date || !shopName) continue
 
-    const totalPayout = parseFloat(values[totalPayoutIdx]?.trim() || '0') || 0
-    const salesInclVAT =
-      salesInclVATIdx >= 0 ? parseFloat(values[salesInclVATIdx]?.trim() || '0') || 0 : 0
+    const salesInclVAT = parseMoney(values[salesInclVATIdx])
+    const offersOnItems = offersOnItemsIdx >= 0 ? Math.abs(parseMoney(values[offersOnItemsIdx])) : 0
+    const offerRedemptionFee =
+      offerRedemptionFeeIdx >= 0 ? Math.abs(parseMoney(values[offerRedemptionFeeIdx])) : 0
     const orderStatus = orderStatusIdx >= 0 ? values[orderStatusIdx]?.trim() || '' : ''
     const isCompleted = orderStatus === 'Completed'
+    const customerSpendAfterOffers = isCompleted
+      ? Math.max(0, salesInclVAT - offersOnItems - offerRedemptionFee)
+      : 0
 
     const key = `${date}::${shopName}`
     const existing = aggregated.get(key)
@@ -121,13 +138,13 @@ function parseUberCSVStats(csvText: string): UberCSVStats | null {
       aggregated.set(key, {
         date,
         location: shopName,
-        revenue: totalPayout,
+        revenue: customerSpendAfterOffers,
         grossSales: isCompleted ? salesInclVAT : 0,
         count: isCompleted ? 1 : 0,
       })
     } else {
-      existing.revenue += totalPayout
       if (isCompleted) {
+        existing.revenue += customerSpendAfterOffers
         existing.grossSales += salesInclVAT
         existing.count += 1
       }
@@ -143,7 +160,7 @@ function parseUberCSVStats(csvText: string): UberCSVStats | null {
   return {
     rowCount: rows.length,
     orderCount: rows.reduce((s, r) => s + r.count, 0),
-    totalPayout: rows.reduce((s, r) => s + r.revenue, 0),
+    invoiceableRevenue: rows.reduce((s, r) => s + r.revenue, 0),
     totalGross: rows.reduce((s, r) => s + r.grossSales, 0),
     earliestDate: dates[0],
     latestDate: dates[dates.length - 1],
@@ -368,11 +385,11 @@ export default function UberCSVUpload({ brandSlug, brandName, onImportComplete }
                     <span className="font-medium text-gray-900">{displayBrand}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">New rows imported</span>
+                    <span className="text-gray-600">Daily rows imported/updated</span>
                     <span className="font-semibold text-green-700">{importResult.imported}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Duplicates skipped</span>
+                    <span className="text-gray-600">Rows skipped</span>
                     <span
                       className={`font-semibold ${importResult.skipped > 0 ? 'text-amber-600' : 'text-gray-400'}`}
                     >
@@ -412,8 +429,8 @@ export default function UberCSVUpload({ brandSlug, brandName, onImportComplete }
                     <span className="font-medium text-gray-900">{csvStats.orderCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total payout (revenue)</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(csvStats.totalPayout)}</span>
+                    <span className="text-gray-600">Revenue after offers</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(csvStats.invoiceableRevenue)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Gross sales</span>

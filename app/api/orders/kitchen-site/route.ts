@@ -27,6 +27,7 @@ async function fetchFromOrdering(path: string) {
   if (!url || !key) throw new Error('HT_ORDERING_SUPABASE_URL / HT_ORDERING_SERVICE_KEY not set')
 
   const res = await fetch(`${url}/rest/v1/${path}`, {
+    cache: 'no-store',
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,

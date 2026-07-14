@@ -211,7 +211,8 @@ export async function deleteKitchenSales(ids: string[]): Promise<void> {
 
 export async function insertKitchenSales(
   brandSlug: string,
-  rows: Array<{ date: string; location: string; revenue: number; grossSales: number; count: number; platform?: string }>
+  rows: Array<{ date: string; location: string; revenue: number; grossSales: number; count: number; platform?: string }>,
+  options: { onDuplicate?: 'ignore' | 'merge' } = {}
 ): Promise<{ imported: number; skipped: number }> {
   const records = rows.map((r) => {
     const record: Record<string, unknown> = {
@@ -228,6 +229,7 @@ export async function insertKitchenSales(
   })
 
   const onConflict = encodeURIComponent('brand_slug,date,location,platform')
+  const duplicateResolution = options.onDuplicate === 'merge' ? 'merge-duplicates' : 'ignore-duplicates'
   const res = await fetch(`${SUPABASE_URL}/rest/v1/kitchen_sales?on_conflict=${onConflict}`, {
     method: 'POST',
     headers: {
@@ -235,7 +237,7 @@ export async function insertKitchenSales(
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
       'Content-Profile': 'sales',
-      Prefer: 'resolution=ignore-duplicates,return=representation',
+      Prefer: `resolution=${duplicateResolution},return=representation`,
     },
     body: JSON.stringify(records),
     cache: 'no-store',
@@ -247,5 +249,8 @@ export async function insertKitchenSales(
   }
 
   const inserted: unknown[] = await res.json()
-  return { imported: inserted.length, skipped: records.length - inserted.length }
+  return {
+    imported: inserted.length,
+    skipped: options.onDuplicate === 'merge' ? 0 : records.length - inserted.length,
+  }
 }

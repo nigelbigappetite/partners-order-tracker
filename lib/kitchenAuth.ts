@@ -1,12 +1,15 @@
 import { cookies } from 'next/headers'
+import { getKitchenSiteBySlug } from './kitchen-sites-db'
 
 const ADMIN_COOKIE = 'kitchen-auth-admin'
 const KITCHEN_COOKIE_PREFIX = 'kitchen-auth-'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
 function getKitchenPasswordFromEnv(slug: string): string | null {
-  const key = `KITCHEN_PASSWORD_${slug.toUpperCase().replace(/-/g, '_')}`
-  return process.env[key] || null
+  const envSlug = slug.toUpperCase().replace(/-/g, '_')
+  const kitchenKey = `KITCHEN_PASSWORD_${envSlug}`
+  const brandKey = `BRAND_PASSWORD_${envSlug}`
+  return process.env[kitchenKey] || process.env[brandKey] || null
 }
 
 function getAdminPassword(): string | null {
@@ -16,16 +19,25 @@ function getAdminPassword(): string | null {
 /**
  * Verify a password for a given kitchen slug.
  * Admin password works for any kitchen.
- * Kitchen-specific password only works for that kitchen.
- * Returns 'admin' | 'kitchen' | null
+ * Checks DB first (kitchen_sites table), then falls back to env vars.
  */
-export function verifyKitchenPassword(
+export async function verifyKitchenPassword(
   slug: string,
   password: string
-): 'admin' | 'kitchen' | null {
+): Promise<'admin' | 'kitchen' | null> {
   const adminPassword = getAdminPassword()
   if (adminPassword && password === adminPassword) return 'admin'
 
+  // Check DB first
+  try {
+    const site = await getKitchenSiteBySlug(slug)
+    if (site?.password && password === site.password) return 'kitchen'
+    // If site exists in DB but password doesn't match, still fall through to env var
+  } catch {
+    // DB unavailable — fall through to env var check
+  }
+
+  // Fall back to env var
   const kitchenPassword = getKitchenPasswordFromEnv(slug)
   if (kitchenPassword && password === kitchenPassword) return 'kitchen'
 
@@ -46,7 +58,6 @@ export async function getKitchenSession(slug: string): Promise<boolean> {
 
 /**
  * Set the session cookie for a kitchen login.
- * Uses cookies() from next/headers so the cookie is written to the response headers.
  */
 export async function setKitchenSession(
   slug: string,

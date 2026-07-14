@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getKitchenSales } from '@/lib/sheets'
 import { getKitchenSalesFromSupabase } from '@/lib/sales-supabase'
 import { getCanonicalBrandSlug, getBrandDefinition } from '@/lib/brands'
-import { getSalesChannel } from '@/lib/sales-channels'
 
 export const dynamic = 'force-dynamic'
-
-function isSupabaseSalesConfigured(): boolean {
-  return Boolean(process.env.HT_PARTNERS_SUPABASE_URL && process.env.HT_PARTNERS_SERVICE_ROLE_KEY)
-}
 
 async function getSalesData(
   brandSlug: string | null,
@@ -16,23 +10,7 @@ async function getSalesData(
   endDate?: string,
   locationFilter?: string
 ) {
-  if (isSupabaseSalesConfigured()) {
-    return getKitchenSalesFromSupabase(brandSlug, startDate, endDate, locationFilter)
-  }
-
-  console.warn('[Sales API] Supabase sales env missing, falling back to Google Sheets sales loader')
-
-  const legacySales = (await getKitchenSales(startDate, endDate)).map((sale) => ({
-    ...sale,
-    salesChannel:
-      sale.salesChannel ??
-      getSalesChannel(getCanonicalBrandSlug(sale.brandSlug || sale.brandName), sale.location),
-  }))
-  if (!brandSlug) {
-    return legacySales
-  }
-
-  return legacySales.filter((sale) => getCanonicalBrandSlug(sale.brandSlug || sale.brandName) === brandSlug)
+  return getKitchenSalesFromSupabase(brandSlug, startDate, endDate, locationFilter)
 }
 
 export async function GET(request: Request) {

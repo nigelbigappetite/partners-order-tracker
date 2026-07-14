@@ -15,6 +15,13 @@ export interface BrandDefinition {
   deliverooLocationKey?: string
   /** Canonical location name used to normalise all sales rows for this kitchen site */
   kitchenLocation?: string
+  /** Exact restaurant name as it appears in Uber Eats CSV exports (Restaurant column).
+   * Use this when the Uber name differs from kitchenLocation / displayName.
+   * e.g. Loughton appears as "Wing Shack Co" (no location suffix) in Uber CSVs. */
+  uberRestaurantName?: string
+  /** UUID of this location in the brain Supabase (raw_events.location_id).
+   * Used to fetch per-order Uber Eats payout data. */
+  brainLocationId?: string
 }
 
 const BRAND_DEFINITIONS: BrandDefinition[] = [
@@ -43,10 +50,32 @@ const BRAND_DEFINITIONS: BrandDefinition[] = [
     aliases: ['wing shack chatham', 'wingshack chatham', 'ws chatham'],
     dataBrandSlug: 'wing-shack-co',
     locationFilter: 'Chatham',
-    dataStartDate: '2026-06-09',
+    dataStartDate: '2026-06-15',
     orderingSiteId: '5f5b748c-ee24-47aa-9e52-7f40770c0c9a',
     deliverooLocationKey: 'chatham',
     kitchenLocation: 'Wing Shack Co- Chatham',
+    brainLocationId: '33333333-3333-3333-3333-333333333333',
+  },
+  {
+    canonicalSlug: 'wing-shack-loughton',
+    displayName: 'Wing Shack Loughton',
+    logoPath: '/transparent Wing Shack logo 1080x1080.png',
+    aliases: ['wing shack loughton', 'wingshack loughton', 'ws loughton'],
+    dataBrandSlug: 'wing-shack-co',
+    locationFilter: 'Loughton',
+    deliverooLocationKey: 'loughton',
+    kitchenLocation: 'Wing Shack Co- Loughton',
+    uberRestaurantName: 'Wing Shack Co',
+  },
+  {
+    canonicalSlug: 'wing-shack-maidstone',
+    displayName: 'Wing Shack Maidstone',
+    logoPath: '/transparent Wing Shack logo 1080x1080.png',
+    aliases: ['wing shack maidstone', 'wingshack maidstone', 'ws maidstone'],
+    dataBrandSlug: 'wing-shack-co',
+    locationFilter: 'Maidstone',
+    deliverooLocationKey: 'maidstone',
+    kitchenLocation: 'Wing Shack Co- Maidstone',
   },
   {
     canonicalSlug: 'admin',

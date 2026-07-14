@@ -101,6 +101,7 @@ export async function getKitchenOrders(
   if (locationFilter) url += `&location=ilike.*${locationFilter}*`
 
   const res = await fetch(url, {
+    cache: 'no-store',
     headers: {
       apikey: PARTNERS_KEY,
       Authorization: `Bearer ${PARTNERS_KEY}`,

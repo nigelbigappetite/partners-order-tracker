@@ -4,15 +4,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Package, Store, MapPin, ShoppingCart, FileText, RefreshCw, Menu, X, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, RefreshCw, Menu, X, TrendingUp, Building2 } from 'lucide-react'
 
 const navItems = [
   { href: '/brands/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/create-order', label: 'Create Order', icon: ShoppingCart },
-  { href: '/products', label: 'Products', icon: Package },
-  { href: '/suppliers', label: 'Suppliers', icon: Store },
-  { href: '/locations', label: 'Supply Orders', icon: MapPin },
   { href: '/admin/sales', label: 'Sales', icon: TrendingUp },
+  { href: '/admin/sites', label: 'Sites', icon: Building2 },
 ]
 
 export default function Navigation() {
@@ -49,6 +46,7 @@ export default function Navigation() {
                 const Icon = item.icon
                 const isActive = pathname === item.href ||
                   (item.href === '/brands/admin/dashboard' && (pathname === '/' || pathname === '/brands/admin/dashboard')) ||
+                  (item.href !== '/brands/admin/dashboard' && item.href !== '/admin/sales' && pathname.startsWith(item.href)) ||
                   (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link
@@ -94,6 +92,7 @@ export default function Navigation() {
                 const Icon = item.icon
                 const isActive = pathname === item.href ||
                   (item.href === '/brands/admin/dashboard' && (pathname === '/' || pathname === '/brands/admin/dashboard')) ||
+                  (item.href !== '/brands/admin/dashboard' && item.href !== '/admin/sales' && pathname.startsWith(item.href)) ||
                   (item.href === '/admin/sales' && pathname.startsWith('/admin/sales'))
                 return (
                   <Link

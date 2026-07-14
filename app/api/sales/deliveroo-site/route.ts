@@ -38,6 +38,7 @@ export async function GET(request: Request) {
     const res = await fetch(
       `${BRAIN_URL}/rest/v1/raw_events?source=eq.deliveroo&source_id=like.deliveroo-${locationKey}-*&select=payload&limit=1000&order=ts.desc`,
       {
+        cache: 'no-store',
         headers: {
           apikey: BRAIN_KEY,
           Authorization: `Bearer ${BRAIN_KEY}`,

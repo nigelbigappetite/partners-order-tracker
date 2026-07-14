@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Multi-brand Supplier Ordering & Franchise Operations Dashboard for the Hungry Tum restaurant group. Originally Google Sheets-only backend; **sales data has now migrated to Supabase** (`hungry-tum-partners` project). Orders, payments, and reference data still use Google Sheets via `lib/sheets.ts`.
+Multi-brand Supplier Ordering & Franchise Operations Dashboard for the Hungry Tum restaurant group. **Google Sheets backend (`lib/sheets.ts`) has been removed.** The app now focuses on kitchen sites, sales data (Supabase), and weekly partner reports. Orders, payments, franchises, and SKU routes have been deleted as part of this slimdown.
 
 ## Commands
 
@@ -19,20 +19,40 @@ No test suite configured. Dev server runs on port 3000 locally (falls back to 30
 
 ## Architecture
 
-### Google Sheets as Database (Orders, Payments, Reference Data)
+### Google Sheets (Removed)
 
-All orders/payment data lives in a single Google Spreadsheet with named sheets (`Orders_Header`, `Order_Lines`, `SKU_COGS`, `Franchise_Summary`, `Supplier_Summary`, `Brand_Auth`, `Payments`, `Supplier_Invoices`, `Order_Supplier_Allocations`, etc.).
+`lib/sheets.ts` has been deleted. All Google Sheets-backed routes (orders, payments, franchises, SKUs, suppliers, debug) have been removed. Google service account env vars are no longer used.
 
-`lib/sheets.ts` (~3000 lines) is the core engine. It:
-- Authenticates via a Google service account
-- Fetches rows and transforms them to objects using a **column mapping system** (`columnMapping`) — sheet column headers map to camelCase property names, with multiple acceptable aliases per property
-- All API routes use `export const dynamic = 'force-dynamic'` — no caching
+### Supabase — hungry-tum-partners
 
-**Debugging column issues**: `GET /api/debug/columns?sheet=SheetName` shows actual column names in any sheet. Use `GET /api/debug/sheets-analysis` for broader diagnostics.
+Project ID `rmpdffxjwfgwgstksnzp`. Contains schema `sales` (sales data) and the `public.kitchen_sites` table (kitchen site config).
 
-### Supabase — Sales Data
+**`lib/supabase-client.ts`** — exports `partnersSupabase` (a `@supabase/supabase-js` client for the partners project). Use this for table queries instead of raw fetch where convenient.
 
-Sales data lives in `hungry-tum-partners` Supabase project (`rmpdffxjwfgwgstksnzp`), schema `sales`. Two tables:
+**`kitchen_sites` table** (`public` schema):
+```sql
+kitchen_sites (
+  id uuid PRIMARY KEY,
+  slug text UNIQUE,
+  display_name text,
+  logo_path text,
+  data_brand_slug text,
+  location_filter text,
+  deliveroo_location_key text,
+  kitchen_location text,
+  ordering_site_id text,
+  data_start_date text,
+  password text,
+  franchisee_email text,
+  active boolean DEFAULT true,
+  created_at timestamptz
+)
+```
+`lib/kitchen-sites-db.ts` provides: `getKitchenSitesFromDb()`, `getKitchenSiteBySlug(slug)`, `createKitchenSite(data)`, `updateKitchenSite(slug, data)`, `deactivateKitchenSite(slug)`, and `siteRecordToBrandDef(site)` (converts a row to a `BrandDefinition`).
+
+Kitchen site auth passwords are now stored in this table (the `password` column) rather than Vercel env vars, though `KITCHEN_ADMIN_PASSWORD` still works for any kitchen.
+
+**Sales data** (`sales` schema). Two tables:
 
 ```sql
 sales.kitchen_sales (
@@ -104,8 +124,11 @@ The app is multi-brand and multi-tenant:
 | `deliverooLocationKey` | Key for brain Supabase Deliveroo webhook lookup |
 | `kitchenLocation` | Canonical location name — normalises all rows to one string |
 | `orderingSiteId` | Links to hungry-tum-ordering site for supply orders |
+| `uberRestaurantName` | Exact restaurant name in Uber Eats CSV exports — use when it differs from `kitchenLocation` (e.g. Loughton appears as "Wing Shack Co" with no location suffix) |
 
 **`isKitchenSite` flag** = `!!(brandDef?.deliverooLocationKey || brandDef?.orderingSiteId)` — drives entirely different UI on the brand sales page.
+
+**Admin sites management** (`app/admin/sites/`): UI to create, edit, deactivate kitchen sites stored in `kitchen_sites`. API routes at `/api/admin/sites` (GET list, POST create) and `/api/admin/sites/[slug]` (PATCH update, DELETE deactivate). Includes password visibility toggle, copy-link, and slugify-on-name-entry helpers.
 
 **Kitchen site auth** (`app/kitchens/`): separate login from brand auth. Uses `lib/kitchenAuth.ts` with its own cookies; login page at `/kitchens/login`.
 
@@ -118,10 +141,6 @@ app/
 ├── brand-select/                      # Entry point — pick a brand
 ├── brands/[brandSlug]/
 │   ├── dashboard/                     # KPI overview + sortable brands table (admin) / orders table (brand)
-│   ├── orders/                        # Order list
-│   ├── locations/                     # Franchise location performance
-│   ├── products/                      # SKU catalog
-│   ├── suppliers/                     # Supplier metrics
 │   └── sales/                         # Sales dashboard — branches on isKitchenSite
 ├── kitchens/
 │   ├── login/                         # Kitchen site login (separate auth from brand auth)
@@ -132,13 +151,12 @@ app/
 │       ├── orders/                    # Kitchen supply orders
 │       └── sales/                     # Kitchen sales dashboard (platform toggle, last 7 days default)
 ├── admin/
-│   ├── payments/                      # Payment reconciliation dashboard
+│   ├── sites/                         # Kitchen site CRUD (Supabase kitchen_sites table)
 │   └── sales/                         # Sales CSV import (Deliverect + Uber), manual entry, bulk delete
 └── api/
-    ├── orders/                        # Order CRUD (Google Sheets)
     ├── orders/kitchen-site/           # Supply orders for kitchen sites (hungry-tum-ordering)
-    ├── payments/                      # Payment tracking + recon
-    ├── supplier-invoices/             # Supplier invoice management
+    ├── admin/sites/                   # GET/POST kitchen sites
+    ├── admin/sites/[slug]/            # PATCH/DELETE individual kitchen site
     ├── sales/                         # GET daily sales from kitchen_sales
     ├── sales/import/                  # POST: Deliverect CSV → kitchen_sales
     ├── sales/import/uber/             # POST: Uber Eats CSV → kitchen_sales + kitchen_orders
@@ -146,9 +164,10 @@ app/
     ├── sales/deliveroo-site/          # GET Deliveroo daily aggregates from brain raw_events
     ├── sales/delete/                  # DELETE: bulk delete by id array
     ├── brands/[slug]/auth             # Brand password check
-    ├── skus/, franchises/, suppliers/ # Reference data
-    └── debug/                         # Column/data diagnostics
+    └── kitchens/auth                  # Kitchen site password check
 ```
+
+**Removed routes** (deleted with Google Sheets): `/api/orders/`, `/api/payments/`, `/api/supplier-invoices/`, `/api/skus/`, `/api/franchises/`, `/api/suppliers/`, `/api/debug/`, `/api/company-earnings/`.
 
 ### Sales Feature — Key Details
 
@@ -201,15 +220,6 @@ app/
 - **Brand view:** orders table scoped to that brand
 - Brand summary cards removed; "Brands" nav tab removed from Navigation.tsx
 
-### Payment Reconciliation (Core Feature)
-
-Three-level payment tracking:
-1. **Partner pays you** (sales invoice) — tracked on `Payments` sheet
-2. **You pay supplier** (supplier invoice) — tracked on `Supplier_Invoices` sheet
-3. **Supplier invoices linked to orders** — via `Order_Supplier_Allocations` sheet
-
-Status workflow: `OPEN → PAID_NOT_CLEARED → WAITING_SUPPLIERS → SETTLED`
-
 ### Component Patterns
 
 - Client components use `'use client'` directive
@@ -228,15 +238,92 @@ Status workflow: `OPEN → PAID_NOT_CLEARED → WAITING_SUPPLIERS → SETTLED`
   - `getPayWeek(weeksAgo)` helper computes Mon-based weeks; `weeksAgo=0` = Mon–today, `weeksAgo=1` = previous Mon–Sun
   - `allTimeStartDate` prop used only for display label, not to restrict selectable dates (only future dates are disabled)
 
+### Report Parser System (`lib/parsers/report/`)
+
+A comprehensive library of CSV/PDF parsers that read platform export files and produce typed data for weekly partner reports.
+
+**`types.ts`** — all interfaces. Key types:
+- `WeeklyReportData` — the full report data model (snapshot, dailyRhythm, platforms, items, speed, reviews, ads, cancellations, conversion)
+- `ParsedReportFiles` — holds all parsed platform results before merging
+- `ReportFileType` — union of all known file type identifiers
+
+**Parser modules** (each parses one specific CSV export type):
+
+| Module | Parses |
+|---|---|
+| `uber-financials.ts` | `great_britain.csv` — daily sales + orders |
+| `uber-leaderboard.ts` | `sales-leaderboard-items` — top items by sales |
+| `uber-order-history.ts` | Order history v2 — speed metrics, cancels, inaccurate orders |
+| `uber-sales-over-time.ts` | Sales over time — daily totals + WoW comparison |
+| `uber-ratings-overall.ts` | Overall ratings + individual Uber reviews |
+| `uber-ratings-sku.ts` | `restaurant_rating_sku` — per-item ratings |
+| `uber-ads.ts` | Uber ad performance (spend, revenue, ROAS) |
+| `uber-conversion.ts` | Shop views → menu views → add-to-cart → orders |
+| `deliveroo-orders.ts` | `rs-orders-report` — daily Deliveroo sales |
+| `deliveroo-items.ts` | `rs-items_sold-report` — top items |
+| `deliveroo-speed-prep.ts` | `rs-speed-report-prep-time.csv` |
+| `deliveroo-speed-rider.ts` | `rs-speed-report-rider-wait.csv` |
+| `deliveroo-speed-duration.ts` | `rs-speed-report-average-total.csv` |
+| `deliveroo-speed-busy.ts` | `rs-speed-report-busy-mode.csv` |
+| `deliveroo-ads.ts` | Deliveroo ad performance |
+| `deliveroo-customers.ts` | New / repeat / frequent customer counts |
+| `just-eat-ads.ts` | Just Eat ad performance |
+| `just-eat-pdf.ts` | Just Eat PDF statement (gross sales, payout, commission) |
+| `detect-file-type.ts` | Sniffs a file and returns its `ReportFileType` |
+| `merge-report-data.ts` | Merges all `ParsedReportFiles` into `WeeklyReportData` |
+| `csv-utils.ts` | Shared CSV parsing helpers |
+
+**`lib/parsers/generate-html.ts`** — takes `WeeklyReportData` and produces the self-contained HTML report.
+
+**`lib/report-template/`** — HTML/CSS template assets used by the generator.
+
+### Weekly Report System (Added Jul 2026)
+
+Two new pieces of infrastructure for producing and hosting per-kitchen weekly performance reports.
+
+**Hosted static reports** — `public/reports/[YYYY-MM-DD]/[kitchen]/index.html`
+- Self-contained HTML files served by Next.js at `/reports/[date]/[kitchen]/`
+- Kitchens with reports: `chatham`, `loughton` (Maidstone input folders exist but no report yet)
+- Reports cover: hero KPIs, daily rhythm by platform, channel mix, item winners, speed metrics, ratings
+
+**`report-inputs/` — weekly source data staging area**
+
+```
+report-inputs/
+├── _template/               # Master template — copied each week
+│   ├── DATA-MAP.md          # Maps every report section → CSV source file
+│   ├── chatham_deliveroo/   # Drop Deliveroo CSVs here
+│   ├── chatham_uber-eats/   # Drop Uber Eats CSVs here
+│   ├── chatham_manual/      # Manual override JSON/notes
+│   ├── loughton_deliveroo/
+│   ├── loughton_uber-eats/
+│   ├── loughton_just-eat/
+│   ├── loughton_manual/
+│   ├── maidstone_deliveroo/
+│   ├── maidstone_uber-eats/
+│   ├── maidstone_just-eat/
+│   └── maidstone_manual/
+└── week_YYYY-MM-DD/         # Auto-created each Monday (copy of _template)
+    └── DATA-MAP.md          # Same map with actual week dates substituted in
+```
+
+Each subfolder has a `README.md` documenting exactly which CSV export files belong there (filename patterns, how to download them from Uber/Deliveroo portals).
+
+**GitHub Actions automation** — `.github/workflows/create-weekly-report-inputs.yml`
+- Runs every Monday at 06:00 UK time (cron `0 6 * * 1`)
+- Calls `scripts/create-weekly-report-inputs.js [ISO-date]` which copies `_template` → `week_YYYY-MM-DD/` and substitutes `TEMPLATE_WEEK_START_UK` placeholders with the actual UK-format week start date
+- Commits the new folder directly to the repo via `github-actions[bot]`
+- Can be triggered manually via `workflow_dispatch` with optional `week_start` input (DD/MM/YYYY or YYYY-MM-DD)
+
+**`scripts/create-weekly-report-inputs.js`** — the copy/substitution script. Run locally with:
+```bash
+node scripts/create-weekly-report-inputs.js 2026-07-06
+```
+
 ## Environment Variables
 
 ```bash
-# Google Sheets (orders, payments, auth)
-GOOGLE_SHEETS_SPREADSHEET_ID=
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-# Supabase — hungry-tum-partners (kitchen_sales, kitchen_orders)
+# Supabase — hungry-tum-partners (kitchen_sales, kitchen_orders, kitchen_sites)
 HT_PARTNERS_SUPABASE_URL=
 HT_PARTNERS_SERVICE_ROLE_KEY=
 
@@ -244,11 +331,14 @@ HT_PARTNERS_SERVICE_ROLE_KEY=
 HT_BRAIN_SUPABASE_URL=
 HT_BRAIN_SERVICE_KEY=
 
-# Optional (supplier invoice file uploads)
-BLOB_READ_WRITE_TOKEN=   # Vercel Blob
+# Kitchen admin password (works for any kitchen site, overrides per-site password)
+KITCHEN_ADMIN_PASSWORD=
+
+# Optional
+NEXT_PUBLIC_APP_URL=   # Used by admin/sites to generate shareable kitchen URLs
 ```
 
-`GOOGLE_PRIVATE_KEY` must preserve `\n` newline characters.
+Google Sheets env vars (`GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`) are no longer used.
 
 ## Path Alias
 
@@ -257,3 +347,11 @@ BLOB_READ_WRITE_TOKEN=   # Vercel Blob
 ## Styling
 
 TailwindCSS with a custom brand palette (Hungry Tum orange: `#FF6B35` primary, `#F7931E` secondary). Config in `tailwind.config.js`. 8px spacing grid, Inter font, light mode only.
+
+## Weekly Report — Known Improvements (Future Work)
+
+### Week-on-week comparison
+As reports accumulate, the system should be able to pull prior-week data and surface real comparisons — e.g. "sales up 12% vs last week", "prep time improved from 34m to 28m". Until then, avoid subjective qualifiers like "sales are healthy" in report copy unless they are explicitly grounded in a data comparison (e.g. WoW %). The `generatePulseHeadline` function in `lib/report-template/generate-html.ts` already uses `snapshot.wowGrossPct` for this; the same principle should apply to any manually written report copy.
+
+### Report copy must not reference the data pipeline
+Phrases like "Daily Deliveroo split uses the orders export and is scaled to..." are internal notes, not operator-facing copy. Kitchen operators do not need to know how the data was assembled. All report copy should speak to the operator about their kitchen, not about the report-generation process.

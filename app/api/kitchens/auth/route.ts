@@ -12,13 +12,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const result = verifyKitchenPassword(kitchenSlug, password)
+    const result = await verifyKitchenPassword(kitchenSlug, password)
 
     if (!result) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
     }
 
-    // Use cookies() from next/headers — same pattern as brand auth
     await setKitchenSession(kitchenSlug, result)
 
     return NextResponse.json({ ok: true, kitchenSlug })

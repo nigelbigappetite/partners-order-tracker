@@ -28,6 +28,7 @@ async function getDeliverooOrders(
   const res = await fetch(
     `${BRAIN_URL}/rest/v1/raw_events?source=eq.deliveroo&source_id=like.deliveroo-${locationKey}-*&select=payload&limit=5000&order=ts.desc`,
     {
+      cache: 'no-store',
       headers: {
         apikey: BRAIN_KEY,
         Authorization: `Bearer ${BRAIN_KEY}`,

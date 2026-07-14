@@ -39,6 +39,18 @@ function parseDDMMYYYY(dateStr: string): string {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 }
 
+function parseMoney(value: string | undefined): number {
+  if (!value) return 0
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+
+  const isParenthesizedNegative = trimmed.startsWith('(') && trimmed.endsWith(')')
+  const parsed = parseFloat(trimmed.replace(/[^0-9.-]/g, ''))
+  if (!Number.isFinite(parsed)) return 0
+
+  return isParenthesizedNegative ? -Math.abs(parsed) : parsed
+}
+
 interface AggregatedRow {
   date: string
   location: string
@@ -76,12 +88,13 @@ function parseUberCSV(csvText: string): { aggregated: AggregatedRow[]; orders: R
   const shopNameIdx = headers.indexOf('shop name')
   const orderDateIdx = headers.indexOf('order date')
   const salesInclVATIdx = headers.indexOf('sales (incl. vat)')
-  const totalPayoutIdx = headers.indexOf('total payout')
+  const offersOnItemsIdx = headers.indexOf('offers on items (incl. vat)')
+  const offerRedemptionFeeIdx = headers.indexOf('offer redemption fee (incl. vat)')
   const orderStatusIdx = headers.indexOf('order status')
 
-  if (orderIdIdx === -1 || shopNameIdx === -1 || orderDateIdx === -1 || totalPayoutIdx === -1) {
+  if (orderIdIdx === -1 || shopNameIdx === -1 || orderDateIdx === -1 || salesInclVATIdx === -1) {
     throw new Error(
-      'CSV missing required Uber Eats columns: "Order ID", "Shop name", "Order date", "Total payout"'
+      'CSV missing required Uber Eats columns: "Order ID", "Shop name", "Order date", "Sales (incl. VAT)"'
     )
   }
 
@@ -100,11 +113,15 @@ function parseUberCSV(csvText: string): { aggregated: AggregatedRow[]; orders: R
     const date = parseDDMMYYYY(rawDate)
     if (!date || !shopName) continue
 
-    const totalPayout = parseFloat(values[totalPayoutIdx]?.trim() || '0') || 0
-    const salesInclVAT =
-      salesInclVATIdx >= 0 ? parseFloat(values[salesInclVATIdx]?.trim() || '0') || 0 : 0
+    const salesInclVAT = parseMoney(values[salesInclVATIdx])
+    const offersOnItems = offersOnItemsIdx >= 0 ? Math.abs(parseMoney(values[offersOnItemsIdx])) : 0
+    const offerRedemptionFee =
+      offerRedemptionFeeIdx >= 0 ? Math.abs(parseMoney(values[offerRedemptionFeeIdx])) : 0
     const orderStatus = orderStatusIdx >= 0 ? values[orderStatusIdx]?.trim() || '' : ''
     const isCompleted = orderStatus === 'Completed'
+    const customerSpendAfterOffers = isCompleted
+      ? Math.max(0, salesInclVAT - offersOnItems - offerRedemptionFee)
+      : 0
 
     // Raw per-order record
     orders.push({
@@ -124,13 +141,13 @@ function parseUberCSV(csvText: string): { aggregated: AggregatedRow[]; orders: R
         date,
         location: shopName,
         platform: 'uber_eats',
-        revenue: totalPayout,
+        revenue: customerSpendAfterOffers,
         grossSales: isCompleted ? salesInclVAT : 0,
         count: isCompleted ? 1 : 0,
       })
     } else {
-      existing.revenue += totalPayout
       if (isCompleted) {
+        existing.revenue += customerSpendAfterOffers
         existing.grossSales += salesInclVAT
         existing.count += 1
       }
@@ -160,7 +177,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No valid order rows found in CSV' }, { status: 400 })
     }
 
-    const salesResult = await insertKitchenSales(brandSlug, aggregated)
+    const salesResult = await insertKitchenSales(brandSlug, aggregated, { onDuplicate: 'merge' })
 
     // Best-effort: write raw orders — silent if kitchen_orders table doesn't exist yet
     let ordersResult = { imported: 0, skipped: 0 }
@@ -176,7 +193,7 @@ export async function POST(request: Request) {
       skipped: salesResult.skipped,
       ordersImported: ordersResult.imported,
       ordersSkipped: ordersResult.skipped,
-      message: `Successfully imported ${salesResult.imported} daily rows and ${ordersResult.imported} individual orders. ${salesResult.skipped} duplicates skipped.`,
+      message: `Successfully imported or updated ${salesResult.imported} daily rows and imported ${ordersResult.imported} individual orders.`,
     })
   } catch (error: any) {
     console.error('[Uber CSV Import API] Error:', error)

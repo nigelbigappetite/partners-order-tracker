@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
   const kitchenSlug = searchParams.get('kitchen') || ''
 
   const response = NextResponse.redirect(
-    new URL('/kitchens/login', request.url)
+    new URL('/kitchens/login', request.url),
+    { status: 303 }
   )
   response.cookies.delete(ADMIN_COOKIE)
   if (kitchenSlug) {

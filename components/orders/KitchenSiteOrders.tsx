@@ -51,8 +51,6 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
   }, [siteId])
 
   const totalSpend = useMemo(() => orders.reduce((s, o) => s + o.orderTotal, 0), [orders])
-  const paidOrders = useMemo(() => orders.filter((o) => o.status === 'paid' || o.status === 'completed'), [orders])
-  const pendingOrders = useMemo(() => orders.filter((o) => o.status === 'awaiting_payment'), [orders])
 
   if (loading) {
     return (
@@ -72,12 +70,10 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
   return (
     <div className="space-y-6">
       {/* KPI summary */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         {[
           { label: 'Total orders', value: orders.length.toString() },
           { label: 'Total spend', value: formatCurrency(totalSpend) },
-          { label: 'Paid / completed', value: paidOrders.length.toString() },
-          { label: 'Awaiting payment', value: pendingOrders.length.toString() },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
@@ -93,7 +89,7 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['Order date', 'Delivery date', 'Items', 'Total', 'Status', ''].map((h) => (
+                {['Order date', 'Items', 'Total', 'Status', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                     {h}
                   </th>
@@ -110,9 +106,6 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                       {formatDate(order.orderDate)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                      {formatDate(order.deliveryDate)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                       {order.itemCount}
@@ -133,7 +126,7 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
                   </tr>
                   {expandedId === order.id && order.items.length > 0 && (
                     <tr key={`${order.id}-items`}>
-                      <td colSpan={6} className="bg-gray-50 px-4 py-3">
+                      <td colSpan={5} className="bg-gray-50 px-4 py-3">
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr className="text-gray-500">
@@ -175,7 +168,7 @@ export default function KitchenSiteOrders({ brandSlug, siteId }: KitchenSiteOrde
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{formatDate(order.orderDate)}</p>
                     <p className="mt-0.5 text-xs text-gray-500">
-                      Delivery {formatDate(order.deliveryDate)} · {order.itemCount} items
+                      {order.itemCount} items
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

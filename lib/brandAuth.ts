@@ -39,9 +39,11 @@ export async function setBrandSession(slug: string): Promise<void> {
 }
 
 /**
- * Get authenticated brand slug from cookie
+ * Get authenticated brand slug from cookie.
+ * Admin is always authenticated — no password required.
  */
 export async function getBrandSession(slug: string): Promise<boolean> {
+  if (getCanonicalBrandSlug(slug) === 'admin') return true;
   const cookieStore = await cookies();
   const cookie = cookieStore.get(`${BRAND_AUTH_COOKIE_PREFIX}${slug}`);
   return cookie?.value === 'authenticated';
@@ -62,21 +64,11 @@ export async function verifyBrandPassword(
   slug: string,
   password: string
 ): Promise<boolean> {
-  // Check env var first (for brands defined in brands.ts without a Sheets entry)
   const envPassword = getBrandPasswordFromEnv(slug)
   if (envPassword !== null) {
     return envPassword === password
   }
-
-  try {
-    const { getBrandAuth } = await import('./sheets');
-    const brandAuth = await getBrandAuth(slug);
-    if (!brandAuth) return false;
-    return brandAuth.password === password;
-  } catch (error) {
-    console.error('Error verifying brand password:', error);
-    return false;
-  }
+  return false
 }
 
 /**
@@ -86,16 +78,8 @@ export async function getBrandNameFromSlug(slug: string): Promise<string | null>
   const canonicalSlug = getCanonicalBrandSlug(slug)
   if (canonicalSlug === 'admin') return 'Admin'
 
-  // If the brand is defined in brands.ts, use it directly (no Sheets call needed)
   const brandDef = getBrandDefinition(slug)
   if (brandDef) return brandDef.displayName
 
-  try {
-    const { getBrandAuth } = await import('./sheets');
-    const brandAuth = await getBrandAuth(slug);
-    return brandAuth?.brandName || getBrandDisplayName(slug) || null;
-  } catch (error) {
-    console.error('Error getting brand name from slug:', error);
-    return getBrandDisplayName(slug) || null;
-  }
+  return getBrandDisplayName(slug) || null
 }
