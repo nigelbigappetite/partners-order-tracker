@@ -98,32 +98,6 @@ function Metric({ label, value, helper }: { label: string; value: string; helper
   )
 }
 
-function getThirtyDayProjection(rows: KitchenSales[]) {
-  if (rows.length === 0) return { grossSales: 0, orders: 0, daysObserved: 0 }
-  const validDates = rows.map((r) => r.date).filter(Boolean).sort()
-  const endDate = new Date(`${validDates[validDates.length - 1]}T00:00:00`)
-  const startDate = new Date(endDate)
-  startDate.setDate(startDate.getDate() - 29)
-  const startIso = toLocalDateStr(startDate)
-  const endIso = toLocalDateStr(endDate)
-  const recent = rows.filter((r) => r.date >= startIso && r.date <= endIso)
-  const observedDates = Array.from(new Set(recent.map((r) => r.date))).sort()
-  const daysObserved =
-    observedDates.length > 1
-      ? Math.round(
-          (new Date(`${observedDates[observedDates.length - 1]}T00:00:00`).getTime() -
-            new Date(`${observedDates[0]}T00:00:00`).getTime()) /
-            (24 * 60 * 60 * 1000)
-        ) + 1
-      : observedDates.length
-  const factor = daysObserved > 0 ? 30 / daysObserved : 0
-  return {
-    grossSales: recent.reduce((s, r) => s + Number(r.grossSales || 0), 0) * factor,
-    orders: Math.round(recent.reduce((s, r) => s + Number(r.count || 0), 0) * factor),
-    daysObserved,
-  }
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface WSCChathamPartnerAccountProps {
@@ -213,8 +187,6 @@ export default function WSCChathamPartnerAccount({
     }
     return Array.from(grouped.values()).sort((a, b) => b.date.localeCompare(a.date))
   }, [allSales])
-
-  const projection = getThirtyDayProjection(allSales)
 
   const olderWeeks = useMemo(() => getOlderWeeks(allSales), [allSales])
 
@@ -334,24 +306,6 @@ export default function WSCChathamPartnerAccount({
               </div>
             )}
 
-            <div className="mt-auto pt-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Projected next 30 days</p>
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xl font-bold">{projection.orders.toLocaleString()}</p>
-                    <p className="text-xs text-gray-600">projected orders</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold">{formatCurrency(projection.grossSales)}</p>
-                    <p className="text-xs text-gray-600">projected gross sales</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs leading-5 text-gray-600">
-                  Run rate from latest {projection.daysObserved} days of data.
-                </p>
-              </div>
-            </div>
           </article>
 
           <article className="flex flex-col rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5">
