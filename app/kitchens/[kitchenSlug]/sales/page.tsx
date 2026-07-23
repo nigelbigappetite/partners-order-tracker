@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import KPICard from '@/components/KPICard'
 import Table from '@/components/Table'
-import DateRangePicker, { isAllTimeRange } from '@/components/locations/DateRangePicker'
 import { KitchenSales } from '@/lib/types'
 import { getBrandDefinition } from '@/lib/brands'
 import { formatCurrency, toLocalDateStr } from '@/lib/utils'
@@ -14,17 +13,56 @@ import toast from 'react-hot-toast'
 import { useParams } from 'next/navigation'
 import { Download } from 'lucide-react'
 
-function formatDateForSubtitle(date: Date): string {
-  const day = `${date.getDate()}`.padStart(2, '0')
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const year = date.getFullYear()
-  return `${day}-${month}-${year}`
+// ── Week helpers ───────────────────────────────────────────────────────────────
+
+type Period =
+  | { type: 'this_week' }
+  | { type: 'last_week' }
+  | { type: 'week'; weekStart: string }
+
+function getMonday(weeksAgo: number): Date {
+  const today = new Date()
+  const daysSinceMonday = (today.getDay() + 6) % 7
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - daysSinceMonday - 7 * weeksAgo)
+  monday.setHours(0, 0, 0, 0)
+  return monday
 }
 
-function getSalesPeriodLabel(start: Date, end: Date): string {
-  const startLabel = formatDateForSubtitle(start)
-  const endLabel = formatDateForSubtitle(end)
-  return startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`
+function fmtDMY(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function periodToDateRange(period: Period): { startDate: string; endDate: string } {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  if (period.type === 'this_week') {
+    const mon = getMonday(0)
+    return { startDate: toLocalDateStr(mon), endDate: toLocalDateStr(today) }
+  }
+  if (period.type === 'last_week') {
+    const mon = getMonday(1)
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+    return { startDate: toLocalDateStr(mon), endDate: toLocalDateStr(sun) }
+  }
+  const mon = new Date(period.weekStart + 'T00:00:00')
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+  return { startDate: period.weekStart, endDate: toLocalDateStr(sun) }
+}
+
+function getPeriodLabel(period: Period): string {
+  const { startDate, endDate } = periodToDateRange(period)
+  return `${fmtDMY(startDate)} – ${fmtDMY(endDate)}`
+}
+
+function getAvailableWeeks(): { weekStart: string; label: string }[] {
+  const weeks: { weekStart: string; label: string }[] = []
+  for (let i = 2; i <= 26; i++) {
+    const mon = getMonday(i)
+    const start = toLocalDateStr(mon)
+    weeks.push({ weekStart: start, label: `Week of ${fmtDMY(start)}` })
+  }
+  return weeks
 }
 
 function formatDate(dateString: string): string {
@@ -33,6 +71,8 @@ function formatDate(dateString: string): string {
   if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`
   return dateString
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function KitchenSalesDashboard() {
   const params = useParams()
@@ -45,16 +85,11 @@ export default function KitchenSalesDashboard() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
   const [sortColumn, setSortColumn] = useState<string | null>('Date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [period, setPeriod] = useState<Period>({ type: 'this_week' })
 
-  const [dateRange, setDateRange] = useState(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const daysSinceMonday = (today.getDay() + 6) % 7
-    const isMonday = daysSinceMonday === 0
-    const start = new Date(today)
-    start.setDate(today.getDate() - (isMonday ? 7 : daysSinceMonday))
-    const end = isMonday ? new Date(today.getTime() - 24 * 60 * 60 * 1000) : new Date()
-    return { start, end }
-  })
+  const availableWeeks = useMemo(() => getAvailableWeeks(), [])
+  const dropdownActive = period.type === 'week'
+  const dropdownValue = period.type === 'week' ? period.weekStart : ''
 
   const fetchSalesIdRef = useRef(0)
   const fetchOrdersIdRef = useRef(0)
@@ -62,30 +97,25 @@ export default function KitchenSalesDashboard() {
   useEffect(() => {
     fetchSales()
     fetchOrders()
-  }, [kitchenSlug, dateRange])
+  }, [kitchenSlug, period])
 
   const fetchSales = async () => {
     const fetchId = ++fetchSalesIdRef.current
     try {
       setLoading(true)
-      const startDate = toLocalDateStr(dateRange.start)
-      const endDate = toLocalDateStr(dateRange.end)
+      const { startDate, endDate } = periodToDateRange(period)
 
       const response = await fetch(
         `/api/sales?startDate=${startDate}&endDate=${endDate}&brand=${encodeURIComponent(kitchenSlug)}`
       )
       if (fetchId !== fetchSalesIdRef.current) return
-      if (!response.ok) {
-        toast.error('Failed to load sales data')
-        return
-      }
+      if (!response.ok) { toast.error('Failed to load sales data'); return }
+
       const data = await response.json()
-      // Exclude stale deliveroo rows from kitchen_sales — brain is the source of truth
       let allSales: KitchenSales[] = (data.sales || []).filter(
         (s: KitchenSales) => s.platform !== 'deliveroo'
       )
 
-      // Merge live Deliveroo data from brain Supabase
       if (brandDef?.deliverooLocationKey) {
         try {
           const dRes = await fetch(
@@ -119,7 +149,6 @@ export default function KitchenSalesDashboard() {
 
       if (fetchId !== fetchSalesIdRef.current) return
 
-      // Normalise all rows to one canonical location name
       if (brandDef?.kitchenLocation) {
         allSales = allSales.map((s) => ({ ...s, location: brandDef!.kitchenLocation! }))
       }
@@ -127,7 +156,6 @@ export default function KitchenSalesDashboard() {
       setSales(allSales)
     } catch (error) {
       if (fetchId !== fetchSalesIdRef.current) return
-      console.error('Error fetching sales:', error)
       toast.error('Failed to load sales data')
     } finally {
       if (fetchId === fetchSalesIdRef.current) setLoading(false)
@@ -137,8 +165,7 @@ export default function KitchenSalesDashboard() {
   const fetchOrders = async () => {
     const fetchId = ++fetchOrdersIdRef.current
     try {
-      const startDate = toLocalDateStr(dateRange.start)
-      const endDate = toLocalDateStr(dateRange.end)
+      const { startDate, endDate } = periodToDateRange(period)
       const res = await fetch(
         `/api/sales/orders?brand=${encodeURIComponent(kitchenSlug)}&startDate=${startDate}&endDate=${endDate}`
       )
@@ -159,45 +186,27 @@ export default function KitchenSalesDashboard() {
 
   const filteredOrders = useMemo(() => {
     if (selectedPlatform === 'all') return orders
-    return orders.filter((order) => order.platform === selectedPlatform)
+    return orders.filter((o) => o.platform === selectedPlatform)
   }, [orders, selectedPlatform])
 
   const filteredSales = useMemo(() => {
     let filtered = selectedPlatform === 'all'
       ? sales
-      : sales.filter((sale) => sale.platform === selectedPlatform)
+      : sales.filter((s) => s.platform === selectedPlatform)
 
     if (!sortColumn) return filtered
 
     return [...filtered].sort((a, b) => {
-      let aVal: any
-      let bVal: any
-
+      let aVal: any, bVal: any
       switch (sortColumn) {
-        case 'Date':
-          aVal = a.date
-          bVal = b.date
-          break
-        case 'Platform':
-          aVal = (a.platform || '').toLowerCase()
-          bVal = (b.platform || '').toLowerCase()
-          break
-        case 'Sales':
-          aVal = a.revenue
-          bVal = b.revenue
-          break
-        case 'Orders':
-          aVal = a.count
-          bVal = b.count
-          break
-        case 'Avg Order Value':
-          aVal = a.averageOrderValue || 0
-          bVal = b.averageOrderValue || 0
-          break
-        default:
-          return 0
+        case 'Date':         aVal = a.date;                          bVal = b.date;                          break
+        case 'Platform':     aVal = (a.platform || '').toLowerCase(); bVal = (b.platform || '').toLowerCase(); break
+        case 'Orders':       aVal = a.count;                         bVal = b.count;                         break
+        case 'Gross Sales':  aVal = a.grossSales || 0;               bVal = b.grossSales || 0;               break
+        case 'Platform Fee': aVal = (a.grossSales || 0) - a.revenue; bVal = (b.grossSales || 0) - b.revenue; break
+        case 'Net Payout':   aVal = a.revenue;                       bVal = b.revenue;                       break
+        default: return 0
       }
-
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
       return 0
@@ -213,39 +222,29 @@ export default function KitchenSalesDashboard() {
     }
   }
 
-  const totalSales = filteredSales.reduce((sum, s) => sum + s.revenue, 0)
+  const totalGross = filteredSales.reduce((sum, s) => sum + (s.grossSales || 0), 0)
+  const totalNet   = filteredSales.reduce((sum, s) => sum + s.revenue, 0)
+  const totalFees  = totalGross - totalNet
   const totalOrders = filteredSales.reduce((sum, s) => sum + s.count, 0)
-  const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0
-
-  const earliestFilteredSalesDate = filteredSales.reduce<Date | null>((earliest, sale) => {
-    if (!sale.date) return earliest
-    const saleDate = new Date(`${sale.date}T00:00:00`)
-    if (Number.isNaN(saleDate.getTime())) return earliest
-    if (!earliest || saleDate < earliest) return saleDate
-    return earliest
-  }, null)
-  const periodStartDate =
-    isAllTimeRange(dateRange.start, dateRange.end) && earliestFilteredSalesDate
-      ? earliestFilteredSalesDate
-      : dateRange.start
-  const selectedPeriodLabel = getSalesPeriodLabel(periodStartDate, dateRange.end)
+  const periodLabel = getPeriodLabel(period)
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Platform', 'Orders', 'Sales', 'Raw Gross Sales']
-    const rows = filteredSales.map((sale) => [
-      sale.date,
-      getPlatformLabel(sale.platform || ''),
-      sale.count,
-      sale.revenue,
-      sale.grossSales,
+    const { startDate, endDate } = periodToDateRange(period)
+    const headers = ['Date', 'Platform', 'Orders', 'Gross Sales', 'Platform Fee', 'Net Payout']
+    const rows = filteredSales.map((s) => [
+      s.date,
+      getPlatformLabel(s.platform || ''),
+      s.count,
+      (s.grossSales || 0).toFixed(2),
+      ((s.grossSales || 0) - s.revenue).toFixed(2),
+      s.revenue.toFixed(2),
     ])
-
-    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sales-${toLocalDateStr(dateRange.start)}-to-${toLocalDateStr(dateRange.end)}.csv`
+    a.download = `sales-${startDate}-to-${endDate}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }
@@ -253,8 +252,8 @@ export default function KitchenSalesDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="mx-auto max-w-7xl px-6 py-8">
-          <div className="text-center">Loading sales data...</div>
+        <div className="mx-auto max-w-7xl px-6 py-8 text-center text-sm text-gray-500">
+          Loading sales data…
         </div>
       </div>
     )
@@ -263,128 +262,158 @@ export default function KitchenSalesDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-8">
-        <div className="mb-6 xs:mb-8 sm:mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+        {/* Header */}
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900">Sales Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500">Sales and order activity by platform</p>
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900">Sales</h1>
+            <p className="mt-1 text-sm text-gray-500">{periodLabel}</p>
           </div>
           <button
             onClick={exportToCSV}
-            className="flex w-full items-center justify-center space-x-2 rounded-lg border border-blue-700 bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-700 shadow-sm hover:shadow sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-blue-700 shadow-sm sm:w-auto"
           >
             <Download className="h-4 w-4" />
             <span>Export</span>
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Week selector + platform toggle */}
         <div className="mb-4 xs:mb-6 rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
-            <div className="flex-1 min-w-0">
-              <DateRangePicker
-                startDate={dateRange.start}
-                endDate={dateRange.end}
-                onChange={(start, end) => setDateRange({ start, end })}
-              />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* Week pills */}
+            <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
+              {([
+                { type: 'this_week' as const, label: 'This Week' },
+                { type: 'last_week' as const, label: 'Last Week' },
+              ] as const).map(({ type, label }) => (
+                <button
+                  key={type}
+                  onClick={() => setPeriod({ type })}
+                  className={[
+                    'rounded-lg px-4 py-2 text-sm font-medium transition-all whitespace-nowrap',
+                    period.type === type
+                      ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'
+                      : 'text-gray-500 hover:text-gray-900',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
+              <select
+                value={dropdownValue}
+                onChange={(e) => { if (e.target.value) setPeriod({ type: 'week', weekStart: e.target.value }) }}
+                className={[
+                  'rounded-lg py-2 pl-3 pr-2 text-sm font-medium transition-all cursor-pointer border-0 outline-none appearance-none',
+                  dropdownActive
+                    ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'
+                    : 'bg-transparent text-gray-500 hover:text-gray-900',
+                ].join(' ')}
+              >
+                <option value="" disabled>Earlier…</option>
+                {availableWeeks.map((w) => (
+                  <option key={w.weekStart} value={w.weekStart}>{w.label}</option>
+                ))}
+              </select>
             </div>
+
+            {/* Platform toggle */}
             {uniquePlatforms.length > 1 && (
-              <div className="mt-3 border-t border-gray-100 pt-3 sm:mt-0 sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0 sm:shrink-0">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Platform</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedPlatform('all')}
+                  className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
+                    selectedPlatform === 'all'
+                      ? 'bg-brand-primary border-brand-primary text-white'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  All
+                </button>
+                {uniquePlatforms.map((platform) => (
                   <button
-                    onClick={() => setSelectedPlatform('all')}
-                    className={`rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm transition-colors ${
-                      selectedPlatform === 'all'
-                        ? 'bg-brand-primary border-brand-primary text-white'
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    key={platform}
+                    onClick={() => setSelectedPlatform(platform)}
+                    className={`rounded-lg border px-3 py-2 shadow-sm transition-colors flex items-center ${
+                      selectedPlatform === platform
+                        ? 'bg-brand-primary border-brand-primary'
+                        : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    All
+                    <PlatformLogo platform={platform} height={24} />
                   </button>
-                  {uniquePlatforms.map((platform) => (
-                    <button
-                      key={platform}
-                      onClick={() => setSelectedPlatform(platform)}
-                      className={`rounded-lg border px-3 py-2 shadow-sm transition-colors flex items-center ${
-                        selectedPlatform === platform
-                          ? 'bg-brand-primary border-brand-primary'
-                          : 'bg-white border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <PlatformLogo platform={platform} height={24} />
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-3 gap-2.5 xs:gap-3 sm:gap-4">
-          <KPICard
-            metric={{ label: 'Sales', value: formatCurrency(totalSales), subtitle: selectedPeriodLabel }}
-          />
-          <KPICard
-            metric={{ label: 'Total Orders', value: totalOrders.toLocaleString(), subtitle: selectedPeriodLabel }}
-          />
-          <KPICard
-            metric={{ label: 'Avg Order Value', value: formatCurrency(averageOrderValue), subtitle: selectedPeriodLabel }}
-          />
+        {/* KPI row 1 — financial */}
+        <div className="mb-2.5 xs:mb-3 sm:mb-4 grid grid-cols-3 gap-2.5 xs:gap-3 sm:gap-4">
+          <KPICard metric={{ label: 'Gross Sales',    value: formatCurrency(totalGross), subtitle: periodLabel }} />
+          <KPICard metric={{ label: 'Platform Fees',  value: formatCurrency(totalFees),  subtitle: periodLabel }} />
+          <KPICard metric={{ label: 'Net Payout',     value: formatCurrency(totalNet),   subtitle: periodLabel }} />
         </div>
 
-        {/* Daily Sales Table */}
+        {/* KPI row 2 — operational */}
+        <div className="mb-3 xs:mb-4 sm:mb-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4">
+          <KPICard metric={{ label: 'Total Orders',     value: totalOrders.toLocaleString(), subtitle: periodLabel }} />
+          <KPICard metric={{ label: 'Avg Order Value',  value: totalOrders > 0 ? formatCurrency(totalGross / totalOrders) : '—', subtitle: 'Based on gross' }} />
+        </div>
+
+        {/* Daily breakdown table */}
         <div className="mt-6 sm:mt-8">
-          <div className="mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Daily Sales</h2>
-          </div>
+          <h2 className="mb-4 text-lg sm:text-xl font-semibold text-gray-900">Daily Breakdown</h2>
           <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-sm">
+
             {/* Mobile cards */}
             <div className="space-y-3 md:hidden">
               {filteredSales.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
-                  No sales data found for the selected period
+                  No sales data for this week
                 </div>
               ) : (
                 <div className="max-h-[35rem] space-y-3 overflow-y-auto pr-1">
-                  {filteredSales.map((sale, index) => (
-                    <div
-                      key={`${sale.date}-${sale.platform}-${index}`}
-                      className="rounded-xl border border-gray-200 bg-white p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {formatDate(sale.date)}
-                        </p>
-                        <span className="rounded-full bg-gray-100 px-2.5 py-1 flex items-center">
-                          <PlatformLogo platform={sale.platform || ''} height={20} />
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">Orders</p>
-                          <p className="font-semibold text-gray-900">{sale.count}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">Sales</p>
-                          <p className="font-medium text-gray-900">{formatCurrency(sale.revenue)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">AOV</p>
-                          <p className="font-medium text-gray-600">
-                            {sale.count > 0 ? formatCurrency(sale.revenue / sale.count) : '-'}
+                  {filteredSales.map((sale, i) => {
+                    const gross = sale.grossSales || 0
+                    const fee   = gross - sale.revenue
+                    return (
+                      <div key={`${sale.date}-${sale.platform}-${i}`} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {formatDate(sale.date)}
                           </p>
+                          <span className="rounded-full bg-gray-100 px-2.5 py-1 flex items-center">
+                            <PlatformLogo platform={sale.platform || ''} height={20} />
+                          </span>
                         </div>
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Gross</p>
+                            <p className="font-semibold text-gray-900">{formatCurrency(gross)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Fee</p>
+                            <p className="font-medium text-red-600">−{formatCurrency(fee)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Net</p>
+                            <p className="font-semibold text-green-700">{formatCurrency(sale.revenue)}</p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400">{sale.count} orders</p>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
+
             {/* Desktop table */}
             <div className="hidden md:block">
               <Table
-                headers={['Date', 'Platform', 'Orders', 'Sales', 'Avg Order Value']}
+                headers={['Date', 'Platform', 'Orders', 'Gross Sales', 'Platform Fee', 'Net Payout']}
                 maxHeight="520px"
                 stickyHeader={true}
                 sortable={true}
@@ -394,53 +423,43 @@ export default function KitchenSalesDashboard() {
               >
                 {filteredSales.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-3 sm:px-6 py-6 sm:py-8 text-center text-xs sm:text-sm text-gray-400"
-                    >
-                      No sales data found for the selected period
+                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
+                      No sales data for this week
                     </td>
                   </tr>
                 ) : (
-                  filteredSales.map((sale, index) => (
-                    <tr
-                      key={`${sale.date}-${sale.platform}-${index}`}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
-                        {formatDate(sale.date)}
-                      </td>
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4">
-                        <PlatformLogo platform={sale.platform || ''} height={28} />
-                      </td>
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-900">
-                        {sale.count}
-                      </td>
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm font-medium text-gray-900">
-                        {formatCurrency(sale.revenue)}
-                      </td>
-                      <td className="whitespace-nowrap px-2 xs:px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 text-xs xs:text-sm text-gray-600">
-                        {sale.count > 0 ? formatCurrency(sale.revenue / sale.count) : '-'}
-                      </td>
-                    </tr>
-                  ))
+                  filteredSales.map((sale, i) => {
+                    const gross = sale.grossSales || 0
+                    const fee   = gross - sale.revenue
+                    return (
+                      <tr key={`${sale.date}-${sale.platform}-${i}`} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-900">{formatDate(sale.date)}</td>
+                        <td className="whitespace-nowrap px-6 py-3">
+                          <PlatformLogo platform={sale.platform || ''} height={28} />
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-900">{sale.count}</td>
+                        <td className="whitespace-nowrap px-6 py-3 text-sm font-medium text-gray-900">{formatCurrency(gross)}</td>
+                        <td className="whitespace-nowrap px-6 py-3 text-sm text-red-600">−{formatCurrency(fee)}</td>
+                        <td className="whitespace-nowrap px-6 py-3 text-sm font-semibold text-green-700">{formatCurrency(sale.revenue)}</td>
+                      </tr>
+                    )
+                  })
                 )}
               </Table>
             </div>
           </div>
         </div>
 
-        {/* Order History */}
+        {/* Order history */}
         <div className="mt-6 sm:mt-8">
-          <div className="mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Order History</h2>
-            <p className="mt-1 text-sm text-gray-500">Individual orders by platform.</p>
-          </div>
+          <h2 className="mb-1 text-lg sm:text-xl font-semibold text-gray-900">Order History</h2>
+          <p className="mb-4 text-sm text-gray-500">Individual orders for this reporting week.</p>
           <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-6 shadow-sm">
+
             {/* Mobile */}
             <div className="space-y-2 md:hidden">
               {filteredOrders.length === 0 ? (
-                <p className="py-6 text-center text-sm text-gray-400">No orders found for this period.</p>
+                <p className="py-6 text-center text-sm text-gray-400">No orders for this week.</p>
               ) : (
                 <div className="max-h-[40rem] space-y-2 overflow-y-auto pr-1">
                   {filteredOrders.map((order, i) => (
@@ -463,6 +482,7 @@ export default function KitchenSalesDashboard() {
                 </div>
               )}
             </div>
+
             {/* Desktop */}
             <div className="hidden md:block">
               <Table
@@ -474,31 +494,23 @@ export default function KitchenSalesDashboard() {
                 {filteredOrders.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">
-                      No orders found for this period.
+                      No orders for this week.
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map((order, i) => (
                     <tr key={`${order.orderId}-${i}`} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-700">
-                        {formatDate(order.date)}
-                      </td>
+                      <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-700">{formatDate(order.date)}</td>
                       <td className="whitespace-nowrap px-6 py-3">
                         <PlatformLogo platform={order.platform} height={24} />
                       </td>
-                      <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-gray-500">
-                        {order.orderId}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-sm font-medium text-gray-900">
-                        {formatCurrency(order.grossAmount)}
-                      </td>
+                      <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-gray-500">{order.orderId}</td>
+                      <td className="whitespace-nowrap px-6 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.grossAmount)}</td>
                       <td className="whitespace-nowrap px-6 py-3 text-sm">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          order.status === 'Completed'
-                            ? 'bg-green-100 text-green-700'
-                            : order.status === 'Refund'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-600'
+                          order.status === 'Completed' ? 'bg-green-100 text-green-700'
+                          : order.status === 'Refund'  ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-600'
                         }`}>
                           {order.status || '—'}
                         </span>
@@ -510,6 +522,7 @@ export default function KitchenSalesDashboard() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )
