@@ -13,12 +13,16 @@ interface BrandEntry {
 export default function BrandSelectPage() {
   const router = useRouter()
   const [brands, setBrands] = useState<BrandEntry[]>([])
+  const [kitchens, setKitchens] = useState<BrandEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/brands/auth')
       .then((r) => r.json())
-      .then((data) => setBrands(Array.isArray(data) ? data : []))
+      .then((data) => {
+        setBrands(Array.isArray(data.brands) ? data.brands : [])
+        setKitchens(Array.isArray(data.kitchens) ? data.kitchens : [])
+      })
       .catch((err) => console.error('[BrandSelect] Error fetching:', err))
       .finally(() => setLoading(false))
   }, [])
@@ -52,16 +56,34 @@ export default function BrandSelectPage() {
             <p className="text-gray-500">Loading…</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {brands.map((brand) => (
-              <BrandCard
-                key={brand.slug}
-                brandSlug={brand.slug}
-                brandName={brand.brandName}
-                onClick={() => router.push(`/brands/${brand.slug}`)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {brands.map((brand) => (
+                <BrandCard
+                  key={brand.slug}
+                  brandSlug={brand.slug}
+                  brandName={brand.brandName}
+                  onClick={() => router.push(`/brands/${brand.slug}`)}
+                />
+              ))}
+            </div>
+
+            {kitchens.length > 0 && (
+              <div className="mt-10">
+                <h2 className="text-base xs:text-lg font-semibold text-gray-700 mb-4">Kitchens</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {kitchens.map((kitchen) => (
+                    <BrandCard
+                      key={kitchen.slug}
+                      brandSlug={kitchen.slug}
+                      brandName={kitchen.brandName}
+                      onClick={() => router.push(`/kitchens/${kitchen.slug}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
