@@ -395,7 +395,7 @@ export default function KitchenSalesDashboard() {
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-wide text-gray-500">Fee</p>
-                            <p className="font-medium text-red-600">−{formatCurrency(fee)}</p>
+                            <p className="font-medium text-gray-500">−{formatCurrency(fee)}</p>
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-wide text-gray-500">Net</p>
@@ -439,7 +439,7 @@ export default function KitchenSalesDashboard() {
                         </td>
                         <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-900">{sale.count}</td>
                         <td className="whitespace-nowrap px-6 py-3 text-sm font-medium text-gray-900">{formatCurrency(gross)}</td>
-                        <td className="whitespace-nowrap px-6 py-3 text-sm text-red-600">−{formatCurrency(fee)}</td>
+                        <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500">−{formatCurrency(fee)}</td>
                         <td className="whitespace-nowrap px-6 py-3 text-sm font-semibold text-green-700">{formatCurrency(sale.revenue)}</td>
                       </tr>
                     )
